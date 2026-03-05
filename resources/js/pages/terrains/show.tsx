@@ -45,12 +45,14 @@ type TerrainDetails = {
 type TerrainSlotsPageProps = {
     terrain: TerrainDetails;
     selected_date: string;
+    max_advance_days: number;
     slots: ReservationSlot[];
     token_count: number;
 };
 
 type SlotsPayload = {
     selected_date: string;
+    max_advance_days: number;
     slots: ReservationSlot[];
     token_count: number;
 };
@@ -65,6 +67,10 @@ type ReservationErrorResponse = {
     errors?: {
         reservation?: string[];
     };
+};
+
+type FetchSlotsOptions = {
+    resetFeedback?: boolean;
 };
 
 function csrfToken(): string {
@@ -109,6 +115,10 @@ function displayDate(value: string, locale: string): string {
     });
 }
 
+function tokenUnitLabel(count: number, t: (key: string) => string): string {
+    return count === 1 ? t('token_unit_singular') : t('token_unit_plural');
+}
+
 function isSlotInFuture(slot: ReservationSlot): boolean {
     return new Date(slot.starts_at).getTime() > Date.now();
 }
@@ -149,11 +159,13 @@ function initialsFromName(name: string): string {
 export default function TerrainReservationPage({
     terrain,
     selected_date: initialDate,
+    max_advance_days: initialMaxAdvanceDays,
     slots: initialSlots,
     token_count: initialTokenCount,
 }: TerrainSlotsPageProps) {
     const { locale, t } = useI18n();
     const [selectedDate, setSelectedDate] = useState<string>(initialDate);
+    const [maxAdvanceDays, setMaxAdvanceDays] = useState<number>(initialMaxAdvanceDays);
     const [slots, setSlots] = useState<ReservationSlot[]>(initialSlots);
     const [tokenCount, setTokenCount] = useState<number>(initialTokenCount);
     const [selectedSlotIds, setSelectedSlotIds] = useState<number[]>([]);
@@ -183,40 +195,58 @@ export default function TerrainReservationPage({
             href: dashboardRoutes.terrains.show({ terrain: terrain.id }),
         },
     ];
+    const maxSelectableDate = addDays(toIsoDate(new Date()), maxAdvanceDays);
 
-    async function fetchSlots(date: string): Promise<void> {
+    async function fetchSlots(
+        date: string,
+        options: FetchSlotsOptions = {},
+    ): Promise<boolean> {
+        const resetFeedback = options.resetFeedback ?? true;
         setIsLoading(true);
-        setErrorMessage(null);
-        setMessage(null);
-
-        const response = await fetch(
-            dashboardRoutes.terrains.slots.url(
-                { terrain: terrain.id },
-                { query: { date } },
-            ),
-            {
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            },
-        );
-
-        if (!response.ok) {
-            setErrorMessage(t('unable_load_slots_selected_date'));
-            setIsLoading(false);
-            return;
+        if (resetFeedback) {
+            setErrorMessage(null);
+            setMessage(null);
         }
 
-        const payload = (await response.json()) as { data: SlotsPayload };
-        setSelectedDate(payload.data.selected_date);
-        setSlots(payload.data.slots);
-        setTokenCount(payload.data.token_count);
-        setSelectedSlotIds([]);
-        setIsLoading(false);
+        try {
+            const response = await fetch(
+                dashboardRoutes.terrains.slots.url(
+                    { terrain: terrain.id },
+                    { query: { date } },
+                ),
+                {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                setErrorMessage(t('unable_load_slots_selected_date'));
+                return false;
+            }
+
+            const payload = (await response.json()) as { data: SlotsPayload };
+            setSelectedDate(payload.data.selected_date);
+            setMaxAdvanceDays(payload.data.max_advance_days);
+            setSlots(payload.data.slots);
+            setTokenCount(payload.data.token_count);
+            setSelectedSlotIds([]);
+            return true;
+        } catch {
+            setErrorMessage(t('unable_load_slots_selected_date'));
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
     }
 
     async function handleDateStep(days: number): Promise<void> {
+        if (days > 0 && selectedDate >= maxSelectableDate) {
+            return;
+        }
+
         const nextDate = addDays(selectedDate, days);
         await fetchSlots(nextDate);
     }
@@ -268,6 +298,7 @@ export default function TerrainReservationPage({
         if (!response.ok) {
             const errorPayload =
                 (await response.json().catch(() => ({}))) as ReservationErrorResponse;
+            await fetchSlots(selectedDate, { resetFeedback: false });
             setErrorMessage(
                 errorPayload.errors?.reservation?.[0] ??
                     t('reservation_failed'),
@@ -279,10 +310,10 @@ export default function TerrainReservationPage({
 
         const payload = (await response.json()) as BulkReservationSuccessResponse;
         setTokenCount(payload.meta?.tokens_remaining ?? Math.max(0, tokenCount - selectedCount));
-        setMessage(t('reservation_created'));
         setIsSubmitting(false);
         setIsConfirmOpen(false);
-        await fetchSlots(selectedDate);
+        await fetchSlots(selectedDate, { resetFeedback: false });
+        setMessage(t('reservation_created'));
     }
 
     async function cancelReservation(slot: ReservationSlot): Promise<void> {
@@ -326,12 +357,13 @@ export default function TerrainReservationPage({
             return;
         }
 
-        setMessage(t('reservation_cancelled'));
         setIsCancellingSlotId(null);
-        await fetchSlots(selectedDate);
+        await fetchSlots(selectedDate, { resetFeedback: false });
+        setMessage(t('reservation_cancelled'));
     }
 
-    const isDateNavigationDisabled = isLoading;
+    const isNextDisabled = isLoading || selectedDate >= maxSelectableDate;
+    const isPreviousDisabled = isLoading;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -345,18 +377,19 @@ export default function TerrainReservationPage({
                             {terrain.description ?? `${t('code')}: ${terrain.code}`}
                         </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <div className="inline-flex items-center gap-1 rounded-md border border-border/70 bg-background p-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="inline-flex items-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 p-2 shadow-md shadow-primary/15 ring-1 ring-primary/20 backdrop-blur-sm">
                             <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                disabled={isDateNavigationDisabled}
+                                disabled={isPreviousDisabled}
                                 onClick={() => void handleDateStep(-1)}
+                                className="rounded-xl border border-primary/40 bg-white text-zinc-800 hover:bg-primary/10"
                             >
                                 <ChevronLeft className="size-4" />
                             </Button>
-                            <span className="min-w-44 text-center text-sm font-medium">
+                            <span className="min-w-52 rounded-xl border border-primary/45 bg-white px-4 py-2 text-center text-sm font-bold text-zinc-900 shadow-sm">
                                 {isLoading
                                     ? t('loading')
                                     : displayDate(selectedDate, locale)}
@@ -365,13 +398,21 @@ export default function TerrainReservationPage({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                disabled={isDateNavigationDisabled}
+                                disabled={isNextDisabled}
                                 onClick={() => void handleDateStep(1)}
+                                className="rounded-xl border border-primary/40 bg-white text-zinc-800 hover:bg-primary/10"
                             >
                                 <ChevronRight className="size-4" />
                             </Button>
                         </div>
-                        <Badge variant="secondary">{t('available_tokens')}: {tokenCount}</Badge>
+                        <div className="inline-flex h-14 items-center rounded-2xl border border-primary/40 bg-primary/10 px-4 shadow-md shadow-primary/15 ring-1 ring-primary/20 backdrop-blur-sm">
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-black leading-none text-foreground">{tokenCount}</span>
+                                <span className="text-sm font-semibold text-zinc-700">
+                                    {tokenUnitLabel(tokenCount, t)}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500 bg-emerald-50 px-2 py-1 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
@@ -480,14 +521,14 @@ export default function TerrainReservationPage({
                                                 type="button"
                                                 variant="outline"
                                                 size="sm"
-                                                className="ml-auto h-7 border-black px-2 text-[11px]"
+                                                className="ml-auto h-7 border-red-300 px-2 text-[11px] text-red-700 hover:border-red-400 hover:bg-red-50"
                                                 disabled={isCancellingSlotId === slot.id}
                                                 onClick={(event) => {
                                                     event.stopPropagation();
                                                     void cancelReservation(slot);
                                                 }}
                                             >
-                                                {isCancellingSlotId === slot.id ? t('cancelling') : t('cancel')}
+                                                {isCancellingSlotId === slot.id ? t('cancelling') : t('cancel_reservation')}
                                             </Button>
                                         )}
                                     </div>

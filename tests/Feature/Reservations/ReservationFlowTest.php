@@ -63,6 +63,75 @@ test('user can create reservation and receives reservation tokens', function () 
     expect(Reservation::query()->first()->tokens()->count())->toBe(2);
 });
 
+test('user can bulk reserve slots and slots endpoint returns reserving user name', function () {
+    $user = User::factory()->create([
+        'first_name' => 'Marko',
+        'last_name' => 'Maric',
+        'token_count' => 5,
+    ]);
+    grantReservationCreatePermission($user);
+
+    TerrainSetting::query()->create([
+        'terrain_id' => null,
+        'is_global' => true,
+        'max_advance_days' => 30,
+        'availability_periods' => [
+            [
+                'from' => '08:00',
+                'to' => '22:00',
+                'slot_duration_minutes' => 60,
+            ],
+        ],
+    ]);
+
+    $terrain = Terrain::query()->create([
+        'name' => 'Court Bulk',
+        'code' => 'court-bulk',
+        'is_active' => true,
+    ]);
+
+    $slotDay = now()->addDay();
+
+    $firstSlot = ReservationSlot::query()->create([
+        'terrain_id' => $terrain->id,
+        'starts_at' => $slotDay->copy()->setTime(10, 0),
+        'ends_at' => $slotDay->copy()->setTime(11, 0),
+        'status' => ReservationSlotStatus::Available,
+    ]);
+    $secondSlot = ReservationSlot::query()->create([
+        'terrain_id' => $terrain->id,
+        'starts_at' => $slotDay->copy()->setTime(11, 0),
+        'ends_at' => $slotDay->copy()->setTime(12, 0),
+        'status' => ReservationSlotStatus::Available,
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('reservations.bulk-store'), [
+            'reservation_slot_ids' => [$firstSlot->id, $secondSlot->id],
+        ])
+        ->assertCreated()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('meta.tokens_remaining', 3);
+
+    $slotsResponse = $this->actingAs($user)->getJson(route('dashboard.terrains.slots', [
+        'terrain' => $terrain->id,
+        'date' => $slotDay->toDateString(),
+    ]));
+
+    $slotsResponse->assertOk();
+
+    $slots = collect($slotsResponse->json('data.slots'));
+    $firstReservedSlot = $slots->firstWhere('id', $firstSlot->id);
+    $secondReservedSlot = $slots->firstWhere('id', $secondSlot->id);
+
+    expect($firstReservedSlot['status'])->toBe(ReservationSlotStatus::Reserved->value);
+    expect($firstReservedSlot['reserved_by']['first_name'])->toBe('Marko');
+    expect($firstReservedSlot['reserved_by']['last_name'])->toBe('Maric');
+    expect($secondReservedSlot['status'])->toBe(ReservationSlotStatus::Reserved->value);
+    expect($secondReservedSlot['reserved_by']['first_name'])->toBe('Marko');
+    expect($secondReservedSlot['reserved_by']['last_name'])->toBe('Maric');
+});
+
 test('reservation fails when slot overlaps inactive terrain period', function () {
     $user = User::factory()->create();
     grantReservationCreatePermission($user);

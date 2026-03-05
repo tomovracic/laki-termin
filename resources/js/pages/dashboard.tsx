@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { useI18n } from '@/lib/i18n';
 import { dashboard } from '@/routes';
@@ -72,10 +72,18 @@ export default function Dashboard({
     }
 
     function imageStyleForTerrain(terrainId: number): string {
-        const hueA = (terrainId * 31) % 360;
-        const hueB = (terrainId * 53 + 120) % 360;
+        const toneShift = terrainId % 7;
+        const hue = 18 + toneShift * 3;
+        const warmLight = 58 + toneShift;
+        const warmDark = 42 + toneShift;
 
-        return `linear-gradient(135deg, hsl(${hueA} 75% 55%), hsl(${hueB} 70% 45%))`;
+        return `
+            radial-gradient(circle at 12% 20%, hsl(${hue + 8} 92% ${warmLight + 12}% / 0.38), transparent 45%),
+            radial-gradient(circle at 86% 24%, hsl(${hue - 2} 88% ${warmLight + 6}% / 0.26), transparent 42%),
+            linear-gradient(110deg, rgb(255 255 255 / 0.17) 0 7%, transparent 7% 14%, rgb(255 255 255 / 0.10) 14% 17%, transparent 17% 100%),
+            linear-gradient(180deg, transparent 0 62%, rgb(255 255 255 / 0.22) 62% 64%, transparent 64% 100%),
+            linear-gradient(152deg, hsl(${hue} 68% ${warmLight}%) 0%, hsl(${hue - 5} 61% ${warmDark}%) 100%)
+        `;
     }
 
     function parseIsoDate(value: string): Date {
@@ -103,6 +111,10 @@ export default function Dashboard({
             month: 'long',
             day: 'numeric',
         });
+    }
+
+    function tokenUnitLabel(count: number): string {
+        return count === 1 ? t('token_unit_singular') : t('token_unit_plural');
     }
 
     async function refreshDashboardData(date: string): Promise<void> {
@@ -148,18 +160,19 @@ export default function Dashboard({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('dashboard')} />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="inline-flex items-center gap-1 rounded-md border border-border/70 bg-background p-1">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="inline-flex items-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 p-2 shadow-md shadow-primary/15 ring-1 ring-primary/20 backdrop-blur-sm">
                         <Button
                             type="button"
                             variant="ghost"
                             size="icon"
                             disabled={isPreviousDisabled}
                             onClick={() => void handleDateStep(-1)}
+                            className="rounded-xl border border-primary/40 bg-white text-zinc-800 hover:bg-primary/10"
                         >
                             <ChevronLeft className="size-4" />
                         </Button>
-                        <span className="min-w-44 text-center text-sm font-medium">
+                        <span className="min-w-52 rounded-xl border border-primary/45 bg-white px-4 py-2 text-center text-sm font-bold text-zinc-900 shadow-sm">
                             {isLoading ? t('loading') : displayDate(selectedDate)}
                         </span>
                         <Button
@@ -168,11 +181,17 @@ export default function Dashboard({
                             size="icon"
                             disabled={isNextDisabled}
                             onClick={() => void handleDateStep(1)}
+                            className="rounded-xl border border-primary/40 bg-white text-zinc-800 hover:bg-primary/10"
                         >
                             <ChevronRight className="size-4" />
                         </Button>
                     </div>
-                    <Badge variant="secondary">{t('available_tokens')}: {tokenCount}</Badge>
+                    <div className="inline-flex h-14 items-center rounded-2xl border border-primary/40 bg-primary/10 px-4 shadow-md shadow-primary/15 ring-1 ring-primary/20 backdrop-blur-sm">
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-2xl font-black leading-none text-foreground">{tokenCount}</span>
+                            <span className="text-sm font-semibold text-zinc-700">{tokenUnitLabel(tokenCount)}</span>
+                        </div>
+                    </div>
                 </div>
                 {errorMessage !== null && (
                     <p className="text-sm text-red-500">{errorMessage}</p>
@@ -182,30 +201,28 @@ export default function Dashboard({
                     {terrains.map((terrain) => (
                         <Card
                             key={terrain.id}
-                            className="h-full overflow-hidden border-border/70 py-0"
+                            className="group h-full overflow-hidden rounded-2xl border-border/60 bg-card/95 py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/30"
                         >
                             <div
-                                className="relative flex h-32 w-full items-end p-4"
+                                className="relative flex h-24 w-full items-end overflow-hidden px-4 pb-3"
                                 style={{ backgroundImage: imageStyleForTerrain(terrain.id) }}
                             >
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
-                                <h3 className="relative text-2xl font-bold tracking-tight text-white drop-shadow-md">
+                                <div className="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full bg-white/20 blur-xl" />
+                                <div className="pointer-events-none absolute -bottom-10 -left-4 h-20 w-28 rounded-full bg-black/15 blur-xl" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/25 to-transparent" />
+                                <Badge
+                                    variant="secondary"
+                                    className="absolute top-2 right-2 border-white/20 bg-black/35 text-[11px] text-white backdrop-blur-sm"
+                                >
+                                    {t('free')}: {terrain.available_slots_count}
+                                </Badge>
+                                <h3 className="relative text-5xl font-black tracking-tight text-white drop-shadow-md">
                                     {terrain.name}
                                 </h3>
                             </div>
-                            <CardHeader>
-                                <div className="flex items-start justify-between gap-2">
-                                    <div>
-                                        <CardDescription>{terrain.description ?? terrain.code}</CardDescription>
-                                    </div>
-                                    <Badge variant="outline">
-                                        {t('free')}: {terrain.available_slots_count}
-                                    </Badge>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="flex-1 space-y-2">
+                            <CardContent className="flex-1 space-y-2 px-5 pb-3">
                                 {terrain.slots.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="text-base text-muted-foreground">
                                         {t('no_free_slots_selected_date')}
                                     </p>
                                 ) : (
@@ -215,7 +232,7 @@ export default function Dashboard({
                                                 key={slot.id}
                                                 className="border-emerald-200/70 bg-emerald-50/70 py-0 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/30"
                                             >
-                                                <CardContent className="px-3 py-2 text-center text-xs font-medium text-emerald-900 dark:text-emerald-100">
+                                                <CardContent className="px-3 py-2 text-center text-base font-medium text-emerald-900 dark:text-emerald-100">
                                                     {toTime(slot.starts_at)} - {toTime(slot.ends_at)}
                                                 </CardContent>
                                             </Card>
@@ -223,8 +240,11 @@ export default function Dashboard({
                                     </div>
                                 )}
                             </CardContent>
-                            <CardFooter className="mt-auto px-6 pb-4">
-                                <Button asChild className="w-full">
+                            <CardFooter className="mt-auto px-5 pt-2 pb-5">
+                                <Button
+                                    asChild
+                                    className="h-10 w-full rounded-xl text-base font-semibold shadow-sm"
+                                >
                                     <Link
                                         href={dashboardRoutes.terrains.show(
                                             { terrain: terrain.id },

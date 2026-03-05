@@ -248,3 +248,40 @@ test('terrain slots endpoint shows reserved history and marks passed unreserved 
         CarbonImmutable::setTestNow();
     }
 });
+
+test('terrain slots endpoint clamps selected date to max advance days', function () {
+    CarbonImmutable::setTestNow('2026-03-04 09:00:00');
+
+    try {
+        $user = User::factory()->create(['token_count' => 5]);
+        $this->actingAs($user);
+
+        $terrain = Terrain::query()->create([
+            'name' => 'Court E',
+            'code' => 'court-e',
+            'is_active' => true,
+        ]);
+        TerrainSetting::query()->create([
+            'terrain_id' => null,
+            'is_global' => true,
+            'max_advance_days' => 2,
+            'availability_periods' => [
+                [
+                    'from' => '08:00',
+                    'to' => '10:00',
+                    'slot_duration_minutes' => 60,
+                ],
+            ],
+        ]);
+
+        $this->getJson(route('dashboard.terrains.slots', [
+            'terrain' => $terrain->id,
+            'date' => '2026-03-20',
+        ]))
+            ->assertOk()
+            ->assertJsonPath('data.selected_date', '2026-03-06')
+            ->assertJsonPath('data.max_advance_days', 2);
+    } finally {
+        CarbonImmutable::setTestNow();
+    }
+});

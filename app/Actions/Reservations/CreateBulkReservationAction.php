@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\TerrainAvailabilityService;
 use DomainException;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 class CreateBulkReservationAction
@@ -54,8 +55,8 @@ class CreateBulkReservationAction
                 throw new DomainException('You do not have enough tokens for selected slots.');
             }
 
-            /** @var Collection<int, Reservation> $reservations */
-            $reservations = collect();
+            /** @var EloquentCollection<int, Reservation> $reservations */
+            $reservations = new EloquentCollection();
 
             foreach ($slots as $slot) {
                 $this->availabilityService->assertSlotCanBeReserved($slot);

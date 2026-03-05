@@ -8,6 +8,7 @@ use App\Actions\Reservations\SyncTerrainSlotsForDateAction;
 use App\Http\Resources\ReservationSlotResource;
 use App\Models\ReservationSlot;
 use App\Models\Terrain;
+use App\Models\TerrainSetting;
 use Carbon\CarbonImmutable;
 
 class BuildTerrainSlotsDataAction
@@ -17,11 +18,12 @@ class BuildTerrainSlotsDataAction
     ) {}
 
     /**
-     * @return array{selected_date: string, slots: array<int, array<string, mixed>>}
+     * @return array{selected_date: string, max_advance_days: int, slots: array<int, array<string, mixed>>}
      */
     public function execute(Terrain $terrain, ?string $requestedDate): array
     {
-        $selectedDate = $this->resolveDate($requestedDate);
+        $maxAdvanceDays = TerrainSetting::query()->global()->value('max_advance_days') ?? 30;
+        $selectedDate = $this->resolveDate($requestedDate, $maxAdvanceDays);
         $dayStartsAt = $selectedDate->startOfDay()->toDateTimeString();
         $dayEndsAt = $selectedDate->endOfDay()->toDateTimeString();
 
@@ -36,16 +38,26 @@ class BuildTerrainSlotsDataAction
 
         return [
             'selected_date' => $selectedDate->toDateString(),
+            'max_advance_days' => $maxAdvanceDays,
             'slots' => ReservationSlotResource::collection($slots)->resolve(),
         ];
     }
 
-    protected function resolveDate(?string $requestedDate): CarbonImmutable
+    protected function resolveDate(?string $requestedDate, int $maxAdvanceDays): CarbonImmutable
     {
+        $today = CarbonImmutable::today();
+        $maxSelectableDate = $today->addDays($maxAdvanceDays);
+
         if ($requestedDate === null || $requestedDate === '') {
-            return CarbonImmutable::today();
+            return $today;
         }
 
-        return CarbonImmutable::createFromFormat('Y-m-d', $requestedDate)->startOfDay();
+        $selectedDate = CarbonImmutable::createFromFormat('Y-m-d', $requestedDate)->startOfDay();
+
+        if ($selectedDate->greaterThan($maxSelectableDate)) {
+            return $maxSelectableDate;
+        }
+
+        return $selectedDate;
     }
 }
