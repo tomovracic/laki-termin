@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ReservationSlotStatus;
+use App\Enums\ReservationStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -45,7 +46,12 @@ class ReservationSlot extends Model
 
     public function reservation(): HasOne
     {
-        return $this->hasOne(Reservation::class);
+        return $this->hasOne(Reservation::class)
+            ->whereIn('status', [
+                ReservationStatus::Pending->value,
+                ReservationStatus::Confirmed->value,
+            ])
+            ->latestOfMany();
     }
 
     public function scopeAvailable(Builder $query): Builder

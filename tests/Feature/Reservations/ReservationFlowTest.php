@@ -132,6 +132,66 @@ test('user can bulk reserve slots and slots endpoint returns reserving user name
     expect($secondReservedSlot['reserved_by']['last_name'])->toBe('Maric');
 });
 
+test('user can reserve the same slot again after cancellation', function () {
+    $user = User::factory()->create([
+        'token_count' => 2,
+    ]);
+    grantReservationCreatePermission($user);
+
+    TerrainSetting::query()->create([
+        'terrain_id' => null,
+        'is_global' => true,
+        'max_advance_days' => 30,
+        'availability_periods' => [
+            [
+                'from' => '08:00',
+                'to' => '22:00',
+                'slot_duration_minutes' => 60,
+            ],
+        ],
+    ]);
+
+    $terrain = Terrain::query()->create([
+        'name' => 'Court Replay',
+        'code' => 'court-replay',
+        'is_active' => true,
+    ]);
+
+    $slotDay = now()->addDay();
+
+    $slot = ReservationSlot::query()->create([
+        'terrain_id' => $terrain->id,
+        'starts_at' => $slotDay->copy()->setTime(13, 0),
+        'ends_at' => $slotDay->copy()->setTime(14, 0),
+        'status' => ReservationSlotStatus::Available,
+    ]);
+
+    $firstReservationResponse = $this->actingAs($user)
+        ->postJson(route('reservations.bulk-store'), [
+            'reservation_slot_ids' => [$slot->id],
+        ])
+        ->assertCreated()
+        ->assertJsonPath('meta.tokens_remaining', 1);
+
+    $firstReservationId = (int) $firstReservationResponse->json('data.0.id');
+
+    $this->actingAs($user)
+        ->post(route('reservations.cancel', $firstReservationId), [
+            'cancel_reason' => 'plans changed',
+        ])
+        ->assertOk();
+
+    $this->actingAs($user)
+        ->postJson(route('reservations.bulk-store'), [
+            'reservation_slot_ids' => [$slot->id],
+        ])
+        ->assertCreated()
+        ->assertJsonPath('meta.tokens_remaining', 1);
+
+    expect(Reservation::query()->where('reservation_slot_id', $slot->id)->count())->toBe(2);
+    expect($slot->fresh()?->status)->toBe(ReservationSlotStatus::Reserved);
+});
+
 test('reservation fails when slot overlaps inactive terrain period', function () {
     $user = User::factory()->create();
     grantReservationCreatePermission($user);
@@ -245,4 +305,38 @@ test('user cannot cancel own reservation when slot already started', function ()
 
     expect($reservation->fresh()?->status)->toBe(ReservationStatus::Pending);
     expect($slot->fresh()?->status)->toBe(ReservationSlotStatus::Reserved);
+});
+
+test('cancelling reservation returns one token to user', function () {
+    $user = User::factory()->create([
+        'token_count' => 1,
+    ]);
+    grantReservationCreatePermission($user);
+
+    $terrain = Terrain::query()->create([
+        'name' => 'Court E',
+        'code' => 'court-e',
+        'is_active' => true,
+    ]);
+
+    $slot = ReservationSlot::query()->create([
+        'terrain_id' => $terrain->id,
+        'starts_at' => now()->addDay()->setTime(17, 0),
+        'ends_at' => now()->addDay()->setTime(18, 0),
+        'status' => ReservationSlotStatus::Reserved,
+    ]);
+
+    $reservation = Reservation::query()->create([
+        'user_id' => $user->id,
+        'reservation_slot_id' => $slot->id,
+        'status' => ReservationStatus::Pending,
+    ]);
+
+    $this->actingAs($user)->post(route('reservations.cancel', $reservation), [
+        'cancel_reason' => 'plans changed',
+    ])->assertOk();
+
+    expect($user->fresh()?->token_count)->toBe(2);
+    expect($reservation->fresh()?->status)->toBe(ReservationStatus::Cancelled);
+    expect($slot->fresh()?->status)->toBe(ReservationSlotStatus::Available);
 });

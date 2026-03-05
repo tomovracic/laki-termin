@@ -7,6 +7,7 @@ namespace App\Actions\Reservations;
 use App\Enums\ReservationSlotStatus;
 use App\Enums\ReservationStatus;
 use App\Models\Reservation;
+use App\Models\User;
 use DomainException;
 use Illuminate\Database\DatabaseManager;
 
@@ -19,7 +20,7 @@ class CancelReservationAction
     public function execute(Reservation $reservation, ?string $reason = null): Reservation
     {
         return $this->database->transaction(function () use ($reservation, $reason): Reservation {
-            $reservation->loadMissing('slot');
+            $reservation->loadMissing('slot', 'user');
 
             if (! in_array($reservation->status, [ReservationStatus::Pending, ReservationStatus::Confirmed], true)) {
                 throw new DomainException('Only active reservations can be cancelled.');
@@ -37,6 +38,15 @@ class CancelReservationAction
 
             $reservation->slot->update([
                 'status' => ReservationSlotStatus::Available,
+            ]);
+
+            /** @var User $user */
+            $user = User::query()
+                ->lockForUpdate()
+                ->findOrFail($reservation->user_id);
+
+            $user->update([
+                'token_count' => ($user->token_count ?? 0) + 1,
             ]);
 
             return $reservation->fresh(['slot', 'tokens']);
