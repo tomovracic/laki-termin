@@ -12,8 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('reservations', function (Blueprint $table): void {
+            $table->dropForeign(['reservation_slot_id']);
             $table->dropUnique('reservations_reservation_slot_id_unique');
             $table->index('reservation_slot_id');
+            $table->foreign('reservation_slot_id')
+                ->references('id')
+                ->on('reservation_slots')
+                ->restrictOnDelete();
         });
     }
 
@@ -23,8 +28,13 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('reservations', function (Blueprint $table): void {
+            $table->dropForeign(['reservation_slot_id']);
             $table->dropIndex('reservations_reservation_slot_id_index');
             $table->unique('reservation_slot_id');
+            $table->foreign('reservation_slot_id')
+                ->references('id')
+                ->on('reservation_slots')
+                ->restrictOnDelete();
         });
     }
 };
