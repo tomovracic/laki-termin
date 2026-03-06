@@ -1,10 +1,11 @@
 import { Head } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { StatusBanner } from '@/components/admin/status-banner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -432,12 +433,7 @@ export default function TerrainReservationPage({
                             {t('past')}
                         </span>
                     </div>
-                    {errorMessage !== null && (
-                        <p className="text-sm text-red-500">{errorMessage}</p>
-                    )}
-                    {message !== null && (
-                        <p className="text-sm text-emerald-600">{message}</p>
-                    )}
+                    <StatusBanner message={message} error={errorMessage} />
                 </div>
  
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+import { StatusBanner } from '@/components/admin/status-banner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -193,9 +194,7 @@ export default function Dashboard({
                         </div>
                     </div>
                 </div>
-                {errorMessage !== null && (
-                    <p className="text-sm text-red-500">{errorMessage}</p>
-                )}
+                <StatusBanner message={null} error={errorMessage} />
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {terrains.map((terrain) => (
