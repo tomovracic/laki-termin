@@ -1,12 +1,27 @@
+import { useId } from 'react';
 import type { SVGAttributes } from 'react';
 
 export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
+    const gradientId = useId().replace(/:/g, '');
+
     return (
-        <svg {...props} viewBox="0 0 40 42" xmlns="http://www.w3.org/2000/svg">
+        <svg {...props} viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id={gradientId} x1="6" y1="4" x2="34" y2="36" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#0EA5E9" />
+                    <stop offset="52%" stopColor="#6366F1" />
+                    <stop offset="100%" stopColor="#8B5CF6" />
+                </linearGradient>
+            </defs>
+
+            <rect x="0" y="0" width="40" height="40" rx="10" fill={`url(#${gradientId})`} />
             <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M17.2 5.63325L8.6 0.855469L0 5.63325V32.1434L16.2 41.1434L32.4 32.1434V23.699L40 19.4767V9.85547L31.4 5.07769L22.8 9.85547V18.2999L17.2 21.411V5.63325ZM38 18.2999L32.4 21.411V15.2545L38 12.1434V18.2999ZM36.9409 10.4439L31.4 13.5221L25.8591 10.4439L31.4 7.36561L36.9409 10.4439ZM24.8 18.2999V12.1434L30.4 15.2545V21.411L24.8 18.2999ZM23.8 20.0323L29.3409 23.1105L16.2 30.411L10.6591 27.3328L23.8 20.0323ZM7.6 27.9212L15.2 32.1434V38.2999L2 30.9666V7.92116L7.6 11.0323V27.9212ZM8.6 9.29991L3.05913 6.22165L8.6 3.14339L14.1409 6.22165L8.6 9.29991ZM30.4 24.8101L17.2 32.1434V38.2999L30.4 30.9666V24.8101ZM9.6 11.0323L15.2 7.92117V22.5221L9.6 25.6333V11.0323Z"
+                d="M10 14.75C10 13.78 10.78 13 11.75 13C12.72 13 13.5 13.78 13.5 14.75V24H18.5C19.47 24 20.25 24.78 20.25 25.75C20.25 26.72 19.47 27.5 18.5 27.5H11.75C10.78 27.5 10 26.72 10 25.75V14.75Z"
+                fill="white"
+            />
+            <path
+                d="M20.75 14.75C20.75 13.78 21.53 13 22.5 13H31.25C32.22 13 33 13.78 33 14.75C33 15.72 32.22 16.5 31.25 16.5H28.75V25.75C28.75 26.72 27.97 27.5 27 27.5C26.03 27.5 25.25 26.72 25.25 25.75V16.5H22.5C21.53 16.5 20.75 15.72 20.75 14.75Z"
+                fill="white"
             />
         </svg>
     );

@@ -225,13 +225,13 @@ export default function Dashboard({
                                         {t('no_free_slots_selected_date')}
                                     </p>
                                 ) : (
-                                    <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto pr-1">
+                                    <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto pr-1">
                                         {terrain.slots.map((slot) => (
                                             <Card
                                                 key={slot.id}
-                                                className="border-emerald-200/70 bg-emerald-50/70 py-0 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/30"
+                                                className="w-fit shrink-0 border-emerald-200/70 bg-emerald-50/70 py-0 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/30"
                                             >
-                                                <CardContent className="px-3 py-2 text-center text-base font-medium text-emerald-900 dark:text-emerald-100">
+                                                <CardContent className="px-3 py-2 text-center text-sm font-medium whitespace-nowrap text-emerald-900 sm:text-base dark:text-emerald-100">
                                                     {toTime(slot.starts_at)} - {toTime(slot.ends_at)}
                                                 </CardContent>
                                             </Card>

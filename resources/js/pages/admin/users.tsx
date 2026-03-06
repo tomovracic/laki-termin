@@ -6,7 +6,7 @@ import { SearchInput } from '@/components/admin/search-input';
 import { StatusBanner } from '@/components/admin/status-banner';
 import type { ApiErrorResponse, ManagedUser } from '@/components/admin/types';
 import { UserTokenManager } from '@/components/admin/user-token-manager';
-import { csrfToken } from '@/lib/csrf';
+import { csrfHeaders } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
 
 type AdminUsersPageProps = {
@@ -117,8 +117,8 @@ export default function AdminUsersPage({ users: initialUsers }: AdminUsersPagePr
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
                 'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
             },
             body: JSON.stringify({ token_count: value }),
         });

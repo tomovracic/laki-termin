@@ -15,7 +15,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
-import { csrfToken } from '@/lib/csrf';
+import { csrfHeaders } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
 import { dashboard } from '@/routes';
 import dashboardRoutes from '@/routes/dashboard';
@@ -283,8 +283,8 @@ export default function TerrainReservationPage({
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
                 'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
             },
             body: JSON.stringify({
                 reservation_slot_ids: selectedSlotIds,
@@ -336,8 +336,8 @@ export default function TerrainReservationPage({
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken(),
                     'X-Requested-With': 'XMLHttpRequest',
+                    ...csrfHeaders(),
                 },
                 body: JSON.stringify({}),
             },
@@ -472,10 +472,12 @@ export default function TerrainReservationPage({
                                     isAvailable || canCancelSlot
                                         ? 'cursor-pointer'
                                         : 'cursor-not-allowed'
-                                } ${cardClassName}`}
+                                } px-2.5 py-1.5 sm:px-3 sm:py-2 ${cardClassName}`}
                             >
                                 <div className="flex items-center justify-between gap-2">
-                                    <p className={`font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                                    <p
+                                        className={`text-sm leading-tight whitespace-nowrap sm:text-base ${isSelected ? 'font-semibold text-primary' : 'font-medium text-foreground'}`}
+                                    >
                                         {toTime(slot.starts_at)} - {toTime(slot.ends_at)}
                                     </p>
                                     <Badge variant="outline" className={statusBadgeClassName}>

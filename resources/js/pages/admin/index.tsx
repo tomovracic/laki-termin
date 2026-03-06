@@ -16,7 +16,7 @@ import type {
 import { UserTokenManager } from '@/components/admin/user-token-manager';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { csrfToken } from '@/lib/csrf';
+import { csrfHeaders } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
 import type { BreadcrumbItem } from '@/types';
 
@@ -225,8 +225,8 @@ export default function AdminDashboard({
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
                 'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
             },
             body: JSON.stringify({ token_count: value }),
         });
@@ -264,8 +264,8 @@ export default function AdminDashboard({
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
                 'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
             },
             body: JSON.stringify({
                 name: terrainName,
@@ -310,8 +310,8 @@ export default function AdminDashboard({
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
                 'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
             },
             body: JSON.stringify(body),
         });
@@ -365,8 +365,8 @@ export default function AdminDashboard({
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
                 'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
             },
             body: JSON.stringify(globalSetting),
         });

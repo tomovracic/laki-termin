@@ -13,7 +13,7 @@ import type {
     ManagedTerrain,
 } from '@/components/admin/types';
 import { Button } from '@/components/ui/button';
-import { csrfToken } from '@/lib/csrf';
+import { csrfHeaders } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
 
 type AdminTerrainsPageProps = {
@@ -150,8 +150,8 @@ export default function AdminTerrainsPage({
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
                 'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
             },
             body: JSON.stringify({
                 name: terrainName,
@@ -196,8 +196,8 @@ export default function AdminTerrainsPage({
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
                 'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
             },
             body: JSON.stringify(body),
         });
@@ -251,8 +251,8 @@ export default function AdminTerrainsPage({
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken(),
                 'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
             },
             body: JSON.stringify(globalSetting),
         });

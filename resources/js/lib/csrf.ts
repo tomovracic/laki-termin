@@ -16,19 +16,26 @@ function readCookieValue(name: string): string | null {
     return cookieEntry.slice(prefix.length);
 }
 
-export function csrfToken(): string {
+function decodeCookieValue(value: string): string {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return value;
+    }
+}
+
+export function csrfHeaders(): Record<string, string> {
     const xsrfToken = readCookieValue('XSRF-TOKEN');
 
     if (xsrfToken !== null && xsrfToken !== '') {
-        try {
-            return decodeURIComponent(xsrfToken);
-        } catch {
-            return xsrfToken;
-        }
+        return {
+            'X-XSRF-TOKEN': decodeCookieValue(xsrfToken),
+        };
     }
 
-    return (
+    const csrfToken =
         document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ??
-        ''
-    );
+        '';
+
+    return csrfToken === '' ? {} : { 'X-CSRF-TOKEN': csrfToken };
 }
