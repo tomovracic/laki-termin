@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertCircleIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { StatusBanner } from '@/components/admin/status-banner';
 import { Badge } from '@/components/ui/badge';
@@ -221,9 +221,10 @@ export default function Dashboard({
                             </div>
                             <CardContent className="flex-1 space-y-2 px-5 pb-3">
                                 {terrain.slots.length === 0 ? (
-                                    <p className="text-base text-muted-foreground">
-                                        {t('no_free_slots_selected_date')}
-                                    </p>
+                                    <div className="flex min-h-16 flex-col items-center justify-center gap-1 text-center text-muted-foreground">
+                                        <AlertCircleIcon className="size-5" />
+                                        <p className="text-base">{t('no_free_slots_selected_date')}</p>
+                                    </div>
                                 ) : (
                                     <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto pr-1">
                                         {terrain.slots.map((slot) => (
