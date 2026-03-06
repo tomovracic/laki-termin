@@ -287,14 +287,14 @@ export default function AdminTerrainsPage({
                     variant={activeTab === 'overview' ? 'default' : 'ghost'}
                     onClick={() => setActiveTab('overview')}
                 >
-                    Overview
+                    {t('overview')}
                 </Button>
                 <Button
                     type="button"
                     variant={activeTab === 'settings' ? 'default' : 'ghost'}
                     onClick={() => setActiveTab('settings')}
                 >
-                    Settings
+                    {t('settings')}
                 </Button>
             </div>
 
