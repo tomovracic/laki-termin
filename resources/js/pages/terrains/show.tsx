@@ -15,6 +15,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
+import { csrfToken } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
 import { dashboard } from '@/routes';
 import dashboardRoutes from '@/routes/dashboard';
@@ -73,12 +74,6 @@ type ReservationErrorResponse = {
 type FetchSlotsOptions = {
     resetFeedback?: boolean;
 };
-
-function csrfToken(): string {
-    return (
-        document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? ''
-    );
-}
 
 function toTime(value: string): string {
     return new Date(value).toLocaleTimeString([], {

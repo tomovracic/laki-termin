@@ -13,6 +13,7 @@ import type {
     ManagedTerrain,
 } from '@/components/admin/types';
 import { Button } from '@/components/ui/button';
+import { csrfToken } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
 
 type AdminTerrainsPageProps = {
@@ -22,13 +23,6 @@ type AdminTerrainsPageProps = {
 
 const TERRAIN_SEARCH_QUERY_KEY = 'terrain_search';
 const TERRAIN_PAGE_QUERY_KEY = 'terrain_page';
-
-function csrfToken(): string {
-    return (
-        document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ??
-        ''
-    );
-}
 
 function getInitialQueryState() {
     if (typeof window === 'undefined') {

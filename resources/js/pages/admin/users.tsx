@@ -6,6 +6,7 @@ import { SearchInput } from '@/components/admin/search-input';
 import { StatusBanner } from '@/components/admin/status-banner';
 import type { ApiErrorResponse, ManagedUser } from '@/components/admin/types';
 import { UserTokenManager } from '@/components/admin/user-token-manager';
+import { csrfToken } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
 
 type AdminUsersPageProps = {
@@ -14,13 +15,6 @@ type AdminUsersPageProps = {
 
 const USER_SEARCH_QUERY_KEY = 'user_search';
 const USER_PAGE_QUERY_KEY = 'user_page';
-
-function csrfToken(): string {
-    return (
-        document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ??
-        ''
-    );
-}
 
 function getInitialQueryState() {
     if (typeof window === 'undefined') {

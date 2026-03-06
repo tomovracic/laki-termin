@@ -16,6 +16,7 @@ import type {
 import { UserTokenManager } from '@/components/admin/user-token-manager';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { csrfToken } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
 import type { BreadcrumbItem } from '@/types';
 
@@ -29,13 +30,6 @@ const USER_SEARCH_QUERY_KEY = 'user_search';
 const USER_PAGE_QUERY_KEY = 'user_page';
 const TERRAIN_SEARCH_QUERY_KEY = 'terrain_search';
 const TERRAIN_PAGE_QUERY_KEY = 'terrain_page';
-
-function csrfToken(): string {
-    return (
-        document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ??
-        ''
-    );
-}
 
 function getInitialQueryState() {
     if (typeof window === 'undefined') {
