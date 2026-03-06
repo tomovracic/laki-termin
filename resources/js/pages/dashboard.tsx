@@ -64,12 +64,13 @@ export default function Dashboard({
     ];
 
     function toTime(value: string): string {
-        return new Date(value).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-        hour12: false,
-        hourCycle: 'h23',
-        });
+        const timeMatch = value.match(/(?:T|\s)(\d{2}:\d{2})/);
+
+        if (timeMatch?.[1] !== undefined) {
+            return timeMatch[1];
+        }
+
+        return value;
     }
 
     function imageStyleForTerrain(terrainId: number): string {

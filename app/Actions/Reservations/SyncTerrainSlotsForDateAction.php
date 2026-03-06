@@ -24,6 +24,7 @@ class SyncTerrainSlotsForDateAction
         $now = CarbonImmutable::now();
         $periods = $this->normalizePeriods($setting->availability_periods ?? []);
         $allowedSlotKeys = [];
+        $protectedSlots = $this->fetchProtectedSlots($terrain, $selectedDate);
 
         foreach ($periods as $period) {
             $periodStart = CarbonImmutable::parse($selectedDate->toDateString().' '.$period['from']);
@@ -36,6 +37,15 @@ class SyncTerrainSlotsForDateAction
                 $expectedStatus = $isPastSlot
                     ? ReservationSlotStatus::Past
                     : ReservationSlotStatus::Available;
+
+                $hasProtectedOverlap = $protectedSlots->contains(
+                    fn (ReservationSlot $slot): bool => $slotStart->lessThan(CarbonImmutable::instance($slot->ends_at))
+                        && $slotEnd->greaterThan(CarbonImmutable::instance($slot->starts_at))
+                );
+
+                if ($hasProtectedOverlap) {
+                    continue;
+                }
 
                 $slotKey = $this->slotKey($slotStart, $slotEnd);
                 $allowedSlotKeys[$slotKey] = true;
@@ -107,5 +117,24 @@ class SyncTerrainSlotsForDateAction
     protected function slotKey(CarbonImmutable $slotStart, CarbonImmutable $slotEnd): string
     {
         return $slotStart->toDateTimeString().'|'.$slotEnd->toDateTimeString();
+    }
+
+    /**
+     * @return Collection<int, ReservationSlot>
+     */
+    protected function fetchProtectedSlots(Terrain $terrain, CarbonImmutable $selectedDate): Collection
+    {
+        return ReservationSlot::query()
+            ->forTerrain($terrain->id)
+            ->between(
+                $selectedDate->startOfDay()->toDateTimeString(),
+                $selectedDate->endOfDay()->toDateTimeString(),
+            )
+            ->whereIn('status', [
+                ReservationSlotStatus::Reserved->value,
+                ReservationSlotStatus::Blocked->value,
+                ReservationSlotStatus::Maintenance->value,
+            ])
+            ->get();
     }
 }
