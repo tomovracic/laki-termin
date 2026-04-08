@@ -28,6 +28,7 @@ class CancelReservationAction
     ): Reservation {
         return $this->database->transaction(function () use ($reservation, $actor, $reason): Reservation {
             $reservation->loadMissing('slot', 'user');
+            $isAdmin = $actor->hasRole('admin');
 
             if (! in_array($reservation->status, [ReservationStatus::Pending, ReservationStatus::Confirmed], true)) {
                 throw new DomainException('Only active reservations can be cancelled.');
@@ -37,17 +38,17 @@ class CancelReservationAction
                 throw new DomainException('Cannot cancel a reservation for a slot that has already started.');
             }
 
-            $now = CarbonImmutable::now(self::BUSINESS_TIMEZONE);
-            $slotStart = CarbonImmutable::parse(
-                $reservation->slot->starts_at->toDateTimeString(),
-                self::BUSINESS_TIMEZONE,
-            );
+            if (! $isAdmin) {
+                $now = CarbonImmutable::now(self::BUSINESS_TIMEZONE);
+                $slotStart = CarbonImmutable::parse(
+                    $reservation->slot->starts_at->toDateTimeString(),
+                    self::BUSINESS_TIMEZONE,
+                );
 
-            if (! $slotStart->isFuture()) {
-                throw new DomainException('Cannot cancel a reservation for a slot that has already started.');
-            }
+                if (! $slotStart->isFuture()) {
+                    throw new DomainException('Cannot cancel a reservation for a slot that has already started.');
+                }
 
-            if (! $actor->hasRole('admin')) {
                 $settings = TerrainSetting::query()
                     ->global()
                     ->first(['cancellation_cutoff_hours']);

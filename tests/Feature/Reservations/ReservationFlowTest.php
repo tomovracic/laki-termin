@@ -20,6 +20,12 @@ function grantReservationCreatePermission(User $user): void
     $user->roles()->syncWithoutDetaching([$role->id]);
 }
 
+function attachAdminRoleToUser(User $user): void
+{
+    $role = Role::query()->firstOrCreate(['name' => 'admin']);
+    $user->roles()->syncWithoutDetaching([$role->id]);
+}
+
 test('user can create reservation and receives reservation tokens', function () {
     $user = User::factory()->create();
     grantReservationCreatePermission($user);
@@ -399,6 +405,184 @@ test('cancelling reservation returns one token to user', function () {
     expect($user->fresh()?->token_count)->toBe(2);
     expect($reservation->fresh()?->status)->toBe(ReservationStatus::Cancelled);
     expect($slot->fresh()?->status)->toBe(ReservationSlotStatus::Available);
+});
+
+test('admin can cancel another users reservation and return token to reservation owner', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleToUser($admin);
+
+    $owner = User::factory()->create([
+        'token_count' => 0,
+    ]);
+
+    $terrain = Terrain::query()->create([
+        'name' => 'Court Admin Cancel',
+        'code' => 'court-admin-cancel',
+        'is_active' => true,
+    ]);
+
+    $slot = ReservationSlot::query()->create([
+        'terrain_id' => $terrain->id,
+        'starts_at' => now()->addDay()->setTime(18, 0),
+        'ends_at' => now()->addDay()->setTime(19, 0),
+        'status' => ReservationSlotStatus::Reserved,
+    ]);
+
+    $reservation = Reservation::query()->create([
+        'user_id' => $owner->id,
+        'reservation_slot_id' => $slot->id,
+        'status' => ReservationStatus::Pending,
+    ]);
+
+    $this->actingAs($admin)->post(route('reservations.cancel', $reservation), [
+        'cancel_reason' => 'admin cancellation',
+    ])->assertOk();
+
+    expect($owner->fresh()?->token_count)->toBe(1);
+    expect($reservation->fresh()?->status)->toBe(ReservationStatus::Cancelled);
+    expect($slot->fresh()?->status)->toBe(ReservationSlotStatus::Available);
+});
+
+test('admin can cancel another users reservation after slot has already started', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleToUser($admin);
+
+    $owner = User::factory()->create([
+        'token_count' => 0,
+    ]);
+
+    $terrain = Terrain::query()->create([
+        'name' => 'Court Admin Late Cancel',
+        'code' => 'court-admin-late-cancel',
+        'is_active' => true,
+    ]);
+
+    $slot = ReservationSlot::query()->create([
+        'terrain_id' => $terrain->id,
+        'starts_at' => now()->subMinutes(10),
+        'ends_at' => now()->addMinutes(50),
+        'status' => ReservationSlotStatus::Reserved,
+    ]);
+
+    $reservation = Reservation::query()->create([
+        'user_id' => $owner->id,
+        'reservation_slot_id' => $slot->id,
+        'status' => ReservationStatus::Pending,
+    ]);
+
+    $this->actingAs($admin)->post(route('reservations.cancel', $reservation), [
+        'cancel_reason' => 'admin late cancellation',
+    ])->assertOk();
+
+    expect($owner->fresh()?->token_count)->toBe(1);
+    expect($reservation->fresh()?->status)->toBe(ReservationStatus::Cancelled);
+    expect($slot->fresh()?->status)->toBe(ReservationSlotStatus::Available);
+});
+
+test('slots endpoint exposes cancel metadata for admin on another users future reservation', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleToUser($admin);
+    $owner = User::factory()->create();
+
+    TerrainSetting::query()->create([
+        'terrain_id' => null,
+        'is_global' => true,
+        'max_advance_days' => 30,
+        'cancellation_cutoff_hours' => 12,
+        'availability_periods' => [
+            [
+                'from' => '08:00',
+                'to' => '22:00',
+                'slot_duration_minutes' => 60,
+            ],
+        ],
+    ]);
+
+    $terrain = Terrain::query()->create([
+        'name' => 'Court Admin Metadata',
+        'code' => 'court-admin-metadata',
+        'is_active' => true,
+    ]);
+
+    $slotDay = now()->addDay();
+
+    $slot = ReservationSlot::query()->create([
+        'terrain_id' => $terrain->id,
+        'starts_at' => $slotDay->copy()->setTime(10, 0),
+        'ends_at' => $slotDay->copy()->setTime(11, 0),
+        'status' => ReservationSlotStatus::Reserved,
+    ]);
+
+    $reservation = Reservation::query()->create([
+        'user_id' => $owner->id,
+        'reservation_slot_id' => $slot->id,
+        'status' => ReservationStatus::Pending,
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.terrains.slots', [
+        'terrain' => $terrain->id,
+        'date' => $slotDay->toDateString(),
+    ]));
+
+    $response->assertOk();
+
+    $slotPayload = collect($response->json('data.slots'))->firstWhere('id', $slot->id);
+
+    expect($slotPayload)->not->toBeNull();
+    expect($slotPayload['reservation_id_for_current_user'])->toBe($reservation->id);
+    expect($slotPayload['can_cancel'])->toBeTrue();
+});
+
+test('slots endpoint exposes cancel metadata for admin on another users started reservation', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleToUser($admin);
+    $owner = User::factory()->create();
+
+    TerrainSetting::query()->create([
+        'terrain_id' => null,
+        'is_global' => true,
+        'max_advance_days' => 30,
+        'cancellation_cutoff_hours' => 12,
+        'availability_periods' => [
+            [
+                'from' => '08:00',
+                'to' => '22:00',
+                'slot_duration_minutes' => 60,
+            ],
+        ],
+    ]);
+
+    $terrain = Terrain::query()->create([
+        'name' => 'Court Admin Started Metadata',
+        'code' => 'court-admin-started-metadata',
+        'is_active' => true,
+    ]);
+
+    $slot = ReservationSlot::query()->create([
+        'terrain_id' => $terrain->id,
+        'starts_at' => now()->subMinutes(10),
+        'ends_at' => now()->addMinutes(50),
+        'status' => ReservationSlotStatus::Reserved,
+    ]);
+
+    $reservation = Reservation::query()->create([
+        'user_id' => $owner->id,
+        'reservation_slot_id' => $slot->id,
+        'status' => ReservationStatus::Pending,
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.terrains.slots', [
+        'terrain' => $terrain->id,
+        'date' => now()->toDateString(),
+    ]));
+
+    $response->assertOk();
+
+    $slotPayload = collect($response->json('data.slots'))->firstWhere('id', $slot->id);
+
+    expect($slotPayload)->not->toBeNull();
+    expect($slotPayload['reservation_id_for_current_user'])->toBe($reservation->id);
+    expect($slotPayload['can_cancel'])->toBeTrue();
 });
 
 test('user can list only own reservations', function () {

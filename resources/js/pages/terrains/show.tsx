@@ -464,11 +464,19 @@ export default function TerrainReservationPage({
                                 : 'border-muted-foreground/40 text-muted-foreground';
 
                         return (
-                            <button
+                            <div
                                 key={slot.id}
-                                type="button"
                                 onClick={() => toggleSlot(slot)}
-                                aria-pressed={isSelected}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault();
+                                        toggleSlot(slot);
+                                    }
+                                }}
+                                role="button"
+                                tabIndex={isAvailable ? 0 : -1}
+                                aria-disabled={!isAvailable}
+                                aria-pressed={isAvailable ? isSelected : undefined}
                                 className={`rounded-md border px-3 py-2 text-left transition ${
                                     isAvailable || canCancelSlot
                                         ? 'cursor-pointer'
@@ -527,7 +535,7 @@ export default function TerrainReservationPage({
                                         )}
                                     </div>
                                 )}
-                            </button>
+                            </div>
                         );
                     })}
 
