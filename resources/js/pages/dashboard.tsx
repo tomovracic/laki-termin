@@ -13,9 +13,14 @@ import type { BreadcrumbItem } from '@/types';
 
 type ReservationSlot = {
     id: number;
-    starts_at: string;
-    ends_at: string;
+    starts_at?: string;
+    ends_at?: string;
     status: string;
+    terrain: {
+        id: number;
+        name: string;
+        code: string;
+    } | null;
 };
 
 type DashboardTerrain = {
@@ -63,7 +68,11 @@ export default function Dashboard({
         },
     ];
 
-    function toTime(value: string): string {
+    function toTime(value?: string): string {
+        if (value === undefined || value === null || value === '') {
+            return '';
+        }
+
         const timeMatch = value.match(/(?:T|\s)(\d{2}:\d{2})/);
 
         if (timeMatch?.[1] !== undefined) {

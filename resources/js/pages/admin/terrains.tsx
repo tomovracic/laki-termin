@@ -70,6 +70,8 @@ export default function AdminTerrainsPage({
 
     const [globalSetting, setGlobalSetting] = useState<GlobalSetting>({
         max_advance_days: initialGlobalSetting?.max_advance_days ?? 30,
+        cancellation_cutoff_hours:
+            initialGlobalSetting?.cancellation_cutoff_hours ?? 0,
         availability_periods: initialGlobalSetting?.availability_periods ?? [
             {
                 from: '08:00',

@@ -249,6 +249,22 @@ export function GlobalSettingsForm({
                         }
                     />
                 </div>
+                <div className="grid gap-2">
+                    <Label>{t('cancel_cutoff_hours')}</Label>
+                    <Input
+                        min={0}
+                        max={168}
+                        type="number"
+                        value={value.cancellation_cutoff_hours}
+                        onChange={(event) =>
+                            onChange({
+                                ...value,
+                                cancellation_cutoff_hours:
+                                    Number.parseInt(event.target.value, 10) || 0,
+                            })
+                        }
+                    />
+                </div>
             </div>
 
             {firstError !== undefined && (

@@ -17,6 +17,7 @@ test('terrain setting upsert creates global settings only', function () {
 
     $response = $this->actingAs($admin)->post(route('terrain-settings.upsert'), [
         'max_advance_days' => 30,
+        'cancellation_cutoff_hours' => 6,
         'availability_periods' => [
             [
                 'from' => '08:00',
@@ -28,6 +29,7 @@ test('terrain setting upsert creates global settings only', function () {
 
     $response
         ->assertCreated()
+        ->assertJsonPath('data.cancellation_cutoff_hours', 6)
         ->assertJsonPath('data.availability_periods.0.from', '08:00')
         ->assertJsonPath('data.availability_periods.0.to', '22:00');
 
@@ -50,6 +52,7 @@ test('terrain-specific setting input is rejected', function () {
         'terrain_id' => $terrain->id,
         'is_global' => false,
         'max_advance_days' => 30,
+        'cancellation_cutoff_hours' => 0,
         'availability_periods' => [
             [
                 'from' => '08:00',
@@ -70,6 +73,7 @@ test('overlapping availability periods are rejected', function () {
 
     $response = $this->actingAs($admin)->post(route('terrain-settings.upsert'), [
         'max_advance_days' => 30,
+        'cancellation_cutoff_hours' => 0,
         'availability_periods' => [
             [
                 'from' => '08:00',
@@ -95,6 +99,7 @@ test('global settings accept 45 minute slot duration', function () {
 
     $response = $this->actingAs($admin)->post(route('terrain-settings.upsert'), [
         'max_advance_days' => 30,
+        'cancellation_cutoff_hours' => 0,
         'availability_periods' => [
             [
                 'from' => '12:00',

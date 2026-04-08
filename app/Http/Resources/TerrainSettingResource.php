@@ -18,6 +18,7 @@ class TerrainSettingResource extends JsonResource
         return [
             'id' => $this->id,
             'max_advance_days' => $this->max_advance_days,
+            'cancellation_cutoff_hours' => $this->cancellation_cutoff_hours ?? 0,
             'availability_periods' => $this->availability_periods ?? [],
         ];
     }

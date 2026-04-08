@@ -13,9 +13,11 @@ use Inertia\Response;
 
 class UserDashboardController extends Controller
 {
-    public function __invoke(ShowDateRequest $request, BuildDashboardDataAction $action): Response
-    {
-        $payload = $action->execute($request->validated('date'));
+    public function __invoke(
+        ShowDateRequest $request,
+        BuildDashboardDataAction $dashboardDataAction,
+    ): Response {
+        $payload = $dashboardDataAction->execute($request->validated('date'));
 
         return Inertia::render('dashboard', [
             ...$payload,
@@ -23,9 +25,11 @@ class UserDashboardController extends Controller
         ]);
     }
 
-    public function availability(ShowDateRequest $request, BuildDashboardDataAction $action): JsonResponse
-    {
-        $payload = $action->execute($request->validated('date'));
+    public function availability(
+        ShowDateRequest $request,
+        BuildDashboardDataAction $dashboardDataAction,
+    ): JsonResponse {
+        $payload = $dashboardDataAction->execute($request->validated('date'));
 
         return response()->json([
             'data' => [

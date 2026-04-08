@@ -25,6 +25,7 @@ class UpsertTerrainSettingRequest extends FormRequest
             'terrain_id' => ['prohibited'],
             'is_global' => ['prohibited'],
             'max_advance_days' => ['required', 'integer', 'min:1', 'max:365'],
+            'cancellation_cutoff_hours' => ['required', 'integer', 'min:0', 'max:168'],
             'availability_periods' => ['required', 'array', 'min:1'],
             'availability_periods.*.from' => ['required', 'date_format:H:i'],
             'availability_periods.*.to' => ['required', 'date_format:H:i'],

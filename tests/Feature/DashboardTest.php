@@ -71,107 +71,156 @@ test('authenticated users can visit the dashboard with terrain availability', fu
 });
 
 test('dashboard availability endpoint returns selected date and token count', function () {
-    $user = User::factory()->create(['token_count' => 3]);
+    CarbonImmutable::setTestNow('2026-03-04 09:00:00');
+
+    try {
+        $user = User::factory()->create(['token_count' => 3]);
+        $this->actingAs($user);
+
+        $terrain = Terrain::query()->create([
+            'name' => 'Court B',
+            'code' => 'court-b',
+            'is_active' => true,
+        ]);
+        TerrainSetting::query()->create([
+            'terrain_id' => null,
+            'is_global' => true,
+            'max_advance_days' => 30,
+            'availability_periods' => [
+                [
+                    'from' => '09:00',
+                    'to' => '10:00',
+                    'slot_duration_minutes' => 60,
+                ],
+            ],
+        ]);
+        ReservationSlot::query()->create([
+            'terrain_id' => $terrain->id,
+            'starts_at' => '2026-03-10 09:00:00',
+            'ends_at' => '2026-03-10 10:00:00',
+            'status' => ReservationSlotStatus::Available,
+        ]);
+
+        $this->getJson(route('dashboard.availability', ['date' => '2026-03-10']))
+            ->assertOk()
+            ->assertJsonPath('data.selected_date', '2026-03-10')
+            ->assertJsonPath('data.max_advance_days', 30)
+            ->assertJsonPath('data.token_count', 3)
+            ->assertJsonPath('data.terrains.0.available_slots_count', 1)
+            ->assertJsonPath('data.terrains.0.slots.0.status', ReservationSlotStatus::Available->value);
+    } finally {
+        CarbonImmutable::setTestNow();
+    }
+});
+
+test('authenticated users can open dedicated reservations page', function () {
+    $user = User::factory()->create();
     $this->actingAs($user);
 
     $terrain = Terrain::query()->create([
-        'name' => 'Court B',
-        'code' => 'court-b',
+        'name' => 'Court Reservations',
+        'code' => 'court-reservations',
         'is_active' => true,
     ]);
-    TerrainSetting::query()->create([
-        'terrain_id' => null,
-        'is_global' => true,
-        'max_advance_days' => 30,
-        'availability_periods' => [
-            [
-                'from' => '09:00',
-                'to' => '10:00',
-                'slot_duration_minutes' => 60,
-            ],
-        ],
-    ]);
-    ReservationSlot::query()->create([
+
+    $ownedSlot = ReservationSlot::query()->create([
         'terrain_id' => $terrain->id,
-        'starts_at' => '2026-03-10 09:00:00',
-        'ends_at' => '2026-03-10 10:00:00',
-        'status' => ReservationSlotStatus::Available,
+        'starts_at' => now()->addDay()->setTime(15, 0),
+        'ends_at' => now()->addDay()->setTime(16, 0),
+        'status' => ReservationSlotStatus::Reserved,
+    ]);
+    $ownedReservation = Reservation::query()->create([
+        'user_id' => $user->id,
+        'reservation_slot_id' => $ownedSlot->id,
+        'status' => ReservationStatus::Confirmed,
+        'reserved_for_date' => $ownedSlot->starts_at->toDateString(),
+        'reserved_from_time' => $ownedSlot->starts_at->format('H:i:s'),
+        'reserved_to_time' => $ownedSlot->ends_at->format('H:i:s'),
     ]);
 
-    $this->getJson(route('dashboard.availability', ['date' => '2026-03-10']))
+    $this->get(route('dashboard.reservations'))
         ->assertOk()
-        ->assertJsonPath('data.selected_date', '2026-03-10')
-        ->assertJsonPath('data.max_advance_days', 30)
-        ->assertJsonPath('data.token_count', 3)
-        ->assertJsonPath('data.terrains.0.available_slots_count', 1)
-        ->assertJsonPath('data.terrains.0.slots.0.status', ReservationSlotStatus::Available->value);
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('dashboard/reservations')
+            ->has('reservations', 1)
+            ->where('reservations.0.id', $ownedReservation->id)
+            ->where('reservations.0.user_id', $user->id)
+            ->where('reservations.0.reserved_for_date', $ownedSlot->starts_at->toDateString())
+            ->where('reservations.0.reserved_from_time', '15:00:00')
+            ->where('reservations.0.reserved_to_time', '16:00:00'));
 });
 
 test('terrain reservation page shows all slot statuses for selected date', function () {
-    $user = User::factory()->create(['token_count' => 5]);
-    $this->actingAs($user);
-    $slotOwner = User::factory()->create(['name' => 'John Doe']);
+    CarbonImmutable::setTestNow('2026-03-04 09:00:00');
 
-    $terrain = Terrain::query()->create([
-        'name' => 'Court C',
-        'code' => 'court-c',
-        'is_active' => true,
-    ]);
-    TerrainSetting::query()->create([
-        'terrain_id' => null,
-        'is_global' => true,
-        'max_advance_days' => 30,
-        'availability_periods' => [
-            [
-                'from' => '08:00',
-                'to' => '11:00',
-                'slot_duration_minutes' => 60,
+    try {
+        $user = User::factory()->create(['token_count' => 5]);
+        $this->actingAs($user);
+        $slotOwner = User::factory()->create(['name' => 'John Doe']);
+
+        $terrain = Terrain::query()->create([
+            'name' => 'Court C',
+            'code' => 'court-c',
+            'is_active' => true,
+        ]);
+        TerrainSetting::query()->create([
+            'terrain_id' => null,
+            'is_global' => true,
+            'max_advance_days' => 30,
+            'availability_periods' => [
+                [
+                    'from' => '08:00',
+                    'to' => '11:00',
+                    'slot_duration_minutes' => 60,
+                ],
             ],
-        ],
-    ]);
+        ]);
 
-    ReservationSlot::query()->create([
-        'terrain_id' => $terrain->id,
-        'starts_at' => '2026-03-12 08:00:00',
-        'ends_at' => '2026-03-12 09:00:00',
-        'status' => ReservationSlotStatus::Available,
-    ]);
-    $reservedSlot = ReservationSlot::query()->create([
-        'terrain_id' => $terrain->id,
-        'starts_at' => '2026-03-12 09:00:00',
-        'ends_at' => '2026-03-12 10:00:00',
-        'status' => ReservationSlotStatus::Reserved,
-    ]);
-    ReservationSlot::query()->create([
-        'terrain_id' => $terrain->id,
-        'starts_at' => '2026-03-12 10:00:00',
-        'ends_at' => '2026-03-12 11:00:00',
-        'status' => ReservationSlotStatus::Blocked,
-    ]);
+        ReservationSlot::query()->create([
+            'terrain_id' => $terrain->id,
+            'starts_at' => '2026-03-12 08:00:00',
+            'ends_at' => '2026-03-12 09:00:00',
+            'status' => ReservationSlotStatus::Available,
+        ]);
+        $reservedSlot = ReservationSlot::query()->create([
+            'terrain_id' => $terrain->id,
+            'starts_at' => '2026-03-12 09:00:00',
+            'ends_at' => '2026-03-12 10:00:00',
+            'status' => ReservationSlotStatus::Reserved,
+        ]);
+        ReservationSlot::query()->create([
+            'terrain_id' => $terrain->id,
+            'starts_at' => '2026-03-12 10:00:00',
+            'ends_at' => '2026-03-12 11:00:00',
+            'status' => ReservationSlotStatus::Blocked,
+        ]);
 
-    Reservation::query()->create([
-        'user_id' => $slotOwner->id,
-        'reservation_slot_id' => $reservedSlot->id,
-        'status' => ReservationStatus::Confirmed,
-        'confirmed_at' => now(),
-    ]);
+        Reservation::query()->create([
+            'user_id' => $slotOwner->id,
+            'reservation_slot_id' => $reservedSlot->id,
+            'status' => ReservationStatus::Confirmed,
+            'confirmed_at' => now(),
+        ]);
 
-    $this->get(route('dashboard.terrains.show', [
-        'terrain' => $terrain->id,
-        'date' => '2026-03-12',
-    ]))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('terrains/show')
-            ->where('token_count', 5)
-            ->where('terrain.name', 'Court C')
-            ->has('slots', 3)
-            ->where('slots.0.status', ReservationSlotStatus::Available->value)
-            ->where('slots.1.status', ReservationSlotStatus::Reserved->value)
-            ->where('slots.1.reserved_by.first_name', 'John')
-            ->where('slots.1.reserved_by.last_name', 'Doe')
-            ->where('slots.2.status', ReservationSlotStatus::Blocked->value),
-        );
+        $this->get(route('dashboard.terrains.show', [
+            'terrain' => $terrain->id,
+            'date' => '2026-03-12',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('terrains/show')
+                ->where('token_count', 5)
+                ->where('terrain.name', 'Court C')
+                ->has('slots', 3)
+                ->where('slots.0.status', ReservationSlotStatus::Available->value)
+                ->where('slots.1.status', ReservationSlotStatus::Reserved->value)
+                ->where('slots.1.reserved_by.first_name', 'John')
+                ->where('slots.1.reserved_by.last_name', 'Doe')
+                ->where('slots.2.status', ReservationSlotStatus::Blocked->value),
+            );
+    } finally {
+        CarbonImmutable::setTestNow();
+    }
 });
 
 test('terrain slots endpoint shows reserved history and marks passed unreserved slots as past', function () {

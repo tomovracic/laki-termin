@@ -14,6 +14,8 @@ use Illuminate\Support\Collection;
 
 class TerrainAvailabilityService
 {
+    private const BUSINESS_TIMEZONE = 'Europe/Zagreb';
+
     public function assertSlotCanBeReserved(ReservationSlot $slot): void
     {
         $slot->loadMissing('terrain');
@@ -56,8 +58,11 @@ class TerrainAvailabilityService
             throw new DomainException('Reservation settings are not configured.');
         }
 
-        $now = CarbonImmutable::now();
-        $slotStart = CarbonImmutable::instance($slot->starts_at);
+        $now = CarbonImmutable::now(self::BUSINESS_TIMEZONE);
+        $slotStart = CarbonImmutable::parse(
+            $slot->starts_at->toDateTimeString(),
+            self::BUSINESS_TIMEZONE,
+        );
 
         if ($slotStart->lessThan($now)) {
             throw new DomainException('Slot start time has already passed.');
@@ -69,12 +74,21 @@ class TerrainAvailabilityService
             throw new DomainException('Slot is outside allowed advance reservation range.');
         }
 
-        $slotEnd = CarbonImmutable::instance($slot->ends_at);
+        $slotEnd = CarbonImmutable::parse(
+            $slot->ends_at->toDateTimeString(),
+            self::BUSINESS_TIMEZONE,
+        );
         $periods = $this->normalizePeriods($setting->availability_periods ?? []);
 
         $isWithinPeriod = $periods->contains(function (array $period) use ($slotEnd, $slotStart): bool {
-            $periodStart = CarbonImmutable::parse($slotStart->toDateString().' '.$period['from']);
-            $periodEnd = CarbonImmutable::parse($slotStart->toDateString().' '.$period['to']);
+            $periodStart = CarbonImmutable::parse(
+                $slotStart->toDateString().' '.$period['from'],
+                self::BUSINESS_TIMEZONE,
+            );
+            $periodEnd = CarbonImmutable::parse(
+                $slotStart->toDateString().' '.$period['to'],
+                self::BUSINESS_TIMEZONE,
+            );
 
             if ($slotStart->lessThan($periodStart) || $slotEnd->greaterThan($periodEnd)) {
                 return false;

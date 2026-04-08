@@ -23,6 +23,9 @@ class Reservation extends Model
         'user_id',
         'reservation_slot_id',
         'status',
+        'reserved_for_date',
+        'reserved_from_time',
+        'reserved_to_time',
         'cancelled_at',
         'confirmed_at',
         'cancel_reason',
@@ -35,6 +38,7 @@ class Reservation extends Model
     {
         return [
             'status' => ReservationStatus::class,
+            'reserved_for_date' => 'date',
             'cancelled_at' => 'datetime',
             'confirmed_at' => 'datetime',
         ];

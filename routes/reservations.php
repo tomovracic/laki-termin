@@ -24,6 +24,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reservations/{reservation}', [ReservationController::class, 'show'])->name('reservations.show');
     Route::post('reservations/{reservation}/cancel', [ReservationController::class, 'cancel'])->name('reservations.cancel');
 
+    Route::post('users', [UserController::class, 'store'])->name('users.store');
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::patch('users/{user}/token-count', [UserController::class, 'updateTokenCount'])->name('users.token-count.update');
 });

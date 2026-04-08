@@ -13,6 +13,11 @@ class UserPolicy
         return $user->hasRole('admin');
     }
 
+    public function create(User $user): bool
+    {
+        return $this->viewAny($user);
+    }
+
     public function update(User $user, User $targetUser): bool
     {
         return $this->viewAny($user);

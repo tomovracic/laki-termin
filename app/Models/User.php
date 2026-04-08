@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserInvitationStatus;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,6 +29,11 @@ class User extends Authenticatable
         'email',
         'password',
         'token_count',
+        'invitation_status',
+        'invitation_token_hash',
+        'invited_at',
+        'invitation_expires_at',
+        'invitation_accepted_at',
     ];
 
     /**
@@ -51,6 +57,9 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'token_count' => 'integer',
+            'invited_at' => 'immutable_datetime',
+            'invitation_expires_at' => 'immutable_datetime',
+            'invitation_accepted_at' => 'immutable_datetime',
         ];
     }
 
@@ -93,5 +102,30 @@ class User extends Authenticatable
         return $this->roles()
             ->whereHas('permissions', fn ($query) => $query->where('name', $permissionName))
             ->exists();
+    }
+
+    public function invitationStatus(): UserInvitationStatus
+    {
+        return UserInvitationStatus::tryFrom((string) $this->invitation_status)
+            ?? UserInvitationStatus::Active;
+    }
+
+    public function isPendingInvitation(): bool
+    {
+        return $this->invitationStatus() === UserInvitationStatus::Pending;
+    }
+
+    public function hasValidInvitationToken(string $token): bool
+    {
+        if (! $this->isPendingInvitation()) {
+            return false;
+        }
+
+        if ($this->invitation_token_hash === null || $this->invitation_expires_at === null) {
+            return false;
+        }
+
+        return hash_equals($this->invitation_token_hash, hash('sha256', $token))
+            && $this->invitation_expires_at->isFuture();
     }
 }

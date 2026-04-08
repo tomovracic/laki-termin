@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Map, Users } from 'lucide-react';
+import { CalendarDays, LayoutGrid, Map, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { NavMain } from '@/components/nav-main';
@@ -27,6 +27,11 @@ export function AppSidebar() {
             title: t('dashboard'),
             href: dashboard(),
             icon: LayoutGrid,
+        },
+        {
+            title: t('my_reservations'),
+            href: '/dashboard/reservations',
+            icon: CalendarDays,
         },
     ];
 

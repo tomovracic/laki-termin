@@ -35,6 +35,9 @@ class CreateReservationAction
                 'user_id' => $data->userId,
                 'reservation_slot_id' => $slot->id,
                 'status' => ReservationStatus::Pending,
+                'reserved_for_date' => $slot->starts_at->toDateString(),
+                'reserved_from_time' => $slot->starts_at->format('H:i:s'),
+                'reserved_to_time' => $slot->ends_at->format('H:i:s'),
             ]);
 
             $slot->update([

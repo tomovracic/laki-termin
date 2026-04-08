@@ -8,20 +8,17 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { useI18n } from '@/lib/i18n';
-import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
 type Props = {
     status?: string;
     canResetPassword: boolean;
-    canRegister: boolean;
 };
 
 export default function Login({
     status,
     canResetPassword,
-    canRegister,
 }: Props) {
     const { locale } = useI18n();
     const isCroatian = locale === 'hr';
@@ -118,16 +115,6 @@ export default function Login({
                             </Button>
                         </div>
 
-                        {canRegister && (
-                            <div className="text-center text-sm text-muted-foreground">
-                                {isCroatian
-                                    ? 'Nemate korisnicki racun? '
-                                    : "Don't have an account? "}
-                                <TextLink href={register()} tabIndex={5}>
-                                    {isCroatian ? 'Registrirajte se' : 'Sign up'}
-                                </TextLink>
-                            </div>
-                        )}
                     </>
                 )}
             </Form>

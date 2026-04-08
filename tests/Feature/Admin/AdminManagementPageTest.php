@@ -42,6 +42,8 @@ test('admin can open users and terrains admin overviews', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('admin/users')
             ->has('users', 2)
+            ->where('users.0.reservations_count', 0)
+            ->where('users.1.reservations_count', 0)
         );
 
     $this->actingAs($admin)

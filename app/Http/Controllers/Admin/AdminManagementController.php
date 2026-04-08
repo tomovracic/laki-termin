@@ -51,6 +51,7 @@ class AdminManagementController extends Controller
             ->global()
             ->first([
                 'max_advance_days',
+                'cancellation_cutoff_hours',
                 'availability_periods',
             ]);
 
@@ -61,6 +62,7 @@ class AdminManagementController extends Controller
                 ? null
                 : [
                     'max_advance_days' => $globalSetting->max_advance_days,
+                    'cancellation_cutoff_hours' => $globalSetting->cancellation_cutoff_hours ?? 0,
                     'availability_periods' => $globalSetting->availability_periods ?? [],
                 ],
         ]);

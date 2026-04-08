@@ -21,6 +21,7 @@ class TerrainSetting extends Model
         'terrain_id',
         'is_global',
         'max_advance_days',
+        'cancellation_cutoff_hours',
         'availability_periods',
     ];
 
@@ -32,6 +33,7 @@ class TerrainSetting extends Model
         return [
             'is_global' => 'boolean',
             'max_advance_days' => 'integer',
+            'cancellation_cutoff_hours' => 'integer',
             'availability_periods' => 'array',
         ];
     }

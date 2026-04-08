@@ -15,6 +15,7 @@ use App\Http\Requests\Reservations\StoreBulkReservationRequest;
 use App\Http\Requests\Reservations\StoreReservationRequest;
 use App\Http\Resources\ReservationResource;
 use App\Models\Reservation;
+use App\Models\User;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -93,8 +94,15 @@ class ReservationController extends Controller
         Reservation $reservation,
         CancelReservationAction $action,
     ): ReservationResource|JsonResponse {
+        /** @var User $user */
+        $user = $request->user();
+
         try {
-            $reservation = $action->execute($reservation, $request->validated('cancel_reason'));
+            $reservation = $action->execute(
+                $reservation,
+                $user,
+                $request->validated('cancel_reason'),
+            );
         } catch (DomainException $exception) {
             return response()->json([
                 'errors' => [

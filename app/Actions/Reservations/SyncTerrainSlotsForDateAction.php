@@ -13,6 +13,8 @@ use Illuminate\Support\Collection;
 
 class SyncTerrainSlotsForDateAction
 {
+    private const BUSINESS_TIMEZONE = 'Europe/Zagreb';
+
     public function execute(Terrain $terrain, CarbonImmutable $selectedDate): void
     {
         $setting = TerrainSetting::query()->global()->first();
@@ -21,7 +23,7 @@ class SyncTerrainSlotsForDateAction
             return;
         }
 
-        $now = CarbonImmutable::now();
+        $nowInBusinessTimezone = CarbonImmutable::now(self::BUSINESS_TIMEZONE);
         $periods = $this->normalizePeriods($setting->availability_periods ?? []);
         $allowedSlotKeys = [];
         $protectedSlots = $this->fetchProtectedSlots($terrain, $selectedDate);
@@ -33,7 +35,11 @@ class SyncTerrainSlotsForDateAction
 
             for ($slotStart = $periodStart; $slotStart->addMinutes($duration)->lessThanOrEqualTo($periodEnd); $slotStart = $slotStart->addMinutes($duration)) {
                 $slotEnd = $slotStart->addMinutes($duration);
-                $isPastSlot = $slotStart->lessThan($now);
+                $slotStartInBusinessTimezone = CarbonImmutable::parse(
+                    $slotStart->toDateTimeString(),
+                    self::BUSINESS_TIMEZONE,
+                );
+                $isPastSlot = $slotStartInBusinessTimezone->lessThan($nowInBusinessTimezone);
                 $expectedStatus = $isPastSlot
                     ? ReservationSlotStatus::Past
                     : ReservationSlotStatus::Available;

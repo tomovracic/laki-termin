@@ -6,6 +6,7 @@ export type ManagedUser = {
     email: string;
     phone: string | null;
     token_count: number;
+    reservations_count: number;
     created_at: string | null;
 };
 
@@ -20,6 +21,7 @@ export type ManagedTerrain = {
 
 export type GlobalSetting = {
     max_advance_days: number;
+    cancellation_cutoff_hours: number;
     availability_periods: {
         from: string;
         to: string;

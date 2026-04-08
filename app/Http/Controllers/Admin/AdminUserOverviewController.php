@@ -17,6 +17,7 @@ class AdminUserOverviewController extends Controller
         Gate::authorize('viewAny', User::class);
 
         $users = User::query()
+            ->withCount('reservations')
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get(['id', 'first_name', 'last_name', 'email', 'phone', 'token_count', 'created_at'])
@@ -28,6 +29,7 @@ class AdminUserOverviewController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'token_count' => $user->token_count ?? 0,
+                'reservations_count' => $user->reservations_count,
                 'created_at' => $user->created_at?->toISOString(),
             ])
             ->all();

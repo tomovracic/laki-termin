@@ -50,6 +50,12 @@ export function UserTokenManager({
                                 </dt>
                                 <dd>{user.phone ?? '-'}</dd>
                             </div>
+                            <div className="flex flex-wrap items-center gap-1">
+                                <dt className="font-medium text-foreground/80">
+                                    {t('total_reservations')}:
+                                </dt>
+                                <dd>{user.reservations_count}</dd>
+                            </div>
                         </dl>
                     </div>
                     <div className="grid gap-2 sm:grid-cols-[160px_auto] sm:items-end md:border-l md:pl-4">
