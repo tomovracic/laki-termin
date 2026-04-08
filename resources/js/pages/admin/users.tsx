@@ -26,20 +26,26 @@ type AdminUsersPageProps = {
     users: ManagedUser[];
 };
 
+type UserTab = 'existing' | 'invited';
+
 const USER_SEARCH_QUERY_KEY = 'user_search';
 const USER_PAGE_QUERY_KEY = 'user_page';
+const USER_TAB_QUERY_KEY = 'user_tab';
 
 function getInitialQueryState() {
     if (typeof window === 'undefined') {
-        return { userSearch: '', userPage: 1 };
+        return { userSearch: '', userPage: 1, userTab: 'existing' as UserTab };
     }
 
     const params = new URLSearchParams(window.location.search);
     const parsedPage = Number.parseInt(params.get(USER_PAGE_QUERY_KEY) ?? '', 10);
+    const userTabParam = params.get(USER_TAB_QUERY_KEY);
+    const userTab: UserTab = userTabParam === 'invited' ? 'invited' : 'existing';
 
     return {
         userSearch: params.get(USER_SEARCH_QUERY_KEY) ?? '',
         userPage: Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+        userTab,
     };
 }
 
@@ -60,20 +66,30 @@ export default function AdminUsersPage({ users: initialUsers }: AdminUsersPagePr
     const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
     const [userSearch, setUserSearch] = useState(initialQueryState.userSearch);
     const [userPage, setUserPage] = useState(initialQueryState.userPage);
+    const [userTab, setUserTab] = useState<UserTab>(initialQueryState.userTab);
     const usersPerPage = 8;
 
+    const usersInActiveTab = useMemo(
+        () =>
+            users.filter((user) =>
+                userTab === 'invited'
+                    ? user.invitation_status === 'pending'
+                    : user.invitation_status === 'active',
+            ),
+        [userTab, users],
+    );
     const filteredUsers = useMemo(() => {
         const term = userSearch.trim().toLowerCase();
         if (term === '') {
-            return users;
+            return usersInActiveTab;
         }
 
-        return users.filter(
+        return usersInActiveTab.filter(
             (user) =>
                 `${user.first_name} ${user.last_name}`.toLowerCase().includes(term) ||
                 user.email.toLowerCase().includes(term),
         );
-    }, [userSearch, users]);
+    }, [userSearch, usersInActiveTab]);
     const totalPages = Math.max(1, Math.ceil(filteredUsers.length / usersPerPage));
     const pagedUsers = useMemo(() => {
         const currentPage = Math.min(userPage, totalPages);
@@ -112,10 +128,16 @@ export default function AdminUsersPage({ users: initialUsers }: AdminUsersPagePr
             params.set(USER_PAGE_QUERY_KEY, `${userPage}`);
         }
 
+        if (userTab === 'existing') {
+            params.delete(USER_TAB_QUERY_KEY);
+        } else {
+            params.set(USER_TAB_QUERY_KEY, userTab);
+        }
+
         const query = params.toString();
         const url = query === '' ? window.location.pathname : `${window.location.pathname}?${query}`;
         window.history.replaceState({}, '', url);
-    }, [userPage, userSearch]);
+    }, [userPage, userSearch, userTab]);
 
     async function parseError(response: Response): Promise<ApiErrorResponse> {
         try {
@@ -203,6 +225,7 @@ export default function AdminUsersPage({ users: initialUsers }: AdminUsersPagePr
         const payload = (await response.json()) as { data: ManagedUser };
         setEmail('');
         setUserPage(1);
+        setUserTab('invited');
         setIsCreateUserModalOpen(false);
         setMessage(`${t('invitation_sent_for')}: ${payload.data.email}.`);
 
@@ -280,10 +303,34 @@ export default function AdminUsersPage({ users: initialUsers }: AdminUsersPagePr
                 }}
             />
 
+            <div className="flex items-center gap-2">
+                <Button
+                    type="button"
+                    variant={userTab === 'existing' ? 'default' : 'outline'}
+                    onClick={() => {
+                        setUserTab('existing');
+                        setUserPage(1);
+                    }}
+                >
+                    {t('existing_users_tab')}
+                </Button>
+                <Button
+                    type="button"
+                    variant={userTab === 'invited' ? 'default' : 'outline'}
+                    onClick={() => {
+                        setUserTab('invited');
+                        setUserPage(1);
+                    }}
+                >
+                    {t('invited_users_tab')}
+                </Button>
+            </div>
+
             <UserTokenManager
                 users={pagedUsers}
                 tokenDrafts={tokenDrafts}
                 savingUserId={savingTokenUserId}
+                showTokenControls={userTab === 'existing'}
                 onDraftChange={(userId, value) =>
                     setTokenDrafts((current) => ({
                         ...current,

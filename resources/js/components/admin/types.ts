@@ -6,6 +6,7 @@ export type ManagedUser = {
     email: string;
     phone: string | null;
     token_count: number;
+    invitation_status: 'pending' | 'active';
     reservations_count: number;
     created_at: string | null;
 };

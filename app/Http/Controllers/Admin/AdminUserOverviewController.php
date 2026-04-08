@@ -20,7 +20,16 @@ class AdminUserOverviewController extends Controller
             ->withCount('reservations')
             ->orderBy('first_name')
             ->orderBy('last_name')
-            ->get(['id', 'first_name', 'last_name', 'email', 'phone', 'token_count', 'created_at'])
+            ->get([
+                'id',
+                'first_name',
+                'last_name',
+                'email',
+                'phone',
+                'token_count',
+                'invitation_status',
+                'created_at',
+            ])
             ->map(fn (User $user): array => [
                 'id' => $user->id,
                 'first_name' => $user->first_name,
@@ -29,6 +38,7 @@ class AdminUserOverviewController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'token_count' => $user->token_count ?? 0,
+                'invitation_status' => $user->invitationStatus()->value,
                 'reservations_count' => $user->reservations_count,
                 'created_at' => $user->created_at?->toISOString(),
             ])
