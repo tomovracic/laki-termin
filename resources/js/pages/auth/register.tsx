@@ -8,7 +8,6 @@ import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { useI18n } from '@/lib/i18n';
 import { login } from '@/routes';
-import { store } from '@/routes/register';
 
 export default function Register() {
     const { locale } = useI18n();
@@ -25,7 +24,8 @@ export default function Register() {
         >
             <Head title={isCroatian ? 'Registracija' : 'Register'} />
             <Form
-                {...store.form()}
+                action="/register"
+                method="post"
                 resetOnSuccess={['password', 'password_confirmation']}
                 disableWhileProcessing
                 className="flex flex-col gap-6"
