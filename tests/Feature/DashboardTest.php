@@ -145,9 +145,50 @@ test('authenticated users can open dedicated reservations page', function () {
             ->has('reservations', 1)
             ->where('reservations.0.id', $ownedReservation->id)
             ->where('reservations.0.user_id', $user->id)
+            ->where('reservations.0.display_status', 'pending')
             ->where('reservations.0.reserved_for_date', $ownedSlot->starts_at->toDateString())
             ->where('reservations.0.reserved_from_time', '15:00:00')
             ->where('reservations.0.reserved_to_time', '16:00:00'));
+});
+
+test('reservations page marks finished reservations as played', function () {
+    CarbonImmutable::setTestNow('2026-04-09 12:00:00');
+
+    try {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $terrain = Terrain::query()->create([
+            'name' => 'Court Finished',
+            'code' => 'court-finished',
+            'is_active' => true,
+        ]);
+
+        $pastSlot = ReservationSlot::query()->create([
+            'terrain_id' => $terrain->id,
+            'starts_at' => now()->subHours(2),
+            'ends_at' => now()->subHour(),
+            'status' => ReservationSlotStatus::Reserved,
+        ]);
+
+        Reservation::query()->create([
+            'user_id' => $user->id,
+            'reservation_slot_id' => $pastSlot->id,
+            'status' => ReservationStatus::Confirmed,
+            'reserved_for_date' => $pastSlot->starts_at->toDateString(),
+            'reserved_from_time' => $pastSlot->starts_at->format('H:i:s'),
+            'reserved_to_time' => $pastSlot->ends_at->format('H:i:s'),
+        ]);
+
+        $this->get(route('dashboard.reservations'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('dashboard/reservations')
+                ->where('reservations.0.display_status', 'played'),
+            );
+    } finally {
+        CarbonImmutable::setTestNow();
+    }
 });
 
 test('terrain reservation page shows all slot statuses for selected date', function () {
@@ -288,7 +329,7 @@ test('terrain slots endpoint shows reserved history and marks passed unreserved 
         expect($statuses)->toBe([
             ReservationSlotStatus::Past->value,
             ReservationSlotStatus::Reserved->value,
-            ReservationSlotStatus::Available->value,
+            ReservationSlotStatus::Past->value,
             ReservationSlotStatus::Available->value,
         ]);
         expect($response->json('data.slots.1.reserved_by.first_name'))->toBe('Jane');

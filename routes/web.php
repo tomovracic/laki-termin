@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminTerrainOverviewController;
+use App\Http\Controllers\Admin\AdminUserReservationsController;
 use App\Http\Controllers\Admin\AdminUserOverviewController;
 use App\Http\Controllers\Auth\InvitationRegistrationController;
 use App\Http\Controllers\Dashboard\UserDashboardController;
@@ -22,6 +23,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard/terrains/{terrain}/slots', [UserTerrainReservationPageController::class, 'slots'])->name('dashboard.terrains.slots');
     Route::redirect('admin', 'admin/users')->name('admin.index');
     Route::get('admin/users', AdminUserOverviewController::class)->name('admin.users');
+    Route::get('admin/users/{user}/reservations', AdminUserReservationsController::class)->name('admin.users.reservations');
     Route::get('admin/terrains', AdminTerrainOverviewController::class)->name('admin.terrains');
     Route::redirect('admin/management', 'admin/users')->name('admin.management');
 });

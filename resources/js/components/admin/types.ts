@@ -34,3 +34,23 @@ export type ApiErrorResponse = {
     message?: string;
     errors?: Record<string, string[]>;
 };
+
+export type AdminUserReservation = {
+    id: number;
+    status: string | null;
+    display_status: 'pending' | 'cancelled' | 'played';
+    reserved_for_date?: string | null;
+    reserved_from_time?: string | null;
+    reserved_to_time?: string | null;
+    slot: {
+        id: number;
+        starts_at?: string;
+        ends_at?: string;
+        status: string;
+        terrain: {
+            id: number;
+            name: string;
+            code: string;
+        } | null;
+    } | null;
+};

@@ -11,6 +11,7 @@ type UserTokenManagerProps = {
     showTokenControls?: boolean;
     onDraftChange: (userId: number, value: string) => void;
     onSave: (user: ManagedUser) => void;
+    onOpenReservations?: (user: ManagedUser) => void;
 };
 
 export function UserTokenManager({
@@ -20,6 +21,7 @@ export function UserTokenManager({
     showTokenControls = true,
     onDraftChange,
     onSave,
+    onOpenReservations,
 }: UserTokenManagerProps) {
     const { t } = useI18n();
 
@@ -33,46 +35,48 @@ export function UserTokenManager({
             {users.map((user) => (
                 <div
                     key={user.id}
-                    className="grid gap-4 rounded-xl border border-border/70 bg-card p-4 md:items-start"
+                    className="grid gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm md:grid-cols-[1fr_auto]"
                 >
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-3">
                         {showTokenControls ? (
                             <>
                                 <p className="text-base font-semibold tracking-tight">
                                     {user.first_name} {user.last_name}
                                 </p>
-                                <dl className="grid gap-1 text-sm text-muted-foreground">
-                                    <div className="flex flex-wrap items-center gap-1">
-                                        <dt className="font-medium text-foreground/80">
-                                            {t('email_address')}:
-                                        </dt>
-                                        <dd>{user.email}</dd>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-1">
-                                        <dt className="font-medium text-foreground/80">
-                                            {t('phone_number')}:
-                                        </dt>
-                                        <dd>{user.phone ?? '-'}</dd>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-1">
-                                        <dt className="font-medium text-foreground/80">
-                                            {t('total_reservations')}:
-                                        </dt>
-                                        <dd>{user.reservations_count}</dd>
-                                    </div>
+
+                                <dl className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-[140px_1fr]">
+                                    <dt className="font-medium text-foreground/80">
+                                        {t('email_address')}:
+                                    </dt>
+                                    <dd className="break-all">{user.email}</dd>
+
+                                    <dt className="font-medium text-foreground/80">
+                                        {t('phone_number')}:
+                                    </dt>
+                                    <dd>{user.phone ?? '-'}</dd>
+
+                                    <dt className="font-medium text-foreground/80">
+                                        {t('available_tokens')}:
+                                    </dt>
+                                    <dd>{tokenDrafts[user.id] ?? '0'}</dd>
                                 </dl>
                             </>
                         ) : (
-                            <div className="flex flex-wrap items-center gap-1 text-muted-foreground">
-                                <span className="font-medium text-foreground/80">
-                                    {t('email_address')}:
-                                </span>
-                                <span>{user.email}</span>
+                            <div className="space-y-2 text-sm">
+                                <p className="text-base font-semibold tracking-tight">
+                                    {user.first_name} {user.last_name}
+                                </p>
+                                <div className="flex flex-wrap items-center gap-1 text-muted-foreground">
+                                    <span className="font-medium text-foreground/80">
+                                        {t('email_address')}:
+                                    </span>
+                                    <span className="break-all">{user.email}</span>
+                                </div>
                             </div>
                         )}
                     </div>
                     {showTokenControls && (
-                        <div className="grid gap-2 sm:grid-cols-[160px_auto] sm:items-end md:border-l md:pl-4">
+                        <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/30 p-3 sm:grid-cols-[170px_auto] sm:items-end">
                             <div className="space-y-1">
                                 <Label htmlFor={`token-count-${user.id}`}>
                                     {t('available_tokens')}
@@ -94,6 +98,15 @@ export function UserTokenManager({
                             >
                                 {savingUserId === user.id ? t('saving') : t('update')}
                             </Button>
+                            {onOpenReservations !== undefined && (
+                                <Button
+                                    className="w-full sm:w-auto"
+                                    variant="outline"
+                                    onClick={() => onOpenReservations(user)}
+                                >
+                                    {`${t('view_reservations')} (${user.reservations_count})`}
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>

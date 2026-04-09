@@ -21,6 +21,7 @@ type ReservationSlot = {
 type UserReservation = {
     id: number;
     status: string | null;
+    display_status: 'pending' | 'cancelled' | 'played';
     reserved_for_date?: string | null;
     reserved_from_time?: string | null;
     reserved_to_time?: string | null;
@@ -125,16 +126,28 @@ export default function UserReservationsPage({ reservations }: UserReservationsP
         });
     }
 
-    function reservationStatusLabel(status: string | null): string {
+    function reservationStatusLabel(status: UserReservation['display_status']): string {
         if (status === 'cancelled') {
             return t('cancelled');
         }
 
-        if (status === 'confirmed') {
-            return t('confirmed');
+        if (status === 'played') {
+            return t('played');
         }
 
         return t('pending');
+    }
+
+    function reservationStatusBadgeClassName(status: UserReservation['display_status']): string {
+        if (status === 'cancelled') {
+            return 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300';
+        }
+
+        if (status === 'played') {
+            return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300';
+        }
+
+        return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300';
     }
 
     return (
@@ -165,8 +178,11 @@ export default function UserReservationsPage({ reservations }: UserReservationsP
                                                 {reservationSlotLabel(reservation)}
                                             </p>
                                         </div>
-                                        <Badge variant="outline">
-                                            {reservationStatusLabel(reservation.status)}
+                                        <Badge
+                                            variant="outline"
+                                            className={reservationStatusBadgeClassName(reservation.display_status)}
+                                        >
+                                            {reservationStatusLabel(reservation.display_status)}
                                         </Badge>
                                     </div>
                                 ))}

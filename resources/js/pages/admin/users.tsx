@@ -1,13 +1,14 @@
 import { Head, router } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AdminSectionLayout } from '@/components/admin/admin-section-layout';
-import InputError from '@/components/input-error';
 import { PaginationControls } from '@/components/admin/pagination-controls';
 import { SearchInput } from '@/components/admin/search-input';
 import { StatusBanner } from '@/components/admin/status-banner';
-import type { ApiErrorResponse, ManagedUser } from '@/components/admin/types';
+import type { AdminUserReservation, ApiErrorResponse, ManagedUser } from '@/components/admin/types';
 import { UserTokenManager } from '@/components/admin/user-token-manager';
+import InputError from '@/components/input-error';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -27,6 +28,15 @@ type AdminUsersPageProps = {
 };
 
 type UserTab = 'existing' | 'invited';
+
+type PaginatedReservationsResponse = {
+    data: AdminUserReservation[];
+    meta?: {
+        current_page?: number;
+        last_page?: number;
+        total?: number;
+    };
+};
 
 const USER_SEARCH_QUERY_KEY = 'user_search';
 const USER_PAGE_QUERY_KEY = 'user_page';
@@ -67,6 +77,12 @@ export default function AdminUsersPage({ users: initialUsers }: AdminUsersPagePr
     const [userSearch, setUserSearch] = useState(initialQueryState.userSearch);
     const [userPage, setUserPage] = useState(initialQueryState.userPage);
     const [userTab, setUserTab] = useState<UserTab>(initialQueryState.userTab);
+    const [isReservationsModalOpen, setIsReservationsModalOpen] = useState(false);
+    const [selectedReservationUser, setSelectedReservationUser] = useState<ManagedUser | null>(null);
+    const [selectedUserReservations, setSelectedUserReservations] = useState<AdminUserReservation[]>([]);
+    const [reservationsPage, setReservationsPage] = useState(1);
+    const [reservationsTotalPages, setReservationsTotalPages] = useState(1);
+    const [isLoadingReservations, setIsLoadingReservations] = useState(false);
     const usersPerPage = 8;
 
     const usersInActiveTab = useMemo(
@@ -139,13 +155,131 @@ export default function AdminUsersPage({ users: initialUsers }: AdminUsersPagePr
         window.history.replaceState({}, '', url);
     }, [userPage, userSearch, userTab]);
 
-    async function parseError(response: Response): Promise<ApiErrorResponse> {
+    const parseError = useCallback(async (response: Response): Promise<ApiErrorResponse> => {
         try {
             return (await response.json()) as ApiErrorResponse;
         } catch {
             return { message: t('unexpected_server_response') };
         }
+    }, [t]);
+
+    function formatDate(value?: string | null): string {
+        if (value === undefined || value === null || value === '') {
+            return '';
+        }
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+
+        return date.toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: '2-digit',
+            day: 'numeric',
+        });
     }
+
+    function toTime(value?: string | null): string {
+        if (value === undefined || value === null || value === '') {
+            return '';
+        }
+
+        const timeMatch = value.match(/(?:T|\s)?(\d{2}:\d{2})/);
+
+        if (timeMatch?.[1] !== undefined) {
+            return timeMatch[1];
+        }
+
+        return value;
+    }
+
+    function reservationSlotLabel(reservation: AdminUserReservation): string {
+        const date = reservation.reserved_for_date ?? reservation.slot?.starts_at ?? '';
+        const fromTime = reservation.reserved_from_time ?? reservation.slot?.starts_at ?? '';
+        const toTimeValue = reservation.reserved_to_time ?? reservation.slot?.ends_at ?? '';
+
+        const displayDate = formatDate(date);
+        const displayFromTime = toTime(fromTime);
+        const displayToTime = toTime(toTimeValue);
+
+        if (displayDate === '' || displayFromTime === '' || displayToTime === '') {
+            return t('slot_unavailable');
+        }
+
+        return `${displayDate} • ${displayFromTime} - ${displayToTime}`;
+    }
+
+    function reservationStatusLabel(status: AdminUserReservation['display_status']): string {
+        if (status === 'cancelled') {
+            return t('cancelled');
+        }
+
+        if (status === 'played') {
+            return t('played');
+        }
+
+        return t('pending');
+    }
+
+    function reservationStatusBadgeClassName(status: AdminUserReservation['display_status']): string {
+        if (status === 'cancelled') {
+            return 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300';
+        }
+
+        if (status === 'played') {
+            return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300';
+        }
+
+        return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300';
+    }
+
+    const loadSelectedUserReservations = useCallback(async (page: number): Promise<void> => {
+        if (selectedReservationUser === null) {
+            return;
+        }
+
+        setIsLoadingReservations(true);
+        setErrorMessage(null);
+
+        try {
+            const response = await fetch(
+                `/admin/users/${selectedReservationUser.id}/reservations?page=${page}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...csrfHeaders(),
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                const error = await parseError(response);
+                setErrorMessage(error.message ?? t('unable_load_user_reservations'));
+                return;
+            }
+
+            const payload = (await response.json()) as PaginatedReservationsResponse;
+            setSelectedUserReservations(payload.data);
+            setReservationsPage(payload.meta?.current_page ?? page);
+            setReservationsTotalPages(payload.meta?.last_page ?? 1);
+        } catch {
+            setErrorMessage(t('unable_load_user_reservations'));
+        } finally {
+            setIsLoadingReservations(false);
+        }
+    }, [parseError, selectedReservationUser, t]);
+
+    useEffect(() => {
+        if (!isReservationsModalOpen || selectedReservationUser === null) {
+            return;
+        }
+
+        void loadSelectedUserReservations(reservationsPage);
+    }, [isReservationsModalOpen, loadSelectedUserReservations, reservationsPage, selectedReservationUser]);
 
     async function handleTokenSave(user: ManagedUser): Promise<void> {
         const value = Number.parseInt(tokenDrafts[user.id] ?? '0', 10);
@@ -239,6 +373,14 @@ export default function AdminUsersPage({ users: initialUsers }: AdminUsersPagePr
         });
     }
 
+    function handleOpenUserReservations(user: ManagedUser): void {
+        setSelectedReservationUser(user);
+        setSelectedUserReservations([]);
+        setReservationsTotalPages(1);
+        setReservationsPage(1);
+        setIsReservationsModalOpen(true);
+    }
+
     return (
         <AdminSectionLayout
             title={t('users_overview')}
@@ -294,6 +436,72 @@ export default function AdminUsersPage({ users: initialUsers }: AdminUsersPagePr
                 </Dialog>
             </div>
 
+            <Dialog
+                open={isReservationsModalOpen}
+                onOpenChange={(isOpen) => {
+                    setIsReservationsModalOpen(isOpen);
+                    if (!isOpen) {
+                        setSelectedReservationUser(null);
+                        setSelectedUserReservations([]);
+                        setReservationsPage(1);
+                        setReservationsTotalPages(1);
+                    }
+                }}
+            >
+                <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>{t('user_reservations')}</DialogTitle>
+                        <DialogDescription>
+                            {selectedReservationUser === null
+                                ? t('user_reservations_description')
+                                : `${selectedReservationUser.first_name} ${selectedReservationUser.last_name}`}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                            {selectedReservationUser?.email}
+                        </p>
+
+                        {isLoadingReservations ? (
+                            <p className="text-sm text-muted-foreground">{t('loading')}</p>
+                        ) : selectedUserReservations.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">{t('no_reservations_yet')}</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {selectedUserReservations.map((reservation) => (
+                                    <div
+                                        key={reservation.id}
+                                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+                                    >
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-medium">
+                                                {reservation.slot?.terrain?.name ?? t('terrain')}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {reservationSlotLabel(reservation)}
+                                            </p>
+                                        </div>
+                                        <Badge
+                                            variant="outline"
+                                            className={reservationStatusBadgeClassName(reservation.display_status)}
+                                        >
+                                            {reservationStatusLabel(reservation.display_status)}
+                                        </Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <PaginationControls
+                            page={reservationsPage}
+                            totalPages={reservationsTotalPages}
+                            onPageChange={setReservationsPage}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             <SearchInput
                 value={userSearch}
                 placeholder={t('search_users_placeholder')}
@@ -338,6 +546,7 @@ export default function AdminUsersPage({ users: initialUsers }: AdminUsersPagePr
                     }))
                 }
                 onSave={(user) => void handleTokenSave(user)}
+                onOpenReservations={handleOpenUserReservations}
             />
 
             <PaginationControls
