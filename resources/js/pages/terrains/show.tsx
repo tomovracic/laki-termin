@@ -44,8 +44,15 @@ type TerrainDetails = {
     description: string | null;
 };
 
+type TerrainSummary = {
+    id: number;
+    name: string;
+    code: string;
+};
+
 type TerrainSlotsPageProps = {
     terrain: TerrainDetails;
+    available_terrains: TerrainSummary[];
     selected_date: string;
     max_advance_days: number;
     slots: ReservationSlot[];
@@ -154,13 +161,15 @@ function initialsFromName(name: string): string {
 }
 
 export default function TerrainReservationPage({
-    terrain,
+    terrain: initialTerrain,
+    available_terrains: availableTerrains,
     selected_date: initialDate,
     max_advance_days: initialMaxAdvanceDays,
     slots: initialSlots,
     token_count: initialTokenCount,
 }: TerrainSlotsPageProps) {
     const { locale, t } = useI18n();
+    const [currentTerrain, setCurrentTerrain] = useState<TerrainDetails>(initialTerrain);
     const [selectedDate, setSelectedDate] = useState<string>(initialDate);
     const [maxAdvanceDays, setMaxAdvanceDays] = useState<number>(initialMaxAdvanceDays);
     const [slots, setSlots] = useState<ReservationSlot[]>(initialSlots);
@@ -188,17 +197,18 @@ export default function TerrainReservationPage({
             href: dashboard(),
         },
         {
-            title: terrain.name,
-            href: dashboardRoutes.terrains.show({ terrain: terrain.id }),
+            title: currentTerrain.name,
+            href: dashboardRoutes.terrains.show({ terrain: currentTerrain.id }),
         },
     ];
     const maxSelectableDate = addDays(toIsoDate(new Date()), maxAdvanceDays);
 
     async function fetchSlots(
         date: string,
-        options: FetchSlotsOptions = {},
+        options: FetchSlotsOptions & { terrainId?: number } = {},
     ): Promise<boolean> {
         const resetFeedback = options.resetFeedback ?? true;
+        const terrainId = options.terrainId ?? currentTerrain.id;
         setIsLoading(true);
         if (resetFeedback) {
             setErrorMessage(null);
@@ -208,7 +218,7 @@ export default function TerrainReservationPage({
         try {
             const response = await fetch(
                 dashboardRoutes.terrains.slots.url(
-                    { terrain: terrain.id },
+                    { terrain: terrainId },
                     { query: { date } },
                 ),
                 {
@@ -246,6 +256,31 @@ export default function TerrainReservationPage({
 
         const nextDate = addDays(selectedDate, days);
         await fetchSlots(nextDate);
+    }
+
+    async function handleTerrainSwitch(nextTerrain: TerrainSummary): Promise<void> {
+        if (nextTerrain.id === currentTerrain.id || isLoading) {
+            return;
+        }
+
+        setCurrentTerrain({
+            id: nextTerrain.id,
+            name: nextTerrain.name,
+            code: nextTerrain.code,
+            description:
+                nextTerrain.id === initialTerrain.id ? initialTerrain.description : null,
+        });
+        setSelectedSlotIds([]);
+        setErrorMessage(null);
+        setMessage(null);
+
+        const nextUrl = dashboardRoutes.terrains.show(
+            { terrain: nextTerrain.id },
+            { query: { date: selectedDate } },
+        );
+        window.history.replaceState({}, '', nextUrl);
+
+        await fetchSlots(selectedDate, { terrainId: nextTerrain.id });
     }
 
     function toggleSlot(slot: ReservationSlot): void {
@@ -364,14 +399,41 @@ export default function TerrainReservationPage({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`${t('terrain')} ${terrain.name}`} />
+            <Head title={`${t('terrain')} ${currentTerrain.name}`} />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto p-4 pb-28">
                 <div className="space-y-3">
+                    {availableTerrains.length > 1 && (
+                        <div
+                            className="flex gap-2 overflow-x-auto pb-1"
+                            role="tablist"
+                            aria-label={t('switch_terrain')}
+                        >
+                            {availableTerrains.map((terrainOption) => {
+                                const isActive = terrainOption.id === currentTerrain.id;
+
+                                return (
+                                    <Button
+                                        key={terrainOption.id}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={isActive}
+                                        variant={isActive ? 'default' : 'outline'}
+                                        size="sm"
+                                        disabled={isLoading}
+                                        onClick={() => void handleTerrainSwitch(terrainOption)}
+                                        className="shrink-0 rounded-xl"
+                                    >
+                                        {terrainOption.name}
+                                    </Button>
+                                );
+                            })}
+                        </div>
+                    )}
                     <div className="space-y-1">
-                        <h1 className="text-xl font-semibold">{terrain.name}</h1>
+                        <h1 className="text-xl font-semibold">{currentTerrain.name}</h1>
                         <p className="text-sm text-muted-foreground">
-                            {terrain.description ?? `${t('code')}: ${terrain.code}`}
+                            {currentTerrain.description ?? `${t('code')}: ${currentTerrain.code}`}
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">

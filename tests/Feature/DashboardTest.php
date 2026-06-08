@@ -243,6 +243,17 @@ test('terrain reservation page shows all slot statuses for selected date', funct
             'confirmed_at' => now(),
         ]);
 
+        $otherTerrain = Terrain::query()->create([
+            'name' => 'Court C2',
+            'code' => 'court-c2',
+            'is_active' => true,
+        ]);
+        Terrain::query()->create([
+            'name' => 'Inactive Court',
+            'code' => 'inactive-court',
+            'is_active' => false,
+        ]);
+
         $this->get(route('dashboard.terrains.show', [
             'terrain' => $terrain->id,
             'date' => '2026-03-12',
@@ -252,6 +263,9 @@ test('terrain reservation page shows all slot statuses for selected date', funct
                 ->component('terrains/show')
                 ->where('token_count', 5)
                 ->where('terrain.name', 'Court C')
+                ->has('available_terrains', 2)
+                ->where('available_terrains.0.name', 'Court C')
+                ->where('available_terrains.1.name', 'Court C2')
                 ->has('slots', 3)
                 ->where('slots.0.status', ReservationSlotStatus::Available->value)
                 ->where('slots.1.status', ReservationSlotStatus::Reserved->value)

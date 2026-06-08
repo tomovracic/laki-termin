@@ -31,6 +31,7 @@ class UserTerrainReservationPageController extends Controller
                 'code' => $terrain->code,
                 'description' => $terrain->description,
             ],
+            'available_terrains' => $this->activeTerrainsList(),
             'token_count' => $request->user()?->token_count ?? 0,
         ]);
     }
@@ -50,5 +51,23 @@ class UserTerrainReservationPageController extends Controller
                 'token_count' => $request->user()?->token_count ?? 0,
             ],
         ]);
+    }
+
+    /**
+     * @return list<array{id: int, name: string, code: string}>
+     */
+    private function activeTerrainsList(): array
+    {
+        return Terrain::query()
+            ->active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'code'])
+            ->map(static fn (Terrain $terrain): array => [
+                'id' => $terrain->id,
+                'name' => $terrain->name,
+                'code' => $terrain->code,
+            ])
+            ->values()
+            ->all();
     }
 }
