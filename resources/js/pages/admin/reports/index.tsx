@@ -5,28 +5,40 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useI18n } from '@/lib/i18n';
 
+type ReportStats = {
+    reserved_count: number;
+    cancelled_count: number;
+};
+
+type AdminReportsOverviewPageProps = {
+    stats: ReportStats;
+};
+
 const reportLinks = [
     {
         href: '/admin/reports/logins',
         titleKey: 'report_logins_title' as const,
         descriptionKey: 'report_logins_description' as const,
         icon: LogIn,
+        countKey: null,
     },
     {
         href: '/admin/reports/reserved',
         titleKey: 'report_reserved_title' as const,
         descriptionKey: 'report_reserved_description' as const,
         icon: ClipboardList,
+        countKey: 'reserved_count' as const,
     },
     {
         href: '/admin/reports/cancelled',
         titleKey: 'report_cancelled_title' as const,
         descriptionKey: 'report_cancelled_description' as const,
         icon: CalendarX,
+        countKey: 'cancelled_count' as const,
     },
 ];
 
-export default function AdminReportsOverviewPage() {
+export default function AdminReportsOverviewPage({ stats }: AdminReportsOverviewPageProps) {
     const { t } = useI18n();
 
     return (
@@ -55,7 +67,15 @@ export default function AdminReportsOverviewPage() {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="space-y-4">
+                                {report.countKey !== null && (
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">{t('report_total')}</p>
+                                        <p className="text-3xl font-semibold tracking-tight">
+                                            {stats[report.countKey]}
+                                        </p>
+                                    </div>
+                                )}
                                 <Button asChild>
                                     <Link href={report.href}>{t('report_open')}</Link>
                                 </Button>

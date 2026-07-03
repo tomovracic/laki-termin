@@ -24,7 +24,11 @@ test('admin can open reports overview and report pages', function () {
     $this->actingAs($admin)
         ->get(route('admin.reports'))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('admin/reports/index'));
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/reports/index')
+            ->has('stats.reserved_count')
+            ->has('stats.cancelled_count'),
+        );
 
     $this->actingAs($admin)
         ->get(route('admin.reports.logins'))

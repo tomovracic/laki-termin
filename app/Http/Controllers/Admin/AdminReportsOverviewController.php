@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ReservationStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Reservation;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -16,6 +18,13 @@ class AdminReportsOverviewController extends Controller
     {
         Gate::authorize('viewAny', User::class);
 
-        return Inertia::render('admin/reports/index');
+        return Inertia::render('admin/reports/index', [
+            'stats' => [
+                'reserved_count' => Reservation::query()->active()->count(),
+                'cancelled_count' => Reservation::query()
+                    ->where('status', ReservationStatus::Cancelled)
+                    ->count(),
+            ],
+        ]);
     }
 }
