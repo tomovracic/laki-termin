@@ -90,6 +90,11 @@ class User extends Authenticatable
         return $this->hasMany(Reservation::class);
     }
 
+    public function loginLogs(): HasMany
+    {
+        return $this->hasMany(UserLoginLog::class);
+    }
+
     public function hasRole(string $roleName): bool
     {
         return $this->roles()

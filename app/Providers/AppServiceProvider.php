@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Listeners\FlashLoginMessageOnAuthentication;
+use App\Listeners\RecordUserLoginOnAuthentication;
 use App\Models\League;
 use App\Models\Reservation;
 use App\Models\Terrain;
@@ -46,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
     protected function registerEventListeners(): void
     {
         Event::listen(Login::class, FlashLoginMessageOnAuthentication::class);
+        Event::listen(Login::class, RecordUserLoginOnAuthentication::class);
     }
 
     protected function registerPolicies(): void

@@ -27,6 +27,7 @@ class ReservationResource extends JsonResource
             'confirmed_at' => $this->confirmed_at,
             'cancelled_at' => $this->cancelled_at,
             'cancel_reason' => $this->cancel_reason,
+            'user' => UserResource::make($this->whenLoaded('user')),
             'slot' => ReservationSlotResource::make($this->whenLoaded('slot')),
             'tokens' => ReservationTokenResource::collection($this->whenLoaded('tokens')),
         ];

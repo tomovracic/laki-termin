@@ -1,7 +1,11 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminCancelledReservationsReportController;
 use App\Http\Controllers\Admin\AdminLeagueOverviewController;
 use App\Http\Controllers\Admin\AdminLeagueShowController;
+use App\Http\Controllers\Admin\AdminLoginReportController;
+use App\Http\Controllers\Admin\AdminReportsOverviewController;
+use App\Http\Controllers\Admin\AdminReservedReservationsReportController;
 use App\Http\Controllers\Admin\AdminTerrainOverviewController;
 use App\Http\Controllers\Admin\AdminUserOverviewController;
 use App\Http\Controllers\Admin\AdminUserReservationsController;
@@ -33,6 +37,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/terrains', AdminTerrainOverviewController::class)->name('admin.terrains');
     Route::get('admin/leagues', AdminLeagueOverviewController::class)->name('admin.leagues');
     Route::get('admin/leagues/{league}', AdminLeagueShowController::class)->name('admin.leagues.show');
+    Route::get('admin/reports', AdminReportsOverviewController::class)->name('admin.reports');
+    Route::get('admin/reports/logins', AdminLoginReportController::class)->name('admin.reports.logins');
+    Route::get('admin/reports/reserved', AdminReservedReservationsReportController::class)->name('admin.reports.reserved');
+    Route::get('admin/reports/cancelled', AdminCancelledReservationsReportController::class)->name('admin.reports.cancelled');
     Route::redirect('admin/management', 'admin/users')->name('admin.management');
 });
 

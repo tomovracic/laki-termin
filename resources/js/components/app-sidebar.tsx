@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { CalendarDays, LayoutGrid, Map, Trophy, Users } from 'lucide-react';
+import { CalendarDays, ClipboardList, LayoutGrid, Map, Trophy, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { NavMain } from '@/components/nav-main';
@@ -56,6 +56,11 @@ export function AppSidebar() {
                 title: t('leagues_admin_overview'),
                 href: '/admin/leagues',
                 icon: Trophy,
+            },
+            {
+                title: t('reports_overview'),
+                href: '/admin/reports',
+                icon: ClipboardList,
             },
         );
     }
