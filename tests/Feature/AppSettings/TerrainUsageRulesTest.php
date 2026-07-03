@@ -93,9 +93,9 @@ test('dashboard includes terrain usage rules', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('dashboard')
-            ->has('terrain_usage_rules', 1)
-            ->where('terrain_usage_rules.0.icon', 'coins')
-            ->where('terrain_usage_rules.0.text', 'Jedna rezervacija koristi jedan token.'),
+            ->has('nav.terrain_usage_rules', 1)
+            ->where('nav.terrain_usage_rules.0.icon', 'coins')
+            ->where('nav.terrain_usage_rules.0.text', 'Jedna rezervacija koristi jedan token.'),
         );
 });
 

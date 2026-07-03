@@ -32,7 +32,6 @@ class UserTerrainReservationPageController extends Controller
                 'description' => $terrain->description,
             ],
             'available_terrains' => $this->activeTerrainsList(),
-            'token_count' => $request->user()?->token_count ?? 0,
         ]);
     }
 

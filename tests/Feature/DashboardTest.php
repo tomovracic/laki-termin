@@ -60,7 +60,7 @@ test('authenticated users can visit the dashboard with terrain availability', fu
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('dashboard')
-                ->where('token_count', 7)
+                ->where('nav.token_count', 7)
                 ->where('max_advance_days', 30)
                 ->has('terrains', 1)
                 ->where('terrains.0.name', 'Court A')
@@ -72,7 +72,7 @@ test('authenticated users can visit the dashboard with terrain availability', fu
     }
 });
 
-test('dashboard availability endpoint returns selected date and token count', function () {
+test('dashboard availability endpoint returns selected date and terrains', function () {
     CarbonImmutable::setTestNow('2026-03-04 09:00:00');
 
     try {
@@ -107,7 +107,6 @@ test('dashboard availability endpoint returns selected date and token count', fu
             ->assertOk()
             ->assertJsonPath('data.selected_date', '2026-03-10')
             ->assertJsonPath('data.max_advance_days', 30)
-            ->assertJsonPath('data.token_count', 3)
             ->assertJsonPath('data.terrains.0.available_slots_count', 1)
             ->assertJsonPath('data.terrains.0.slots.0.status', ReservationSlotStatus::Available->value);
     } finally {
@@ -263,7 +262,7 @@ test('terrain reservation page shows all slot statuses for selected date', funct
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('terrains/show')
-                ->where('token_count', 5)
+                ->where('nav.token_count', 5)
                 ->where('terrain.name', 'Court C')
                 ->has('available_terrains', 2)
                 ->where('available_terrains.0.name', 'Court C')

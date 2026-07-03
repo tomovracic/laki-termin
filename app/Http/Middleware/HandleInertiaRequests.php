@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\Locale;
+use App\Services\AppSettingService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -49,6 +50,10 @@ class HandleInertiaRequests extends Middleware
             'loginMessage' => fn () => $request->user() !== null
                 ? $request->session()->get('login_message')
                 : null,
+            'nav' => fn () => $request->user() === null ? null : [
+                'token_count' => $request->user()->token_count,
+                'terrain_usage_rules' => app(AppSettingService::class)->getTerrainUsageRules(),
+            ],
         ];
     }
 }

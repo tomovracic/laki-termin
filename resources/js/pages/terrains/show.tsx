@@ -1,7 +1,7 @@
-import { Head } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Head, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { StatusBanner } from '@/components/admin/status-banner';
+import { ReservationToolbar } from '@/components/reservation-toolbar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { csrfHeaders } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
+import { publishNavTokenCount, useNavTokenCount } from '@/lib/nav-token-count';
 import { dashboard } from '@/routes';
 import dashboardRoutes from '@/routes/dashboard';
 import reservationsRoutes from '@/routes/reservations';
@@ -56,7 +57,6 @@ type TerrainSlotsPageProps = {
     selected_date: string;
     max_advance_days: number;
     slots: ReservationSlot[];
-    token_count: number;
 };
 
 type SlotsPayload = {
@@ -119,10 +119,6 @@ function displayDate(value: string, locale: string): string {
     });
 }
 
-function tokenUnitLabel(count: number, t: (key: string) => string): string {
-    return count === 1 ? t('token_unit_singular') : t('token_unit_plural');
-}
-
 function isSlotInFuture(slot: ReservationSlot): boolean {
     return new Date(slot.starts_at).getTime() > Date.now();
 }
@@ -166,14 +162,14 @@ export default function TerrainReservationPage({
     selected_date: initialDate,
     max_advance_days: initialMaxAdvanceDays,
     slots: initialSlots,
-    token_count: initialTokenCount,
 }: TerrainSlotsPageProps) {
     const { locale, t } = useI18n();
+    const { nav } = usePage().props;
+    const tokenCount = useNavTokenCount(nav?.token_count ?? 0);
     const [currentTerrain, setCurrentTerrain] = useState<TerrainDetails>(initialTerrain);
     const [selectedDate, setSelectedDate] = useState<string>(initialDate);
     const [maxAdvanceDays, setMaxAdvanceDays] = useState<number>(initialMaxAdvanceDays);
     const [slots, setSlots] = useState<ReservationSlot[]>(initialSlots);
-    const [tokenCount, setTokenCount] = useState<number>(initialTokenCount);
     const [selectedSlotIds, setSelectedSlotIds] = useState<number[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -238,7 +234,7 @@ export default function TerrainReservationPage({
             setSelectedDate(payload.data.selected_date);
             setMaxAdvanceDays(payload.data.max_advance_days);
             setSlots(payload.data.slots);
-            setTokenCount(payload.data.token_count);
+            publishNavTokenCount(payload.data.token_count);
             setSelectedSlotIds([]);
             return true;
         } catch {
@@ -341,7 +337,9 @@ export default function TerrainReservationPage({
         }
 
         const payload = (await response.json()) as BulkReservationSuccessResponse;
-        setTokenCount(payload.meta?.tokens_remaining ?? Math.max(0, tokenCount - selectedCount));
+        publishNavTokenCount(
+            payload.meta?.tokens_remaining ?? Math.max(0, tokenCount - selectedCount),
+        );
         setIsSubmitting(false);
         setIsConfirmOpen(false);
         await fetchSlots(selectedDate, { resetFeedback: false });
@@ -436,43 +434,14 @@ export default function TerrainReservationPage({
                             {currentTerrain.description ?? `${t('code')}: ${currentTerrain.code}`}
                         </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="inline-flex items-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 p-2 shadow-md shadow-primary/15 ring-1 ring-primary/20 backdrop-blur-sm">
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                disabled={isPreviousDisabled}
-                                onClick={() => void handleDateStep(-1)}
-                                className="rounded-xl border border-primary/40 bg-white text-zinc-800 hover:bg-primary/10"
-                            >
-                                <ChevronLeft className="size-4" />
-                            </Button>
-                            <span className="min-w-52 rounded-xl border border-primary/45 bg-white px-4 py-2 text-center text-sm font-bold text-zinc-900 shadow-sm">
-                                {isLoading
-                                    ? t('loading')
-                                    : displayDate(selectedDate, locale)}
-                            </span>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                disabled={isNextDisabled}
-                                onClick={() => void handleDateStep(1)}
-                                className="rounded-xl border border-primary/40 bg-white text-zinc-800 hover:bg-primary/10"
-                            >
-                                <ChevronRight className="size-4" />
-                            </Button>
-                        </div>
-                        <div className="inline-flex h-14 items-center rounded-2xl border border-primary/40 bg-primary/10 px-4 shadow-md shadow-primary/15 ring-1 ring-primary/20 backdrop-blur-sm">
-                            <div className="flex items-baseline gap-1.5">
-                                <span className="text-2xl font-black leading-none text-foreground">{tokenCount}</span>
-                                <span className="text-sm font-semibold text-zinc-700">
-                                    {tokenUnitLabel(tokenCount, t)}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                    <ReservationToolbar
+                        dateLabel={displayDate(selectedDate, locale)}
+                        isLoading={isLoading}
+                        loadingLabel={t('loading')}
+                        isPreviousDisabled={isPreviousDisabled}
+                        isNextDisabled={isNextDisabled}
+                        onDateStep={(days) => void handleDateStep(days)}
+                    />
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500 bg-emerald-50 px-2 py-1 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
                             <span className="size-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />

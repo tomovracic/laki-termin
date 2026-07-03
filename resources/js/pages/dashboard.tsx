@@ -1,8 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
-import { AlertCircleIcon, BanIcon, ChevronLeft, ChevronRight, ScrollText } from 'lucide-react';
+import { AlertCircleIcon, BanIcon } from 'lucide-react';
 import { useState } from 'react';
 import { StatusBanner } from '@/components/admin/status-banner';
-import { TerrainUsageRulesDialog } from '@/components/terrain-usage-rules-dialog';
+import { ReservationToolbar } from '@/components/reservation-toolbar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -11,7 +11,6 @@ import { useI18n } from '@/lib/i18n';
 import { dashboard } from '@/routes';
 import dashboardRoutes from '@/routes/dashboard';
 import type { BreadcrumbItem } from '@/types';
-import type { TerrainUsageRule } from '@/lib/terrain-usage-rule-icons';
 
 type ReservationSlot = {
     id: number;
@@ -45,31 +44,23 @@ type DashboardAvailabilityPayload = {
     selected_date: string;
     max_advance_days: number;
     terrains: DashboardTerrain[];
-    token_count: number;
 };
 
 type DashboardPageProps = {
     selected_date: string;
     max_advance_days: number;
     terrains: DashboardTerrain[];
-    token_count: number;
-    terrain_usage_rules: TerrainUsageRule[];
 };
 
 export default function Dashboard({
     selected_date: initialDate,
     max_advance_days: initialMaxAdvanceDays,
     terrains: initialTerrains,
-    token_count: initialTokenCount,
-    terrain_usage_rules: initialTerrainUsageRules,
 }: DashboardPageProps) {
     const { locale, t } = useI18n();
     const [selectedDate, setSelectedDate] = useState<string>(initialDate);
     const [maxAdvanceDays, setMaxAdvanceDays] = useState<number>(initialMaxAdvanceDays);
     const [terrains, setTerrains] = useState<DashboardTerrain[]>(initialTerrains);
-    const [tokenCount, setTokenCount] = useState<number>(initialTokenCount);
-    const [terrainUsageRules] = useState<TerrainUsageRule[]>(initialTerrainUsageRules);
-    const [isRulesDialogOpen, setIsRulesDialogOpen] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -136,10 +127,6 @@ export default function Dashboard({
         });
     }
 
-    function tokenUnitLabel(count: number): string {
-        return count === 1 ? t('token_unit_singular') : t('token_unit_plural');
-    }
-
     function inactiveReasonLabel(reason: BlockedForDay['reason']): string {
         if (reason === 'rain') {
             return t('inactive_reason_rain');
@@ -178,7 +165,6 @@ export default function Dashboard({
         setSelectedDate(payload.data.selected_date);
         setMaxAdvanceDays(payload.data.max_advance_days);
         setTerrains(payload.data.terrains);
-        setTokenCount(payload.data.token_count);
         setIsLoading(false);
     }
 
@@ -195,54 +181,13 @@ export default function Dashboard({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('dashboard')} />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto p-4">
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="inline-flex items-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 p-2 shadow-md shadow-primary/15 ring-1 ring-primary/20 backdrop-blur-sm">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            disabled={isPreviousDisabled}
-                            onClick={() => void handleDateStep(-1)}
-                            className="rounded-xl border border-primary/40 bg-white text-zinc-800 hover:bg-primary/10"
-                        >
-                            <ChevronLeft className="size-4" />
-                        </Button>
-                        <span className="min-w-52 rounded-xl border border-primary/45 bg-white px-4 py-2 text-center text-sm font-bold text-zinc-900 shadow-sm">
-                            {isLoading ? t('loading') : displayDate(selectedDate)}
-                        </span>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            disabled={isNextDisabled}
-                            onClick={() => void handleDateStep(1)}
-                            className="rounded-xl border border-primary/40 bg-white text-zinc-800 hover:bg-primary/10"
-                        >
-                            <ChevronRight className="size-4" />
-                        </Button>
-                    </div>
-                    <div className="inline-flex h-14 items-center rounded-2xl border border-primary/40 bg-primary/10 px-4 shadow-md shadow-primary/15 ring-1 ring-primary/20 backdrop-blur-sm">
-                        <div className="flex items-baseline gap-1.5">
-                            <span className="text-2xl font-black leading-none text-foreground">{tokenCount}</span>
-                            <span className="text-sm font-semibold text-zinc-700">{tokenUnitLabel(tokenCount)}</span>
-                        </div>
-                    </div>
-                    {terrainUsageRules.length > 0 && (
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => setIsRulesDialogOpen(true)}
-                            className="inline-flex h-14 items-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 px-4 text-zinc-800 shadow-md shadow-primary/15 ring-1 ring-primary/20 backdrop-blur-sm hover:bg-primary/15"
-                        >
-                            <ScrollText className="size-4 shrink-0" />
-                            <span className="text-sm font-semibold">{t('terrain_usage_rules_open')}</span>
-                        </Button>
-                    )}
-                </div>
-                <TerrainUsageRulesDialog
-                    open={isRulesDialogOpen}
-                    onOpenChange={setIsRulesDialogOpen}
-                    rules={terrainUsageRules}
+                <ReservationToolbar
+                    dateLabel={displayDate(selectedDate)}
+                    isLoading={isLoading}
+                    loadingLabel={t('loading')}
+                    isPreviousDisabled={isPreviousDisabled}
+                    isNextDisabled={isNextDisabled}
+                    onDateStep={(days) => void handleDateStep(days)}
                 />
                 <StatusBanner message={null} error={errorMessage} />
 
