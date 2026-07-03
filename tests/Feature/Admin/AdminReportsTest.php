@@ -70,20 +70,12 @@ test('non-admin cannot open admin reports', function () {
         ->assertForbidden();
 });
 
-test('login listener records user login log', function () {
+test('login event records a single user login log', function () {
     $user = User::factory()->create();
-    $listener = app(\App\Listeners\RecordUserLoginOnAuthentication::class);
 
-    $beforeCount = UserLoginLog::query()->where('user_id', $user->id)->count();
+    event(new Login('web', $user, false));
 
-    $listener->handle(new Login('web', $user, false));
-
-    expect(UserLoginLog::query()->where('user_id', $user->id)->count())->toBe($beforeCount + 1);
-
-    $log = UserLoginLog::query()->where('user_id', $user->id)->latest('id')->first();
-
-    expect($log)->not->toBeNull()
-        ->and($log->logged_in_at)->not->toBeNull();
+    expect(UserLoginLog::query()->where('user_id', $user->id)->count())->toBe(1);
 });
 
 test('admin login report filters by user and search', function () {

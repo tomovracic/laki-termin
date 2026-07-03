@@ -2,8 +2,6 @@
 
 namespace App\Providers;
 
-use App\Listeners\FlashLoginMessageOnAuthentication;
-use App\Listeners\RecordUserLoginOnAuthentication;
 use App\Models\League;
 use App\Models\Reservation;
 use App\Models\Terrain;
@@ -15,10 +13,8 @@ use App\Policies\TerrainInactivePeriodPolicy;
 use App\Policies\TerrainPolicy;
 use App\Policies\UserPolicy;
 use Carbon\CarbonImmutable;
-use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -40,14 +36,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerPolicies();
-        $this->registerEventListeners();
         $this->configureDefaults();
-    }
-
-    protected function registerEventListeners(): void
-    {
-        Event::listen(Login::class, FlashLoginMessageOnAuthentication::class);
-        Event::listen(Login::class, RecordUserLoginOnAuthentication::class);
     }
 
     protected function registerPolicies(): void
