@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Dashboard;
 use App\Actions\Dashboard\BuildDashboardDataAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\ShowDateRequest;
+use App\Services\AppSettingService;
 use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,12 +17,14 @@ class UserDashboardController extends Controller
     public function __invoke(
         ShowDateRequest $request,
         BuildDashboardDataAction $dashboardDataAction,
+        AppSettingService $appSettingService,
     ): Response {
         $payload = $dashboardDataAction->execute($request->validated('date'));
 
         return Inertia::render('dashboard', [
             ...$payload,
             'token_count' => $request->user()?->token_count ?? 0,
+            'terrain_usage_rules' => $appSettingService->getTerrainUsageRules(),
         ]);
     }
 

@@ -9,6 +9,7 @@ declare module '@inertiajs/core' {
             locale: LocaleCode;
             availableLocales: LocaleOption[];
             sidebarOpen: boolean;
+            loginMessage?: string | null;
             [key: string]: unknown;
         };
     }

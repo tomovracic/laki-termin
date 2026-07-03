@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Enums\ReservationSlotStatus;
+use App\Models\TerrainInactivePeriod;
 use App\Models\TerrainSetting;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 
 /** @mixin \App\Models\ReservationSlot */
 class ReservationSlotResource extends JsonResource
@@ -60,7 +62,7 @@ class ReservationSlotResource extends JsonResource
             'terrain' => TerrainResource::make($this->whenLoaded('terrain')),
             'starts_at' => $this->starts_at,
             'ends_at' => $this->ends_at,
-            'status' => $this->status?->value,
+            'status' => $this->resolveDisplayStatus(),
             'reservation_id_for_current_user' => $this->when(
                 $isReservationCancellableByCurrentUser,
                 fn (): int => $this->reservation->id,
@@ -75,5 +77,55 @@ class ReservationSlotResource extends JsonResource
                 ],
             ),
         ];
+    }
+
+    private function resolveDisplayStatus(): ?string
+    {
+        $status = $this->status?->value;
+
+        if ($status !== ReservationSlotStatus::Available->value) {
+            return $status;
+        }
+
+        if ($this->overlapsInactivePeriod()) {
+            return ReservationSlotStatus::Blocked->value;
+        }
+
+        return $status;
+    }
+
+    private function overlapsInactivePeriod(): bool
+    {
+        $periods = $this->resolveInactivePeriodsForDay();
+
+        if ($periods->isEmpty() || $this->starts_at === null || $this->ends_at === null) {
+            return false;
+        }
+
+        $slotStartsAt = $this->starts_at->toDateTimeString();
+        $slotEndsAt = $this->ends_at->toDateTimeString();
+
+        return $periods->contains(
+            fn (TerrainInactivePeriod $period): bool => $period->from_at < $slotEndsAt
+                && $period->to_at > $slotStartsAt,
+        );
+    }
+
+    /**
+     * @return Collection<int, TerrainInactivePeriod>
+     */
+    private function resolveInactivePeriodsForDay(): Collection
+    {
+        $periods = request()->attributes->get('inactive_periods_for_day');
+
+        if ($periods instanceof Collection) {
+            return $periods;
+        }
+
+        if (is_array($periods)) {
+            return collect($periods);
+        }
+
+        return collect();
     }
 }

@@ -23,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import { useI18n } from '@/lib/i18n';
 
 type TerrainOverviewProps = {
-    activeTab: 'overview' | 'settings';
+    activeTab: 'overview' | 'settings' | 'blocked_days';
     terrains: ManagedTerrain[];
     descriptionDrafts: Record<number, string>;
     savingTerrainId: number | null;
@@ -32,6 +32,7 @@ type TerrainOverviewProps = {
     terrainErrors: Record<string, string[]>;
     isCreatingTerrain: boolean;
     settingsContent?: ReactNode;
+    blockedDaysContent?: ReactNode;
     onDescriptionChange: (terrainId: number, value: string) => void;
     onSaveDescription: (terrain: ManagedTerrain) => void;
     onToggleStatus: (terrain: ManagedTerrain) => void;
@@ -50,6 +51,7 @@ export function TerrainOverview({
     terrainErrors,
     isCreatingTerrain,
     settingsContent,
+    blockedDaysContent,
     onDescriptionChange,
     onSaveDescription,
     onToggleStatus,
@@ -65,11 +67,15 @@ export function TerrainOverview({
     const titleKey =
         activeTab === 'settings'
             ? 'global_reservation_settings'
-            : 'terrain_management';
+            : activeTab === 'blocked_days'
+              ? 'blocked_days'
+              : 'terrain_management';
     const descriptionKey =
         activeTab === 'settings'
             ? 'global_reservation_settings_description'
-            : 'terrain_management_description';
+            : activeTab === 'blocked_days'
+              ? 'blocked_days_description'
+              : 'terrain_management_description';
 
     useEffect(() => {
         if (
@@ -208,11 +214,19 @@ export function TerrainOverview({
                                 ))}
                             </div>
                         </>
-                    ) : (
+                    ) : activeTab === 'settings' ? (
                         <div>
                             {settingsContent ?? (
                                 <p className="text-sm text-muted-foreground">
                                     {t('no_settings_available')}
+                                </p>
+                            )}
+                        </div>
+                    ) : (
+                        <div>
+                            {blockedDaysContent ?? (
+                                <p className="text-sm text-muted-foreground">
+                                    {t('no_blocked_days')}
                                 </p>
                             )}
                         </div>

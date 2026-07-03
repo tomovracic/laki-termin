@@ -22,9 +22,19 @@ class DashboardTerrainResource extends JsonResource
             'description' => $this->description,
             'is_active' => $this->is_active,
             'available_slots_count' => $this->reservation_slots_count ?? $this->whenCounted('reservationSlots'),
-            'slots' => ReservationSlotResource::collection(
-                $this->whenLoaded('reservationSlots')
-            )->resolve($request),
+            'blocked_for_day' => $this->when(
+                $this->blocked_for_day !== null,
+                fn (): array => [
+                    'reason' => $this->blocked_for_day['reason'] ?? null,
+                    'note' => $this->blocked_for_day['note'] ?? null,
+                ],
+            ),
+            'slots' => $this->when(
+                $this->blocked_for_day === null,
+                fn (): array => ReservationSlotResource::collection(
+                    $this->whenLoaded('reservationSlots')
+                )->resolve($request),
+            ),
         ];
     }
 }

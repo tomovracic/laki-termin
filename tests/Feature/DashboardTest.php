@@ -1,10 +1,12 @@
 <?php
 
+use App\Enums\InactivePeriodReason;
 use App\Enums\ReservationSlotStatus;
 use App\Enums\ReservationStatus;
 use App\Models\Reservation;
 use App\Models\ReservationSlot;
 use App\Models\Terrain;
+use App\Models\TerrainInactivePeriod;
 use App\Models\TerrainSetting;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -385,6 +387,76 @@ test('terrain slots endpoint clamps selected date to max advance days', function
             ->assertOk()
             ->assertJsonPath('data.selected_date', '2026-03-06')
             ->assertJsonPath('data.max_advance_days', 2);
+    } finally {
+        CarbonImmutable::setTestNow();
+    }
+});
+
+test('dashboard hides free slots and returns blocked day info when day is inactive', function () {
+    CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 3, 10, 0, 0, 'Europe/Zagreb'));
+
+    try {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        TerrainSetting::query()->create([
+            'terrain_id' => null,
+            'is_global' => true,
+            'max_advance_days' => 30,
+            'availability_periods' => [
+                [
+                    'from' => '08:00',
+                    'to' => '12:00',
+                    'slot_duration_minutes' => 60,
+                ],
+            ],
+        ]);
+
+        $blockedTerrain = Terrain::query()->create([
+            'name' => 'Court Blocked',
+            'code' => 'court-blocked',
+            'is_active' => true,
+        ]);
+        $openTerrain = Terrain::query()->create([
+            'name' => 'Court Open',
+            'code' => 'court-open',
+            'is_active' => true,
+        ]);
+
+        ReservationSlot::query()->create([
+            'terrain_id' => $blockedTerrain->id,
+            'starts_at' => '2026-07-05 08:00:00',
+            'ends_at' => '2026-07-05 09:00:00',
+            'status' => ReservationSlotStatus::Available,
+        ]);
+        ReservationSlot::query()->create([
+            'terrain_id' => $openTerrain->id,
+            'starts_at' => '2026-07-05 08:00:00',
+            'ends_at' => '2026-07-05 09:00:00',
+            'status' => ReservationSlotStatus::Available,
+        ]);
+
+        TerrainInactivePeriod::query()->create([
+            'terrain_id' => $blockedTerrain->id,
+            'created_by' => $user->id,
+            'from_at' => '2026-07-05 00:00:00',
+            'to_at' => '2026-07-05 23:59:59',
+            'reason' => InactivePeriodReason::Maintenance->value,
+            'note' => 'Court resurfacing',
+        ]);
+
+        $this->getJson(route('dashboard.availability', ['date' => '2026-07-05']))
+            ->assertOk()
+            ->assertJsonPath('data.terrains.0.name', 'Court Blocked')
+            ->assertJsonPath('data.terrains.0.available_slots_count', 0)
+            ->assertJsonPath('data.terrains.0.blocked_for_day.reason', 'maintenance')
+            ->assertJsonPath('data.terrains.0.blocked_for_day.note', 'Court resurfacing')
+            ->assertJsonMissingPath('data.terrains.0.slots')
+            ->assertJsonPath('data.terrains.1.name', 'Court Open')
+            ->assertJsonPath('data.terrains.1.available_slots_count', 4)
+            ->assertJsonMissingPath('data.terrains.1.blocked_for_day')
+            ->assertJsonCount(4, 'data.terrains.1.slots')
+            ->assertJsonPath('data.terrains.1.slots.0.status', ReservationSlotStatus::Available->value);
     } finally {
         CarbonImmutable::setTestNow();
     }

@@ -1,7 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
-import { AlertCircleIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertCircleIcon, BanIcon, ChevronLeft, ChevronRight, ScrollText } from 'lucide-react';
 import { useState } from 'react';
 import { StatusBanner } from '@/components/admin/status-banner';
+import { TerrainUsageRulesDialog } from '@/components/terrain-usage-rules-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import { useI18n } from '@/lib/i18n';
 import { dashboard } from '@/routes';
 import dashboardRoutes from '@/routes/dashboard';
 import type { BreadcrumbItem } from '@/types';
+import type { TerrainUsageRule } from '@/lib/terrain-usage-rule-icons';
 
 type ReservationSlot = {
     id: number;
@@ -23,6 +25,11 @@ type ReservationSlot = {
     } | null;
 };
 
+type BlockedForDay = {
+    reason: 'rain' | 'maintenance' | 'other';
+    note: string | null;
+};
+
 type DashboardTerrain = {
     id: number;
     name: string;
@@ -30,7 +37,8 @@ type DashboardTerrain = {
     description: string | null;
     is_active: boolean;
     available_slots_count: number;
-    slots: ReservationSlot[];
+    blocked_for_day?: BlockedForDay;
+    slots?: ReservationSlot[];
 };
 
 type DashboardAvailabilityPayload = {
@@ -45,6 +53,7 @@ type DashboardPageProps = {
     max_advance_days: number;
     terrains: DashboardTerrain[];
     token_count: number;
+    terrain_usage_rules: TerrainUsageRule[];
 };
 
 export default function Dashboard({
@@ -52,12 +61,15 @@ export default function Dashboard({
     max_advance_days: initialMaxAdvanceDays,
     terrains: initialTerrains,
     token_count: initialTokenCount,
+    terrain_usage_rules: initialTerrainUsageRules,
 }: DashboardPageProps) {
     const { locale, t } = useI18n();
     const [selectedDate, setSelectedDate] = useState<string>(initialDate);
     const [maxAdvanceDays, setMaxAdvanceDays] = useState<number>(initialMaxAdvanceDays);
     const [terrains, setTerrains] = useState<DashboardTerrain[]>(initialTerrains);
     const [tokenCount, setTokenCount] = useState<number>(initialTokenCount);
+    const [terrainUsageRules] = useState<TerrainUsageRule[]>(initialTerrainUsageRules);
+    const [isRulesDialogOpen, setIsRulesDialogOpen] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -126,6 +138,18 @@ export default function Dashboard({
 
     function tokenUnitLabel(count: number): string {
         return count === 1 ? t('token_unit_singular') : t('token_unit_plural');
+    }
+
+    function inactiveReasonLabel(reason: BlockedForDay['reason']): string {
+        if (reason === 'rain') {
+            return t('inactive_reason_rain');
+        }
+
+        if (reason === 'maintenance') {
+            return t('inactive_reason_maintenance');
+        }
+
+        return t('inactive_reason_other');
     }
 
     async function refreshDashboardData(date: string): Promise<void> {
@@ -203,11 +227,31 @@ export default function Dashboard({
                             <span className="text-sm font-semibold text-zinc-700">{tokenUnitLabel(tokenCount)}</span>
                         </div>
                     </div>
+                    {terrainUsageRules.length > 0 && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setIsRulesDialogOpen(true)}
+                            className="inline-flex h-14 items-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 px-4 text-zinc-800 shadow-md shadow-primary/15 ring-1 ring-primary/20 backdrop-blur-sm hover:bg-primary/15"
+                        >
+                            <ScrollText className="size-4 shrink-0" />
+                            <span className="text-sm font-semibold">{t('terrain_usage_rules_open')}</span>
+                        </Button>
+                    )}
                 </div>
+                <TerrainUsageRulesDialog
+                    open={isRulesDialogOpen}
+                    onOpenChange={setIsRulesDialogOpen}
+                    rules={terrainUsageRules}
+                />
                 <StatusBanner message={null} error={errorMessage} />
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {terrains.map((terrain) => (
+                    {terrains.map((terrain) => {
+                        const isDayBlocked = terrain.blocked_for_day !== undefined;
+                        const slots = terrain.slots ?? [];
+
+                        return (
                         <Card
                             key={terrain.id}
                             className="group h-full overflow-hidden rounded-2xl border-border/60 bg-card/95 py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/30"
@@ -219,25 +263,51 @@ export default function Dashboard({
                                 <div className="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full bg-white/20 blur-xl" />
                                 <div className="pointer-events-none absolute -bottom-10 -left-4 h-20 w-28 rounded-full bg-black/15 blur-xl" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/25 to-transparent" />
-                                <Badge
-                                    variant="secondary"
-                                    className="absolute top-2 right-2 border-white/20 bg-black/35 text-[11px] text-white backdrop-blur-sm"
-                                >
-                                    {t('free')}: {terrain.available_slots_count}
-                                </Badge>
+                                {!isDayBlocked && (
+                                    <Badge
+                                        variant="secondary"
+                                        className="absolute top-2 right-2 border-white/20 bg-black/35 text-[11px] text-white backdrop-blur-sm"
+                                    >
+                                        {t('free')}: {terrain.available_slots_count}
+                                    </Badge>
+                                )}
+                                {isDayBlocked && (
+                                    <Badge
+                                        variant="secondary"
+                                        className="absolute top-2 right-2 border-red-300/40 bg-red-950/50 text-[11px] text-red-100 backdrop-blur-sm"
+                                    >
+                                        {t('day_blocked')}
+                                    </Badge>
+                                )}
                                 <h3 className="relative text-5xl font-black tracking-tight text-white drop-shadow-md">
                                     {terrain.name}
                                 </h3>
                             </div>
                             <CardContent className="flex-1 space-y-2 px-5 pb-3">
-                                {terrain.slots.length === 0 ? (
+                                {isDayBlocked && terrain.blocked_for_day !== undefined ? (
+                                    <div className="flex min-h-16 flex-col items-center justify-center gap-2 text-center">
+                                        <BanIcon className="size-5 text-red-600 dark:text-red-400" />
+                                        <p className="text-base font-medium text-foreground">
+                                            {t('day_blocked_description')}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {t('reason')}: {inactiveReasonLabel(terrain.blocked_for_day.reason)}
+                                        </p>
+                                        {terrain.blocked_for_day.note !== null
+                                            && terrain.blocked_for_day.note.trim() !== '' && (
+                                            <p className="text-sm text-muted-foreground">
+                                                {terrain.blocked_for_day.note}
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : slots.length === 0 ? (
                                     <div className="flex min-h-16 flex-col items-center justify-center gap-1 text-center text-muted-foreground">
                                         <AlertCircleIcon className="size-5" />
                                         <p className="text-base">{t('no_free_slots_selected_date')}</p>
                                     </div>
                                 ) : (
                                     <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto pr-1">
-                                        {terrain.slots.map((slot) => (
+                                        {slots.map((slot) => (
                                             <Card
                                                 key={slot.id}
                                                 className="w-fit shrink-0 border-emerald-200/70 bg-emerald-50/70 py-0 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/30"
@@ -254,6 +324,7 @@ export default function Dashboard({
                                 <Button
                                     asChild
                                     className="h-10 w-full rounded-xl text-base font-semibold shadow-sm"
+                                    variant={isDayBlocked ? 'outline' : 'default'}
                                 >
                                     <Link
                                         href={dashboardRoutes.terrains.show(
@@ -266,7 +337,8 @@ export default function Dashboard({
                                 </Button>
                             </CardFooter>
                         </Card>
-                    ))}
+                        );
+                    })}
 
                     {terrains.length === 0 && (
                         <Card className="md:col-span-2 xl:col-span-3">

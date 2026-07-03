@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\AppSettings\FlashLoginMessageAction;
 use App\Actions\Users\FindInvitedUserByTokenAction;
 use App\Actions\Users\RegisterInvitedUserAction;
 use App\DTO\Users\RegisterInvitedUserData;
@@ -36,6 +37,7 @@ class InvitationRegistrationController extends Controller
         string $token,
         FindInvitedUserByTokenAction $findInvitedUserByTokenAction,
         RegisterInvitedUserAction $registerInvitedUserAction,
+        FlashLoginMessageAction $flashLoginMessageAction,
     ): RedirectResponse {
         $user = $findInvitedUserByTokenAction->execute($token);
 
@@ -66,6 +68,7 @@ class InvitationRegistrationController extends Controller
 
         Auth::login($registeredUser);
         $request->session()->regenerate();
+        $flashLoginMessageAction->execute();
 
         return to_route('dashboard');
     }

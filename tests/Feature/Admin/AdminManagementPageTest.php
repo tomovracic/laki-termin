@@ -1,13 +1,13 @@
 <?php
 
-use App\Models\Role;
+use App\Enums\ReservationSlotStatus;
+use App\Enums\ReservationStatus;
 use App\Models\Reservation;
 use App\Models\ReservationSlot;
+use App\Models\Role;
 use App\Models\Terrain;
 use App\Models\TerrainSetting;
 use App\Models\User;
-use App\Enums\ReservationSlotStatus;
-use App\Enums\ReservationStatus;
 use Inertia\Testing\AssertableInertia as Assert;
 
 function assignAdminRole(User $user): void
@@ -58,6 +58,7 @@ test('admin can open users and terrains admin overviews', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('admin/terrains')
             ->has('terrains', 1)
+            ->has('inactive_periods')
             ->where('global_setting.max_advance_days', 30),
         );
 });

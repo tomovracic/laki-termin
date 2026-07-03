@@ -30,6 +30,26 @@ export type GlobalSetting = {
     }[];
 };
 
+export type InactivePeriodReason = 'rain' | 'maintenance' | 'other';
+
+export type InactivePeriod = {
+    id: number;
+    terrain_id: number | null;
+    terrain_name: string | null;
+    from_date: string;
+    to_date: string;
+    reason: InactivePeriodReason;
+    note: string | null;
+};
+
+export type InactivePeriodFormValue = {
+    from_date: string;
+    to_date: string;
+    terrain_id: number | null;
+    reason: InactivePeriodReason;
+    note: string;
+};
+
 export type ApiErrorResponse = {
     message?: string;
     errors?: Record<string, string[]>;

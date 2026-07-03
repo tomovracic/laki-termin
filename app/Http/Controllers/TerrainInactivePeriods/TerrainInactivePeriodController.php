@@ -6,11 +6,11 @@ namespace App\Http\Controllers\TerrainInactivePeriods;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TerrainInactivePeriods\StoreTerrainInactivePeriodRequest;
+use App\Http\Resources\TerrainInactivePeriodResource;
 use App\Models\TerrainInactivePeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Http\Resources\Json\JsonResource;
 
 class TerrainInactivePeriodController extends Controller
 {
@@ -19,6 +19,7 @@ class TerrainInactivePeriodController extends Controller
         $this->authorize('viewAny', TerrainInactivePeriod::class);
 
         $periods = TerrainInactivePeriod::query()
+            ->with('terrain:id,name')
             ->when(
                 $request->filled('terrain_id'),
                 fn ($query) => $query->where('terrain_id', (int) $request->integer('terrain_id')),
@@ -26,17 +27,19 @@ class TerrainInactivePeriodController extends Controller
             ->latest('from_at')
             ->paginate(20);
 
-        return JsonResource::collection($periods);
+        return TerrainInactivePeriodResource::collection($periods);
     }
 
-    public function store(StoreTerrainInactivePeriodRequest $request): JsonResource
+    public function store(StoreTerrainInactivePeriodRequest $request): TerrainInactivePeriodResource
     {
         $period = TerrainInactivePeriod::query()->create([
             ...$request->validated(),
             'created_by' => $request->user()->id,
         ]);
 
-        return JsonResource::make($period);
+        $period->load('terrain:id,name');
+
+        return TerrainInactivePeriodResource::make($period);
     }
 
     public function destroy(TerrainInactivePeriod $terrainInactivePeriod): JsonResponse

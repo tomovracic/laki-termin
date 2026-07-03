@@ -3,23 +3,40 @@ import type { FormEvent} from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { AdminSectionLayout } from '@/components/admin/admin-section-layout';
 import { GlobalSettingsForm } from '@/components/admin/global-settings-form';
+import { InactivePeriodsForm } from '@/components/admin/inactive-periods-form';
+import { InactivePeriodsList } from '@/components/admin/inactive-periods-list';
 import { PaginationControls } from '@/components/admin/pagination-controls';
 import { SearchInput } from '@/components/admin/search-input';
 import { StatusBanner } from '@/components/admin/status-banner';
 import { TerrainOverview } from '@/components/admin/terrain-overview';
+import { TerrainUsageRulesForm } from '@/components/admin/terrain-usage-rules-form';
 import type {
     ApiErrorResponse,
     GlobalSetting,
+    InactivePeriod,
+    InactivePeriodFormValue,
     ManagedTerrain,
 } from '@/components/admin/types';
 import { Button } from '@/components/ui/button';
 import { csrfHeaders } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
+import type { TerrainUsageRule } from '@/lib/terrain-usage-rule-icons';
 
 type AdminTerrainsPageProps = {
     terrains: ManagedTerrain[];
     global_setting: GlobalSetting | null;
+    inactive_periods: InactivePeriod[];
+    terrain_usage_rules: TerrainUsageRule[];
 };
+
+function todayIsoDate(): string {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = `${today.getMonth() + 1}`.padStart(2, '0');
+    const day = `${today.getDate()}`.padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
 
 const TERRAIN_SEARCH_QUERY_KEY = 'terrain_search';
 const TERRAIN_PAGE_QUERY_KEY = 'terrain_page';
@@ -42,6 +59,8 @@ function getInitialQueryState() {
 export default function AdminTerrainsPage({
     terrains: initialTerrains,
     global_setting: initialGlobalSetting,
+    inactive_periods: initialInactivePeriods,
+    terrain_usage_rules: initialTerrainUsageRules,
 }: AdminTerrainsPageProps) {
     const { t } = useI18n();
     const initialQueryState = useMemo(() => getInitialQueryState(), []);
@@ -52,7 +71,7 @@ export default function AdminTerrainsPage({
     const [terrainSearch, setTerrainSearch] = useState(
         initialQueryState.terrainSearch,
     );
-    const [activeTab, setActiveTab] = useState<'overview' | 'settings'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'settings' | 'blocked_days'>('overview');
     const [terrainPage, setTerrainPage] = useState(initialQueryState.terrainPage);
     const terrainsPerPage = 8;
 
@@ -82,6 +101,32 @@ export default function AdminTerrainsPage({
     });
     const [globalErrors, setGlobalErrors] = useState<Record<string, string[]>>({});
     const [isSavingGlobalSettings, setIsSavingGlobalSettings] = useState(false);
+
+    const [inactivePeriods, setInactivePeriods] = useState<InactivePeriod[]>(
+        initialInactivePeriods,
+    );
+    const [inactivePeriodForm, setInactivePeriodForm] = useState<InactivePeriodFormValue>(() => ({
+        from_date: todayIsoDate(),
+        to_date: todayIsoDate(),
+        terrain_id: null,
+        reason: 'rain',
+        note: '',
+    }));
+    const [inactivePeriodErrors, setInactivePeriodErrors] = useState<
+        Record<string, string[]>
+    >({});
+    const [isAddingInactivePeriod, setIsAddingInactivePeriod] = useState(false);
+    const [deletingInactivePeriodId, setDeletingInactivePeriodId] = useState<
+        number | null
+    >(null);
+    const [terrainUsageRules, setTerrainUsageRules] = useState<TerrainUsageRule[]>(
+        initialTerrainUsageRules,
+    );
+    const [terrainUsageRulesError, setTerrainUsageRulesError] = useState<
+        string | undefined
+    >();
+    const [isSavingTerrainUsageRules, setIsSavingTerrainUsageRules] =
+        useState(false);
 
     const filteredTerrains = useMemo(() => {
         const term = terrainSearch.trim().toLowerCase();
@@ -273,6 +318,133 @@ export default function AdminTerrainsPage({
         setIsSavingGlobalSettings(false);
     }
 
+    async function handleSaveTerrainUsageRules(
+        event: FormEvent<HTMLFormElement>,
+    ): Promise<void> {
+        event.preventDefault();
+        setIsSavingTerrainUsageRules(true);
+        setTerrainUsageRulesError(undefined);
+        setMessage(null);
+        setErrorMessage(null);
+
+        const response = await fetch('/app-settings/terrain-usage-rules', {
+            method: 'PATCH',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
+            },
+            body: JSON.stringify({
+                rules: terrainUsageRules
+                    .map((rule) => ({
+                        icon: rule.icon,
+                        text: rule.text.trim(),
+                    }))
+                    .filter((rule) => rule.text !== ''),
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await parseError(response);
+            setTerrainUsageRulesError(
+                Object.values(error.errors ?? {})[0]?.[0]
+                    ?? error.message
+                    ?? t('unable_save_terrain_usage_rules'),
+            );
+            setIsSavingTerrainUsageRules(false);
+            return;
+        }
+
+        const payload = (await response.json()) as {
+            data: { terrain_usage_rules: TerrainUsageRule[] };
+        };
+        setTerrainUsageRules(payload.data.terrain_usage_rules);
+        setMessage(t('terrain_usage_rules_saved'));
+        setIsSavingTerrainUsageRules(false);
+    }
+
+    async function handleAddInactivePeriod(
+        event: FormEvent<HTMLFormElement>,
+    ): Promise<void> {
+        event.preventDefault();
+        setIsAddingInactivePeriod(true);
+        setInactivePeriodErrors({});
+        setMessage(null);
+        setErrorMessage(null);
+
+        const response = await fetch('/terrain-inactive-periods', {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
+            },
+            body: JSON.stringify({
+                from_date: inactivePeriodForm.from_date,
+                to_date: inactivePeriodForm.to_date,
+                terrain_id: inactivePeriodForm.terrain_id,
+                reason: inactivePeriodForm.reason,
+                note: inactivePeriodForm.note.trim() === ''
+                    ? null
+                    : inactivePeriodForm.note.trim(),
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await parseError(response);
+            setInactivePeriodErrors(error.errors ?? {});
+            setErrorMessage(error.message ?? t('unable_add_blocked_day'));
+            setIsAddingInactivePeriod(false);
+            return;
+        }
+
+        const payload = (await response.json()) as { data: InactivePeriod };
+        setInactivePeriods((current) =>
+            [...current, payload.data].sort((left, right) =>
+                left.from_date.localeCompare(right.from_date),
+            ),
+        );
+        setInactivePeriodForm({
+            from_date: todayIsoDate(),
+            to_date: todayIsoDate(),
+            terrain_id: null,
+            reason: 'rain',
+            note: '',
+        });
+        setMessage(t('blocked_day_added'));
+        setIsAddingInactivePeriod(false);
+    }
+
+    async function handleDeleteInactivePeriod(period: InactivePeriod): Promise<void> {
+        setDeletingInactivePeriodId(period.id);
+        setMessage(null);
+        setErrorMessage(null);
+
+        const response = await fetch(`/terrain-inactive-periods/${period.id}`, {
+            method: 'DELETE',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
+            },
+        });
+
+        if (!response.ok) {
+            const error = await parseError(response);
+            setErrorMessage(error.message ?? t('unable_remove_blocked_day'));
+            setDeletingInactivePeriodId(null);
+            return;
+        }
+
+        setInactivePeriods((current) =>
+            current.filter((entry) => entry.id !== period.id),
+        );
+        setMessage(t('blocked_day_removed'));
+        setDeletingInactivePeriodId(null);
+    }
+
     return (
         <AdminSectionLayout
             title={t('terrains_overview')}
@@ -283,7 +455,7 @@ export default function AdminTerrainsPage({
 
             <StatusBanner message={message} error={errorMessage} />
 
-            <div className="grid grid-cols-2 gap-2 rounded-md border border-border/70 p-1 sm:w-fit">
+            <div className="grid grid-cols-3 gap-2 rounded-md border border-border/70 p-1 sm:w-fit">
                 <Button
                     type="button"
                     variant={activeTab === 'overview' ? 'default' : 'ghost'}
@@ -297,6 +469,13 @@ export default function AdminTerrainsPage({
                     onClick={() => setActiveTab('settings')}
                 >
                     {t('settings')}
+                </Button>
+                <Button
+                    type="button"
+                    variant={activeTab === 'blocked_days' ? 'default' : 'ghost'}
+                    onClick={() => setActiveTab('blocked_days')}
+                >
+                    {t('blocked_days_tab')}
                 </Button>
             </div>
 
@@ -321,13 +500,39 @@ export default function AdminTerrainsPage({
                 terrainErrors={terrainErrors}
                 isCreatingTerrain={isCreatingTerrain}
                 settingsContent={(
-                    <GlobalSettingsForm
-                        value={globalSetting}
-                        isSaving={isSavingGlobalSettings}
-                        errors={globalErrors}
-                        onChange={setGlobalSetting}
-                        onSubmit={(event) => void handleSaveGlobalSetting(event)}
-                    />
+                    <div className="space-y-6">
+                        <GlobalSettingsForm
+                            value={globalSetting}
+                            isSaving={isSavingGlobalSettings}
+                            errors={globalErrors}
+                            onChange={setGlobalSetting}
+                            onSubmit={(event) => void handleSaveGlobalSetting(event)}
+                        />
+                        <TerrainUsageRulesForm
+                            value={terrainUsageRules}
+                            isSaving={isSavingTerrainUsageRules}
+                            error={terrainUsageRulesError}
+                            onChange={setTerrainUsageRules}
+                            onSubmit={(event) => void handleSaveTerrainUsageRules(event)}
+                        />
+                    </div>
+                )}
+                blockedDaysContent={(
+                    <div className="space-y-6">
+                        <InactivePeriodsForm
+                            value={inactivePeriodForm}
+                            terrains={terrains}
+                            isSaving={isAddingInactivePeriod}
+                            errors={inactivePeriodErrors}
+                            onChange={setInactivePeriodForm}
+                            onSubmit={(event) => void handleAddInactivePeriod(event)}
+                        />
+                        <InactivePeriodsList
+                            periods={inactivePeriods}
+                            deletingPeriodId={deletingInactivePeriodId}
+                            onDelete={(period) => void handleDeleteInactivePeriod(period)}
+                        />
+                    </div>
                 )}
                 onDescriptionChange={(terrainId, value) =>
                     setDescriptionDrafts((current) => ({
