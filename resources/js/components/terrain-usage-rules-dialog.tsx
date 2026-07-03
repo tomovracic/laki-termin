@@ -6,12 +6,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Icon } from '@/components/ui/icon';
+import { TerrainUsageRuleItem } from '@/components/terrain-usage-rule-item';
 import { useI18n } from '@/lib/i18n';
-import {
-    terrainUsageRuleIconComponent,
-    type TerrainUsageRule,
-} from '@/lib/terrain-usage-rule-icons';
+import type { TerrainUsageRule } from '@/lib/terrain-usage-rule-icons';
 import { Button } from '@/components/ui/button';
 
 type TerrainUsageRulesDialogProps = {
@@ -38,16 +35,10 @@ export function TerrainUsageRulesDialog({
                 </DialogHeader>
                 <ul className="space-y-3">
                     {rules.map((rule, index) => (
-                        <li
+                        <TerrainUsageRuleItem
                             key={`${rule.icon}-${index}`}
-                            className="flex gap-3 rounded-lg border border-border/70 bg-muted/30 p-3"
-                        >
-                            <Icon
-                                iconNode={terrainUsageRuleIconComponent(rule.icon)}
-                                className="mt-0.5 size-5 shrink-0 text-primary"
-                            />
-                            <p className="text-sm leading-relaxed">{rule.text}</p>
-                        </li>
+                            rule={rule}
+                        />
                     ))}
                 </ul>
                 <DialogFooter>

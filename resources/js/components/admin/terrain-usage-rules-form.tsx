@@ -1,14 +1,19 @@
 import { Plus, RefreshCcw, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
+import { TerrainUsageRuleItem } from '@/components/terrain-usage-rule-item';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import {
+    TERRAIN_USAGE_RULE_EMPHASIS_OPTIONS,
     TERRAIN_USAGE_RULE_ICONS,
+    terrainUsageRuleEmphasisPreviewClasses,
     terrainUsageRuleIconComponent,
     type TerrainUsageRule,
+    type TerrainUsageRuleEmphasis,
     type TerrainUsageRuleIconName,
 } from '@/lib/terrain-usage-rule-icons';
 
@@ -137,6 +142,79 @@ export function TerrainUsageRulesForm({
                                     updateRule(index, { text: event.target.value })
                                 }
                                 placeholder={t('terrain_usage_rule_text_placeholder')}
+                            />
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id={`terrain-usage-rule-emphasized-${index}`}
+                                    checked={rule.emphasis != null}
+                                    onCheckedChange={(checked) =>
+                                        updateRule(index, {
+                                            emphasis:
+                                                checked === true ? 'neutral' : null,
+                                        })
+                                    }
+                                />
+                                <Label
+                                    htmlFor={`terrain-usage-rule-emphasized-${index}`}
+                                    className="cursor-pointer font-normal"
+                                >
+                                    {t('terrain_usage_rule_emphasized')}
+                                </Label>
+                            </div>
+
+                            {rule.emphasis != null && (
+                                <div className="space-y-2 pl-6">
+                                    <Label>{t('terrain_usage_rule_emphasis_color')}</Label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {TERRAIN_USAGE_RULE_EMPHASIS_OPTIONS.map(
+                                            (emphasisOption) => (
+                                                <button
+                                                    key={emphasisOption}
+                                                    type="button"
+                                                    title={t(
+                                                        `terrain_usage_rule_emphasis_${emphasisOption}` as 'terrain_usage_rule_emphasis_neutral',
+                                                    )}
+                                                    onClick={() =>
+                                                        updateRule(index, {
+                                                            emphasis:
+                                                                emphasisOption as TerrainUsageRuleEmphasis,
+                                                        })
+                                                    }
+                                                    className={cn(
+                                                        'inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm transition-colors',
+                                                        rule.emphasis === emphasisOption
+                                                            ? 'border-primary bg-primary/10 text-primary'
+                                                            : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                                                    )}
+                                                >
+                                                    <span
+                                                        className={cn(
+                                                            'size-3 rounded-full',
+                                                            terrainUsageRuleEmphasisPreviewClasses(
+                                                                emphasisOption,
+                                                            ),
+                                                        )}
+                                                    />
+                                                    {t(
+                                                        `terrain_usage_rule_emphasis_${emphasisOption}` as 'terrain_usage_rule_emphasis_neutral',
+                                                    )}
+                                                </button>
+                                            ),
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-2 border-t border-border/70 pt-3">
+                            <Label>{t('terrain_usage_rule_preview')}</Label>
+                            <TerrainUsageRuleItem
+                                rule={rule}
+                                as="div"
+                                showPlaceholder
                             />
                         </div>
                     </div>

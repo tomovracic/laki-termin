@@ -340,6 +340,7 @@ export default function AdminTerrainsPage({
                     .map((rule) => ({
                         icon: rule.icon,
                         text: rule.text.trim(),
+                        emphasis: rule.emphasis ?? null,
                     }))
                     .filter((rule) => rule.text !== ''),
             }),

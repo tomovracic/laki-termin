@@ -24,6 +24,7 @@ test('admin can save terrain usage rules', function () {
             [
                 'icon' => 'ban',
                 'text' => 'Nije dozvoljeno preuzimanje terena bez rezervacije.',
+                'emphasis' => 'alert',
             ],
         ],
     ]);
@@ -32,7 +33,8 @@ test('admin can save terrain usage rules', function () {
         ->assertSuccessful()
         ->assertJsonPath('data.terrain_usage_rules.0.icon', 'clock')
         ->assertJsonPath('data.terrain_usage_rules.0.text', 'Rezervacije su moguce do 24 sata unaprijed.')
-        ->assertJsonPath('data.terrain_usage_rules.1.icon', 'ban');
+        ->assertJsonPath('data.terrain_usage_rules.1.icon', 'ban')
+        ->assertJsonPath('data.terrain_usage_rules.1.emphasis', 'alert');
 
     expect(AppSetting::instance()->terrain_usage_rules)->toBe([
         [
@@ -42,6 +44,7 @@ test('admin can save terrain usage rules', function () {
         [
             'icon' => 'ban',
             'text' => 'Nije dozvoljeno preuzimanje terena bez rezervacije.',
+            'emphasis' => 'alert',
         ],
     ]);
 });
@@ -129,4 +132,36 @@ test('terrain usage rules reject invalid icon', function () {
     ]);
 
     $response->assertUnprocessable();
+});
+
+test('terrain usage rules reject invalid emphasis', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleForTerrainUsageRules($admin);
+
+    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.update'), [
+        'rules' => [
+            ['icon' => 'info', 'text' => 'Tekst pravila', 'emphasis' => 'invalid_emphasis'],
+        ],
+    ]);
+
+    $response->assertUnprocessable();
+});
+
+test('terrain usage rules return emphasis when set', function () {
+    $user = User::factory()->create();
+
+    AppSetting::instance()->update([
+        'terrain_usage_rules' => [
+            ['icon' => 'alert_triangle', 'text' => 'Vazno pravilo', 'emphasis' => 'warning'],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('dashboard')
+            ->has('nav.terrain_usage_rules', 1)
+            ->where('nav.terrain_usage_rules.0.emphasis', 'warning'),
+        );
 });

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\TerrainUsageRuleEmphasis;
 use App\Enums\TerrainUsageRuleIcon;
 use App\Models\AppSetting;
 
 class AppSettingService
 {
     /**
-     * @return list<array{icon: string, text: string}>
+     * @return list<array{icon: string, text: string, emphasis?: string}>
      */
     public function getTerrainUsageRules(): array
     {
@@ -46,17 +47,29 @@ class AppSettingService
                 continue;
             }
 
-            $normalized[] = [
+            $entry = [
                 'icon' => $iconEnum->value,
                 'text' => $trimmedText,
             ];
+
+            $emphasis = $rule['emphasis'] ?? null;
+
+            if (is_string($emphasis)) {
+                $emphasisEnum = TerrainUsageRuleEmphasis::tryFrom($emphasis);
+
+                if ($emphasisEnum !== null) {
+                    $entry['emphasis'] = $emphasisEnum->value;
+                }
+            }
+
+            $normalized[] = $entry;
         }
 
         return $normalized;
     }
 
     /**
-     * @param  list<array{icon: string, text: string}>  $rules
+     * @param  list<array{icon: string, text: string, emphasis?: string|null}>  $rules
      */
     public function updateTerrainUsageRules(array $rules): AppSetting
     {
@@ -70,10 +83,22 @@ class AppSettingService
                 continue;
             }
 
-            $normalized[] = [
+            $entry = [
                 'icon' => $rule['icon'],
                 'text' => $trimmedText,
             ];
+
+            $emphasis = $rule['emphasis'] ?? null;
+
+            if (is_string($emphasis)) {
+                $emphasisEnum = TerrainUsageRuleEmphasis::tryFrom($emphasis);
+
+                if ($emphasisEnum !== null) {
+                    $entry['emphasis'] = $emphasisEnum->value;
+                }
+            }
+
+            $normalized[] = $entry;
         }
 
         $setting->terrain_usage_rules = $normalized === [] ? null : $normalized;

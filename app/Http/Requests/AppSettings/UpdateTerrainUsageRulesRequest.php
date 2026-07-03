@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\AppSettings;
 
+use App\Enums\TerrainUsageRuleEmphasis;
 use App\Enums\TerrainUsageRuleIcon;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
@@ -25,6 +26,7 @@ class UpdateTerrainUsageRulesRequest extends FormRequest
             'rules' => ['present', 'array', 'max:20'],
             'rules.*.icon' => ['required', Rule::enum(TerrainUsageRuleIcon::class)],
             'rules.*.text' => ['required', 'string', 'max:500'],
+            'rules.*.emphasis' => ['nullable', Rule::enum(TerrainUsageRuleEmphasis::class)],
         ];
     }
 }
