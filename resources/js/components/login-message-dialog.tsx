@@ -10,17 +10,24 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { useI18n } from '@/lib/i18n';
+import type { SharedNavProps } from '@/types/nav';
 
 export function LoginMessageDialog() {
-    const { loginMessage } = usePage().props;
+    const { loginMessage, nav } = usePage().props;
+    const sharedNav = nav as SharedNavProps | null | undefined;
+    const mustAcknowledge = sharedNav?.must_acknowledge_terrain_usage_rules ?? false;
     const { t } = useI18n();
     const [open, setOpen] = useState(false);
 
     useEffect(() => {
-        if (typeof loginMessage === 'string' && loginMessage.trim() !== '') {
+        if (
+            !mustAcknowledge
+            && typeof loginMessage === 'string'
+            && loginMessage.trim() !== ''
+        ) {
             setOpen(true);
         }
-    }, [loginMessage]);
+    }, [loginMessage, mustAcknowledge]);
 
     if (typeof loginMessage !== 'string' || loginMessage.trim() === '') {
         return null;

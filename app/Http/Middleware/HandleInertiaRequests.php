@@ -50,10 +50,20 @@ class HandleInertiaRequests extends Middleware
             'loginMessage' => fn () => $request->user() !== null
                 ? $request->session()->get('login_message')
                 : null,
-            'nav' => fn () => $request->user() === null ? null : [
-                'token_count' => $request->user()->token_count,
-                'terrain_usage_rules' => app(AppSettingService::class)->getTerrainUsageRules(),
-            ],
+            'nav' => function () use ($request) {
+                if ($request->user() === null) {
+                    return null;
+                }
+
+                $terrainUsageRules = app(AppSettingService::class)->getTerrainUsageRules();
+
+                return [
+                    'token_count' => $request->user()->token_count,
+                    'terrain_usage_rules' => $terrainUsageRules,
+                    'must_acknowledge_terrain_usage_rules' => $terrainUsageRules !== []
+                        && $request->user()->terrain_usage_rules_acknowledged_at === null,
+                ];
+            },
         ];
     }
 }

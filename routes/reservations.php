@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppSettings\AppSettingController;
+use App\Http\Controllers\AppSettings\TerrainUsageRulesAcknowledgementController;
 use App\Http\Controllers\Reservations\ReservationController;
 use App\Http\Controllers\TerrainInactivePeriods\TerrainInactivePeriodController;
 use App\Http\Controllers\Terrains\TerrainController;
@@ -15,7 +16,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('terrain-settings/upsert', [TerrainSettingController::class, 'upsert'])->name('terrain-settings.upsert');
     Route::patch('app-settings/login-message', [AppSettingController::class, 'updateLoginMessage'])->name('app-settings.login-message.update');
-    Route::patch('app-settings/terrain-usage-rules', [AppSettingController::class, 'updateTerrainUsageRules'])->name('app-settings.terrain-usage-rules.update');
+    Route::patch('app-settings/terrain-usage-rules', [AppSettingController::class, 'updateTerrainUsageRules'])->name('app-settings.terrain-usage-rules.replace');
+    Route::post('app-settings/terrain-usage-rules', [AppSettingController::class, 'storeTerrainUsageRule'])->name('app-settings.terrain-usage-rules.store');
+    Route::patch('app-settings/terrain-usage-rules/{index}', [AppSettingController::class, 'updateTerrainUsageRule'])->whereNumber('index')->name('app-settings.terrain-usage-rules.update');
+    Route::delete('app-settings/terrain-usage-rules/{index}', [AppSettingController::class, 'destroyTerrainUsageRule'])->whereNumber('index')->name('app-settings.terrain-usage-rules.destroy');
+    Route::post('terrain-usage-rules/acknowledge', TerrainUsageRulesAcknowledgementController::class)->name('terrain-usage-rules.acknowledge');
 
     Route::get('terrain-inactive-periods', [TerrainInactivePeriodController::class, 'index'])->name('terrain-inactive-periods.index');
     Route::post('terrain-inactive-periods', [TerrainInactivePeriodController::class, 'store'])->name('terrain-inactive-periods.store');

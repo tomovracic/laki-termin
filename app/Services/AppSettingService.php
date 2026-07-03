@@ -73,35 +73,86 @@ class AppSettingService
      */
     public function updateTerrainUsageRules(array $rules): AppSetting
     {
-        $setting = AppSetting::instance();
         $normalized = [];
 
         foreach ($rules as $rule) {
-            $trimmedText = trim($rule['text']);
-
-            if ($trimmedText === '') {
-                continue;
-            }
-
-            $entry = [
-                'icon' => $rule['icon'],
-                'text' => $trimmedText,
-            ];
-
-            $emphasis = $rule['emphasis'] ?? null;
-
-            if (is_string($emphasis)) {
-                $emphasisEnum = TerrainUsageRuleEmphasis::tryFrom($emphasis);
-
-                if ($emphasisEnum !== null) {
-                    $entry['emphasis'] = $emphasisEnum->value;
-                }
-            }
-
-            $normalized[] = $entry;
+            $normalized[] = $this->normalizeTerrainUsageRule($rule);
         }
 
-        $setting->terrain_usage_rules = $normalized === [] ? null : $normalized;
+        return $this->persistTerrainUsageRules($normalized);
+    }
+
+    /**
+     * @param  array{icon: string, text: string, emphasis?: string|null}  $rule
+     */
+    public function createTerrainUsageRule(array $rule): AppSetting
+    {
+        $rules = $this->getTerrainUsageRules();
+        $rules[] = $this->normalizeTerrainUsageRule($rule);
+
+        return $this->persistTerrainUsageRules($rules);
+    }
+
+    /**
+     * @param  array{icon: string, text: string, emphasis?: string|null}  $rule
+     */
+    public function updateTerrainUsageRule(int $index, array $rule): AppSetting
+    {
+        $rules = $this->getTerrainUsageRules();
+
+        if (! array_key_exists($index, $rules)) {
+            abort(404);
+        }
+
+        $rules[$index] = $this->normalizeTerrainUsageRule($rule);
+
+        return $this->persistTerrainUsageRules($rules);
+    }
+
+    public function deleteTerrainUsageRule(int $index): AppSetting
+    {
+        $rules = $this->getTerrainUsageRules();
+
+        if (! array_key_exists($index, $rules)) {
+            abort(404);
+        }
+
+        array_splice($rules, $index, 1);
+
+        return $this->persistTerrainUsageRules($rules);
+    }
+
+    /**
+     * @param  array{icon: string, text: string, emphasis?: string|null}  $rule
+     * @return array{icon: string, text: string, emphasis?: string}
+     */
+    private function normalizeTerrainUsageRule(array $rule): array
+    {
+        $entry = [
+            'icon' => $rule['icon'],
+            'text' => trim($rule['text']),
+        ];
+
+        $emphasis = $rule['emphasis'] ?? null;
+
+        if (is_string($emphasis)) {
+            $emphasisEnum = TerrainUsageRuleEmphasis::tryFrom($emphasis);
+
+            if ($emphasisEnum !== null) {
+                $entry['emphasis'] = $emphasisEnum->value;
+            }
+        }
+
+        return $entry;
+    }
+
+    /**
+     * @param  list<array{icon: string, text: string, emphasis?: string}>  $rules
+     */
+    private function persistTerrainUsageRules(array $rules): AppSetting
+    {
+        $setting = AppSetting::instance();
+        $setting->terrain_usage_rules = $rules === [] ? null : $rules;
         $setting->save();
 
         return $setting;

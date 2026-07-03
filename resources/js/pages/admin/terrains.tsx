@@ -127,8 +127,11 @@ export default function AdminTerrainsPage({
     const [terrainUsageRulesError, setTerrainUsageRulesError] = useState<
         string | undefined
     >();
-    const [isSavingTerrainUsageRules, setIsSavingTerrainUsageRules] =
-        useState(false);
+    const [creatingTerrainUsageRule, setCreatingTerrainUsageRule] = useState(false);
+    const [updatingTerrainUsageRuleIndex, setUpdatingTerrainUsageRuleIndex] =
+        useState<number | null>(null);
+    const [deletingTerrainUsageRuleIndex, setDeletingTerrainUsageRuleIndex] =
+        useState<number | null>(null);
 
     const filteredTerrains = useMemo(() => {
         const term = terrainSearch.trim().toLowerCase();
@@ -320,32 +323,31 @@ export default function AdminTerrainsPage({
         setIsSavingGlobalSettings(false);
     }
 
-    async function handleSaveTerrainUsageRules(
-        event: FormEvent<HTMLFormElement>,
+    function terrainUsageRulePayload(rule: TerrainUsageRule) {
+        return {
+            icon: rule.icon,
+            text: rule.text.trim(),
+            emphasis: rule.emphasis ?? null,
+        };
+    }
+
+    async function handleCreateTerrainUsageRule(
+        rule: TerrainUsageRule,
     ): Promise<void> {
-        event.preventDefault();
-        setIsSavingTerrainUsageRules(true);
+        setCreatingTerrainUsageRule(true);
         setTerrainUsageRulesError(undefined);
         setMessage(null);
         setErrorMessage(null);
 
         const response = await fetch('/app-settings/terrain-usage-rules', {
-            method: 'PATCH',
+            method: 'POST',
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
                 ...csrfHeaders(),
             },
-            body: JSON.stringify({
-                rules: terrainUsageRules
-                    .map((rule) => ({
-                        icon: rule.icon,
-                        text: rule.text.trim(),
-                        emphasis: rule.emphasis ?? null,
-                    }))
-                    .filter((rule) => rule.text !== ''),
-            }),
+            body: JSON.stringify(terrainUsageRulePayload(rule)),
         });
 
         if (!response.ok) {
@@ -355,7 +357,78 @@ export default function AdminTerrainsPage({
                     ?? error.message
                     ?? t('unable_save_terrain_usage_rules'),
             );
-            setIsSavingTerrainUsageRules(false);
+            setCreatingTerrainUsageRule(false);
+            throw new Error('create_failed');
+        }
+
+        const payload = (await response.json()) as {
+            data: { terrain_usage_rules: TerrainUsageRule[] };
+        };
+        setTerrainUsageRules(payload.data.terrain_usage_rules);
+        setMessage(t('terrain_usage_rules_saved'));
+        setCreatingTerrainUsageRule(false);
+    }
+
+    async function handleUpdateTerrainUsageRule(
+        index: number,
+        rule: TerrainUsageRule,
+    ): Promise<void> {
+        setUpdatingTerrainUsageRuleIndex(index);
+        setTerrainUsageRulesError(undefined);
+        setMessage(null);
+        setErrorMessage(null);
+
+        const response = await fetch(`/app-settings/terrain-usage-rules/${index}`, {
+            method: 'PATCH',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
+            },
+            body: JSON.stringify(terrainUsageRulePayload(rule)),
+        });
+
+        if (!response.ok) {
+            const error = await parseError(response);
+            setTerrainUsageRulesError(
+                Object.values(error.errors ?? {})[0]?.[0]
+                    ?? error.message
+                    ?? t('unable_save_terrain_usage_rules'),
+            );
+            setUpdatingTerrainUsageRuleIndex(null);
+            throw new Error('update_failed');
+        }
+
+        const payload = (await response.json()) as {
+            data: { terrain_usage_rules: TerrainUsageRule[] };
+        };
+        setTerrainUsageRules(payload.data.terrain_usage_rules);
+        setMessage(t('terrain_usage_rules_saved'));
+        setUpdatingTerrainUsageRuleIndex(null);
+    }
+
+    async function handleDeleteTerrainUsageRule(index: number): Promise<void> {
+        setDeletingTerrainUsageRuleIndex(index);
+        setTerrainUsageRulesError(undefined);
+        setMessage(null);
+        setErrorMessage(null);
+
+        const response = await fetch(`/app-settings/terrain-usage-rules/${index}`, {
+            method: 'DELETE',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
+            },
+        });
+
+        if (!response.ok) {
+            const error = await parseError(response);
+            setErrorMessage(
+                error.message ?? t('unable_save_terrain_usage_rules'),
+            );
+            setDeletingTerrainUsageRuleIndex(null);
             return;
         }
 
@@ -364,7 +437,7 @@ export default function AdminTerrainsPage({
         };
         setTerrainUsageRules(payload.data.terrain_usage_rules);
         setMessage(t('terrain_usage_rules_saved'));
-        setIsSavingTerrainUsageRules(false);
+        setDeletingTerrainUsageRuleIndex(null);
     }
 
     async function handleAddInactivePeriod(
@@ -520,11 +593,14 @@ export default function AdminTerrainsPage({
                 )}
                 usageRulesContent={(
                     <TerrainUsageRulesForm
-                        value={terrainUsageRules}
-                        isSaving={isSavingTerrainUsageRules}
+                        rules={terrainUsageRules}
+                        creatingRule={creatingTerrainUsageRule}
+                        updatingRuleIndex={updatingTerrainUsageRuleIndex}
+                        deletingRuleIndex={deletingTerrainUsageRuleIndex}
                         error={terrainUsageRulesError}
-                        onChange={setTerrainUsageRules}
-                        onSubmit={(event) => void handleSaveTerrainUsageRules(event)}
+                        onCreate={handleCreateTerrainUsageRule}
+                        onUpdate={handleUpdateTerrainUsageRule}
+                        onDelete={handleDeleteTerrainUsageRule}
                     />
                 )}
                 blockedDaysContent={(

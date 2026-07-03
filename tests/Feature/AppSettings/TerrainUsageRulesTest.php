@@ -11,11 +11,11 @@ function attachAdminRoleForTerrainUsageRules(User $user): void
     $user->roles()->syncWithoutDetaching([$role->id]);
 }
 
-test('admin can save terrain usage rules', function () {
+test('admin can save terrain usage rules in bulk', function () {
     $admin = User::factory()->create();
     attachAdminRoleForTerrainUsageRules($admin);
 
-    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.update'), [
+    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.replace'), [
         'rules' => [
             [
                 'icon' => 'clock',
@@ -49,6 +49,88 @@ test('admin can save terrain usage rules', function () {
     ]);
 });
 
+test('admin can create a terrain usage rule', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleForTerrainUsageRules($admin);
+
+    AppSetting::instance()->update([
+        'terrain_usage_rules' => [
+            ['icon' => 'info', 'text' => 'Postojece pravilo'],
+        ],
+    ]);
+
+    $response = $this->actingAs($admin)->postJson(route('app-settings.terrain-usage-rules.store'), [
+        'icon' => 'clock',
+        'text' => 'Novo pravilo',
+        'emphasis' => 'warning',
+    ]);
+
+    $response
+        ->assertCreated()
+        ->assertJsonPath('data.terrain_usage_rules.0.text', 'Postojece pravilo')
+        ->assertJsonPath('data.terrain_usage_rules.1.icon', 'clock')
+        ->assertJsonPath('data.terrain_usage_rules.1.emphasis', 'warning');
+
+    expect(AppSetting::instance()->terrain_usage_rules)->toHaveCount(2);
+});
+
+test('admin can update a terrain usage rule', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleForTerrainUsageRules($admin);
+
+    AppSetting::instance()->update([
+        'terrain_usage_rules' => [
+            ['icon' => 'info', 'text' => 'Staro pravilo'],
+            ['icon' => 'clock', 'text' => 'Drugo pravilo'],
+        ],
+    ]);
+
+    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.update', ['index' => 0]), [
+        'icon' => 'ban',
+        'text' => 'Azurirano pravilo',
+        'emphasis' => 'alert',
+    ]);
+
+    $response
+        ->assertSuccessful()
+        ->assertJsonPath('data.terrain_usage_rules.0.icon', 'ban')
+        ->assertJsonPath('data.terrain_usage_rules.0.text', 'Azurirano pravilo')
+        ->assertJsonPath('data.terrain_usage_rules.0.emphasis', 'alert')
+        ->assertJsonPath('data.terrain_usage_rules.1.text', 'Drugo pravilo');
+});
+
+test('admin can delete a terrain usage rule', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleForTerrainUsageRules($admin);
+
+    AppSetting::instance()->update([
+        'terrain_usage_rules' => [
+            ['icon' => 'info', 'text' => 'Prvo pravilo'],
+            ['icon' => 'clock', 'text' => 'Drugo pravilo'],
+        ],
+    ]);
+
+    $response = $this->actingAs($admin)->deleteJson(route('app-settings.terrain-usage-rules.destroy', ['index' => 0]));
+
+    $response
+        ->assertSuccessful()
+        ->assertJsonPath('data.terrain_usage_rules.0.text', 'Drugo pravilo');
+
+    expect(AppSetting::instance()->terrain_usage_rules)->toHaveCount(1);
+});
+
+test('admin cannot update missing terrain usage rule index', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleForTerrainUsageRules($admin);
+
+    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.update', ['index' => 0]), [
+        'icon' => 'info',
+        'text' => 'Ne postoji',
+    ]);
+
+    $response->assertNotFound();
+});
+
 test('admin can clear terrain usage rules', function () {
     $admin = User::factory()->create();
     attachAdminRoleForTerrainUsageRules($admin);
@@ -59,7 +141,7 @@ test('admin can clear terrain usage rules', function () {
         ],
     ]);
 
-    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.update'), [
+    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.replace'), [
         'rules' => [],
     ]);
 
@@ -73,10 +155,9 @@ test('admin can clear terrain usage rules', function () {
 test('non-admin cannot update terrain usage rules', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->patchJson(route('app-settings.terrain-usage-rules.update'), [
-        'rules' => [
-            ['icon' => 'info', 'text' => 'Neovlasteno pravilo'],
-        ],
+    $response = $this->actingAs($user)->postJson(route('app-settings.terrain-usage-rules.store'), [
+        'icon' => 'info',
+        'text' => 'Neovlasteno pravilo',
     ]);
 
     $response->assertForbidden();
@@ -125,7 +206,7 @@ test('terrain usage rules accept new terrain-specific icons', function () {
     $admin = User::factory()->create();
     attachAdminRoleForTerrainUsageRules($admin);
 
-    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.update'), [
+    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.replace'), [
         'rules' => [
             ['icon' => 'droplets', 'text' => 'Prije igre obavezno polijte teren.'],
             ['icon' => 'shovel', 'text' => 'Nakon igre poravnajte teren.'],
@@ -144,10 +225,9 @@ test('terrain usage rules reject invalid icon', function () {
     $admin = User::factory()->create();
     attachAdminRoleForTerrainUsageRules($admin);
 
-    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.update'), [
-        'rules' => [
-            ['icon' => 'invalid_icon', 'text' => 'Tekst pravila'],
-        ],
+    $response = $this->actingAs($admin)->postJson(route('app-settings.terrain-usage-rules.store'), [
+        'icon' => 'invalid_icon',
+        'text' => 'Tekst pravila',
     ]);
 
     $response->assertUnprocessable();
@@ -157,10 +237,10 @@ test('terrain usage rules reject invalid emphasis', function () {
     $admin = User::factory()->create();
     attachAdminRoleForTerrainUsageRules($admin);
 
-    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.update'), [
-        'rules' => [
-            ['icon' => 'info', 'text' => 'Tekst pravila', 'emphasis' => 'invalid_emphasis'],
-        ],
+    $response = $this->actingAs($admin)->postJson(route('app-settings.terrain-usage-rules.store'), [
+        'icon' => 'info',
+        'text' => 'Tekst pravila',
+        'emphasis' => 'invalid_emphasis',
     ]);
 
     $response->assertUnprocessable();

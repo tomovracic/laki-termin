@@ -15,18 +15,54 @@ type TerrainUsageRulesDialogProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     rules: TerrainUsageRule[];
+    required?: boolean;
+    isSubmitting?: boolean;
+    onConfirm?: () => void;
 };
 
 export function TerrainUsageRulesDialog({
     open,
     onOpenChange,
     rules,
+    required = false,
+    isSubmitting = false,
+    onConfirm,
 }: TerrainUsageRulesDialogProps) {
     const { t } = useI18n();
 
+    function handleOpenChange(nextOpen: boolean): void {
+        if (required && !nextOpen) {
+            return;
+        }
+
+        onOpenChange(nextOpen);
+    }
+
+    function handleConfirm(): void {
+        if (onConfirm !== undefined) {
+            onConfirm();
+            return;
+        }
+
+        onOpenChange(false);
+    }
+
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg">
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogContent
+                className="sm:max-w-lg"
+                showCloseButton={!required}
+                onInteractOutside={(event) => {
+                    if (required) {
+                        event.preventDefault();
+                    }
+                }}
+                onEscapeKeyDown={(event) => {
+                    if (required) {
+                        event.preventDefault();
+                    }
+                }}
+            >
                 <DialogHeader>
                     <DialogTitle>{t('terrain_usage_rules_title')}</DialogTitle>
                     <DialogDescription>
@@ -42,7 +78,11 @@ export function TerrainUsageRulesDialog({
                     ))}
                 </ul>
                 <DialogFooter>
-                    <Button type="button" onClick={() => onOpenChange(false)}>
+                    <Button
+                        type="button"
+                        onClick={handleConfirm}
+                        disabled={isSubmitting}
+                    >
                         {t('terrain_usage_rules_dismiss')}
                     </Button>
                 </DialogFooter>

@@ -34,6 +34,7 @@ class User extends Authenticatable
         'invited_at',
         'invitation_expires_at',
         'invitation_accepted_at',
+        'terrain_usage_rules_acknowledged_at',
     ];
 
     /**
@@ -60,6 +61,7 @@ class User extends Authenticatable
             'invited_at' => 'immutable_datetime',
             'invitation_expires_at' => 'immutable_datetime',
             'invitation_accepted_at' => 'immutable_datetime',
+            'terrain_usage_rules_acknowledged_at' => 'immutable_datetime',
         ];
     }
 

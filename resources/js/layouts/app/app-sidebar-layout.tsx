@@ -4,6 +4,7 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { LoginMessageDialog } from '@/components/login-message-dialog';
+import { TerrainUsageRulesAcknowledgementDialog } from '@/components/terrain-usage-rules-acknowledgement-dialog';
 import type { AppLayoutProps } from '@/types';
 
 export default function AppSidebarLayout({
@@ -18,6 +19,7 @@ export default function AppSidebarLayout({
                 {children}
             </AppContent>
             <Toaster position="top-right" richColors />
+            <TerrainUsageRulesAcknowledgementDialog />
             <LoginMessageDialog />
         </AppShell>
     );

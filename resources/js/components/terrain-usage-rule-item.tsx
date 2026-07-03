@@ -12,12 +12,14 @@ type TerrainUsageRuleItemProps = {
     rule: TerrainUsageRule;
     as?: 'li' | 'div';
     showPlaceholder?: boolean;
+    actions?: React.ReactNode;
 };
 
 export function TerrainUsageRuleItem({
     rule,
     as: Component = 'li',
     showPlaceholder = false,
+    actions,
 }: TerrainUsageRuleItemProps) {
     const { t } = useI18n();
     const trimmedText = rule.text.trim();
@@ -48,13 +50,16 @@ export function TerrainUsageRuleItem({
             />
             <p
                 className={cn(
-                    'text-sm leading-relaxed',
+                    'min-w-0 flex-1 text-sm leading-relaxed',
                     rule.emphasis != null && 'font-medium',
                     showPlaceholder && trimmedText === '' && 'text-muted-foreground italic',
                 )}
             >
                 {displayText}
             </p>
+            {actions !== undefined && (
+                <div className="flex shrink-0 items-start gap-0.5">{actions}</div>
+            )}
         </Component>
     );
 }
