@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { CalendarDays, LayoutGrid, Map, Users } from 'lucide-react';
+import { CalendarDays, LayoutGrid, Map, Trophy, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { NavMain } from '@/components/nav-main';
@@ -33,6 +33,11 @@ export function AppSidebar() {
             href: '/dashboard/reservations',
             icon: CalendarDays,
         },
+        {
+            title: t('leagues'),
+            href: '/dashboard/leagues',
+            icon: Trophy,
+        },
     ];
 
     if (auth.isAdmin) {
@@ -46,6 +51,11 @@ export function AppSidebar() {
                 title: t('terrains_overview'),
                 href: '/admin/terrains',
                 icon: Map,
+            },
+            {
+                title: t('leagues_admin_overview'),
+                href: '/admin/leagues',
+                icon: Trophy,
             },
         );
     }

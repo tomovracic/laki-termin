@@ -3,10 +3,12 @@
 namespace App\Providers;
 
 use App\Listeners\FlashLoginMessageOnAuthentication;
+use App\Models\League;
 use App\Models\Reservation;
 use App\Models\Terrain;
 use App\Models\TerrainInactivePeriod;
 use App\Models\User;
+use App\Policies\LeaguePolicy;
 use App\Policies\ReservationPolicy;
 use App\Policies\TerrainInactivePeriodPolicy;
 use App\Policies\TerrainPolicy;
@@ -48,6 +50,7 @@ class AppServiceProvider extends ServiceProvider
 
     protected function registerPolicies(): void
     {
+        Gate::policy(League::class, LeaguePolicy::class);
         Gate::policy(Terrain::class, TerrainPolicy::class);
         Gate::policy(TerrainInactivePeriod::class, TerrainInactivePeriodPolicy::class);
         Gate::policy(Reservation::class, ReservationPolicy::class);

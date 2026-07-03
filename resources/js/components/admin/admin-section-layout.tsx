@@ -26,11 +26,14 @@ export function AdminSectionLayout({
     const currentUrl = page.url;
     const isAdminUsersPage = isActivePath(currentUrl, '/admin/users');
     const isAdminTerrainsPage = isActivePath(currentUrl, '/admin/terrains');
+    const isAdminLeaguesPage = isActivePath(currentUrl, '/admin/leagues') || currentUrl.startsWith('/admin/leagues/');
     const pageTitle = isAdminUsersPage
         ? t('users_overview')
         : isAdminTerrainsPage
           ? t('terrains_overview')
-          : title;
+          : isAdminLeaguesPage
+            ? t('leagues_admin_overview')
+            : title;
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: t('admin'),

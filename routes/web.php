@@ -1,10 +1,14 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminLeagueOverviewController;
+use App\Http\Controllers\Admin\AdminLeagueShowController;
 use App\Http\Controllers\Admin\AdminTerrainOverviewController;
-use App\Http\Controllers\Admin\AdminUserReservationsController;
 use App\Http\Controllers\Admin\AdminUserOverviewController;
+use App\Http\Controllers\Admin\AdminUserReservationsController;
 use App\Http\Controllers\Auth\InvitationRegistrationController;
 use App\Http\Controllers\Dashboard\UserDashboardController;
+use App\Http\Controllers\Dashboard\UserLeagueIndexController;
+use App\Http\Controllers\Dashboard\UserLeagueShowController;
 use App\Http\Controllers\Dashboard\UserReservationsController;
 use App\Http\Controllers\Dashboard\UserTerrainReservationPageController;
 use App\Http\Controllers\Settings\LocaleController;
@@ -21,12 +25,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard/availability', [UserDashboardController::class, 'availability'])->name('dashboard.availability');
     Route::get('dashboard/terrains/{terrain}', UserTerrainReservationPageController::class)->name('dashboard.terrains.show');
     Route::get('dashboard/terrains/{terrain}/slots', [UserTerrainReservationPageController::class, 'slots'])->name('dashboard.terrains.slots');
+    Route::get('dashboard/leagues', UserLeagueIndexController::class)->name('dashboard.leagues');
+    Route::get('dashboard/leagues/{league}', UserLeagueShowController::class)->name('dashboard.leagues.show');
     Route::redirect('admin', 'admin/users')->name('admin.index');
     Route::get('admin/users', AdminUserOverviewController::class)->name('admin.users');
     Route::get('admin/users/{user}/reservations', AdminUserReservationsController::class)->name('admin.users.reservations');
     Route::get('admin/terrains', AdminTerrainOverviewController::class)->name('admin.terrains');
+    Route::get('admin/leagues', AdminLeagueOverviewController::class)->name('admin.leagues');
+    Route::get('admin/leagues/{league}', AdminLeagueShowController::class)->name('admin.leagues.show');
     Route::redirect('admin/management', 'admin/users')->name('admin.management');
 });
 
 require __DIR__.'/settings.php';
 require __DIR__.'/reservations.php';
+require __DIR__.'/leagues.php';
