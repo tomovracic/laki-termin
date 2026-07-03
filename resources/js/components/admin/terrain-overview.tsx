@@ -23,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import { useI18n } from '@/lib/i18n';
 
 type TerrainOverviewProps = {
-    activeTab: 'overview' | 'settings' | 'blocked_days';
+    activeTab: 'overview' | 'settings' | 'usage_rules' | 'blocked_days';
     terrains: ManagedTerrain[];
     descriptionDrafts: Record<number, string>;
     savingTerrainId: number | null;
@@ -32,6 +32,7 @@ type TerrainOverviewProps = {
     terrainErrors: Record<string, string[]>;
     isCreatingTerrain: boolean;
     settingsContent?: ReactNode;
+    usageRulesContent?: ReactNode;
     blockedDaysContent?: ReactNode;
     onDescriptionChange: (terrainId: number, value: string) => void;
     onSaveDescription: (terrain: ManagedTerrain) => void;
@@ -51,6 +52,7 @@ export function TerrainOverview({
     terrainErrors,
     isCreatingTerrain,
     settingsContent,
+    usageRulesContent,
     blockedDaysContent,
     onDescriptionChange,
     onSaveDescription,
@@ -67,15 +69,19 @@ export function TerrainOverview({
     const titleKey =
         activeTab === 'settings'
             ? 'global_reservation_settings'
-            : activeTab === 'blocked_days'
-              ? 'blocked_days'
-              : 'terrain_management';
+            : activeTab === 'usage_rules'
+              ? 'terrain_usage_rules_settings_title'
+              : activeTab === 'blocked_days'
+                ? 'blocked_days'
+                : 'terrain_management';
     const descriptionKey =
         activeTab === 'settings'
             ? 'global_reservation_settings_description'
-            : activeTab === 'blocked_days'
-              ? 'blocked_days_description'
-              : 'terrain_management_description';
+            : activeTab === 'usage_rules'
+              ? 'terrain_usage_rules_settings_description'
+              : activeTab === 'blocked_days'
+                ? 'blocked_days_description'
+                : 'terrain_management_description';
 
     useEffect(() => {
         if (
@@ -219,6 +225,14 @@ export function TerrainOverview({
                             {settingsContent ?? (
                                 <p className="text-sm text-muted-foreground">
                                     {t('no_settings_available')}
+                                </p>
+                            )}
+                        </div>
+                    ) : activeTab === 'usage_rules' ? (
+                        <div>
+                            {usageRulesContent ?? (
+                                <p className="text-sm text-muted-foreground">
+                                    {t('terrain_usage_rules_empty')}
                                 </p>
                             )}
                         </div>

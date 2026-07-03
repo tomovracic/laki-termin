@@ -121,6 +121,25 @@ test('admin terrains page includes terrain usage rules', function () {
         );
 });
 
+test('terrain usage rules accept new terrain-specific icons', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleForTerrainUsageRules($admin);
+
+    $response = $this->actingAs($admin)->patchJson(route('app-settings.terrain-usage-rules.update'), [
+        'rules' => [
+            ['icon' => 'droplets', 'text' => 'Prije igre obavezno polijte teren.'],
+            ['icon' => 'shovel', 'text' => 'Nakon igre poravnajte teren.'],
+            ['icon' => 'wine_off', 'text' => 'Alkohol nije dozvoljen na terenu.', 'emphasis' => 'alert'],
+        ],
+    ]);
+
+    $response
+        ->assertSuccessful()
+        ->assertJsonPath('data.terrain_usage_rules.0.icon', 'droplets')
+        ->assertJsonPath('data.terrain_usage_rules.1.icon', 'shovel')
+        ->assertJsonPath('data.terrain_usage_rules.2.icon', 'wine_off');
+});
+
 test('terrain usage rules reject invalid icon', function () {
     $admin = User::factory()->create();
     attachAdminRoleForTerrainUsageRules($admin);

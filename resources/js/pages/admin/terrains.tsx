@@ -71,7 +71,9 @@ export default function AdminTerrainsPage({
     const [terrainSearch, setTerrainSearch] = useState(
         initialQueryState.terrainSearch,
     );
-    const [activeTab, setActiveTab] = useState<'overview' | 'settings' | 'blocked_days'>('overview');
+    const [activeTab, setActiveTab] = useState<
+        'overview' | 'settings' | 'usage_rules' | 'blocked_days'
+    >('overview');
     const [terrainPage, setTerrainPage] = useState(initialQueryState.terrainPage);
     const terrainsPerPage = 8;
 
@@ -456,7 +458,7 @@ export default function AdminTerrainsPage({
 
             <StatusBanner message={message} error={errorMessage} />
 
-            <div className="grid grid-cols-3 gap-2 rounded-md border border-border/70 p-1 sm:w-fit">
+            <div className="grid grid-cols-2 gap-2 rounded-md border border-border/70 p-1 sm:grid-cols-4 sm:w-fit">
                 <Button
                     type="button"
                     variant={activeTab === 'overview' ? 'default' : 'ghost'}
@@ -470,6 +472,13 @@ export default function AdminTerrainsPage({
                     onClick={() => setActiveTab('settings')}
                 >
                     {t('settings')}
+                </Button>
+                <Button
+                    type="button"
+                    variant={activeTab === 'usage_rules' ? 'default' : 'ghost'}
+                    onClick={() => setActiveTab('usage_rules')}
+                >
+                    {t('rules_short')}
                 </Button>
                 <Button
                     type="button"
@@ -501,22 +510,22 @@ export default function AdminTerrainsPage({
                 terrainErrors={terrainErrors}
                 isCreatingTerrain={isCreatingTerrain}
                 settingsContent={(
-                    <div className="space-y-6">
-                        <GlobalSettingsForm
-                            value={globalSetting}
-                            isSaving={isSavingGlobalSettings}
-                            errors={globalErrors}
-                            onChange={setGlobalSetting}
-                            onSubmit={(event) => void handleSaveGlobalSetting(event)}
-                        />
-                        <TerrainUsageRulesForm
-                            value={terrainUsageRules}
-                            isSaving={isSavingTerrainUsageRules}
-                            error={terrainUsageRulesError}
-                            onChange={setTerrainUsageRules}
-                            onSubmit={(event) => void handleSaveTerrainUsageRules(event)}
-                        />
-                    </div>
+                    <GlobalSettingsForm
+                        value={globalSetting}
+                        isSaving={isSavingGlobalSettings}
+                        errors={globalErrors}
+                        onChange={setGlobalSetting}
+                        onSubmit={(event) => void handleSaveGlobalSetting(event)}
+                    />
+                )}
+                usageRulesContent={(
+                    <TerrainUsageRulesForm
+                        value={terrainUsageRules}
+                        isSaving={isSavingTerrainUsageRules}
+                        error={terrainUsageRulesError}
+                        onChange={setTerrainUsageRules}
+                        onSubmit={(event) => void handleSaveTerrainUsageRules(event)}
+                    />
                 )}
                 blockedDaysContent={(
                     <div className="space-y-6">

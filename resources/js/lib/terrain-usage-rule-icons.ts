@@ -2,15 +2,23 @@ import {
     AlertTriangle,
     Ban,
     Calendar,
+    CalendarCheck,
     CheckCircle,
     Clock,
     Coins,
+    Droplets,
+    Footprints,
     Info,
     MapPin,
+    Shield,
+    Shirt,
+    Shovel,
     Ticket,
     Timer,
     Umbrella,
     Users,
+    VolumeX,
+    WineOff,
     Wrench,
     type LucideIcon,
 } from 'lucide-react';
@@ -28,7 +36,15 @@ export type TerrainUsageRuleIconName =
     | 'umbrella'
     | 'wrench'
     | 'timer'
-    | 'ticket';
+    | 'ticket'
+    | 'droplets'
+    | 'shovel'
+    | 'shirt'
+    | 'footprints'
+    | 'wine_off'
+    | 'volume_x'
+    | 'shield'
+    | 'calendar_check';
 
 export type TerrainUsageRuleEmphasis = 'neutral' | 'alert' | 'warning';
 
@@ -58,6 +74,14 @@ export const TERRAIN_USAGE_RULE_ICONS: TerrainUsageRuleIconName[] = [
     'wrench',
     'timer',
     'ticket',
+    'droplets',
+    'shovel',
+    'shirt',
+    'footprints',
+    'wine_off',
+    'volume_x',
+    'shield',
+    'calendar_check',
 ];
 
 const ICON_MAP: Record<TerrainUsageRuleIconName, LucideIcon> = {
@@ -74,6 +98,14 @@ const ICON_MAP: Record<TerrainUsageRuleIconName, LucideIcon> = {
     wrench: Wrench,
     timer: Timer,
     ticket: Ticket,
+    droplets: Droplets,
+    shovel: Shovel,
+    shirt: Shirt,
+    footprints: Footprints,
+    wine_off: WineOff,
+    volume_x: VolumeX,
+    shield: Shield,
+    calendar_check: CalendarCheck,
 };
 
 export function terrainUsageRuleIconComponent(
