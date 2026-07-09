@@ -25,6 +25,11 @@ type InactivePeriodsFormProps = {
 
 const REASON_OPTIONS = ['rain', 'maintenance', 'other'] as const;
 
+const HOUR_TIME_OPTIONS = Array.from(
+    { length: 24 },
+    (_, hour) => `${String(hour).padStart(2, '0')}:00`,
+);
+
 function reasonLabel(
     reason: (typeof REASON_OPTIONS)[number],
     t: (key: string) => string,
@@ -40,6 +45,10 @@ function reasonLabel(
     return t('inactive_reason_other');
 }
 
+function getValidPeriodTime(value: string, fallback: string): string {
+    return HOUR_TIME_OPTIONS.includes(value) ? value : fallback;
+}
+
 export function InactivePeriodsForm({
     value,
     terrains,
@@ -50,12 +59,41 @@ export function InactivePeriodsForm({
 }: InactivePeriodsFormProps) {
     const { t } = useI18n();
     const firstError = Object.values(errors)[0]?.[0];
+    const isTimeRange = value.block_type === 'time_range';
 
     return (
         <form className="space-y-4 rounded-xl border p-4" onSubmit={onSubmit}>
+            <div className="grid gap-2">
+                <Label>{t('blocked_period_type')}</Label>
+                <Select
+                    value={value.block_type}
+                    onValueChange={(selected) => {
+                        const blockType = selected as InactivePeriodFormValue['block_type'];
+                        onChange({
+                            ...value,
+                            block_type: blockType,
+                            to_date:
+                                blockType === 'time_range'
+                                    ? value.from_date
+                                    : value.to_date,
+                        });
+                    }}
+                >
+                    <SelectTrigger>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="full_day">{t('blocked_full_day')}</SelectItem>
+                        <SelectItem value="time_range">{t('blocked_time_range')}</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">
-                    <Label htmlFor="blocked-from-date">{t('blocked_from_date')}</Label>
+                    <Label htmlFor="blocked-from-date">
+                        {isTimeRange ? t('blocked_date') : t('blocked_from_date')}
+                    </Label>
                     <Input
                         id="blocked-from-date"
                         type="date"
@@ -66,10 +104,11 @@ export function InactivePeriodsForm({
                             onChange({
                                 ...value,
                                 from_date: fromDate,
-                                to_date:
-                                    value.to_date === '' || value.to_date < fromDate
-                                        ? fromDate
-                                        : value.to_date,
+                                to_date: isTimeRange
+                                    ? fromDate
+                                    : value.to_date === '' || value.to_date < fromDate
+                                      ? fromDate
+                                      : value.to_date,
                             });
                         }}
                     />
@@ -78,26 +117,86 @@ export function InactivePeriodsForm({
                     )}
                 </div>
 
-                <div className="grid gap-2">
-                    <Label htmlFor="blocked-to-date">{t('blocked_to_date')}</Label>
-                    <Input
-                        id="blocked-to-date"
-                        type="date"
-                        required
-                        min={value.from_date}
-                        value={value.to_date}
-                        onChange={(event) =>
-                            onChange({
-                                ...value,
-                                to_date: event.target.value,
-                            })
-                        }
-                    />
-                    {errors.to_date?.[0] !== undefined && (
-                        <p className="text-sm text-red-500">{errors.to_date[0]}</p>
-                    )}
-                </div>
+                {!isTimeRange && (
+                    <div className="grid gap-2">
+                        <Label htmlFor="blocked-to-date">{t('blocked_to_date')}</Label>
+                        <Input
+                            id="blocked-to-date"
+                            type="date"
+                            required
+                            min={value.from_date}
+                            value={value.to_date}
+                            onChange={(event) =>
+                                onChange({
+                                    ...value,
+                                    to_date: event.target.value,
+                                })
+                            }
+                        />
+                        {errors.to_date?.[0] !== undefined && (
+                            <p className="text-sm text-red-500">{errors.to_date[0]}</p>
+                        )}
+                    </div>
+                )}
             </div>
+
+            {isTimeRange && (
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-2">
+                        <Label>{t('from')}</Label>
+                        <Select
+                            value={getValidPeriodTime(value.from_time, '20:00')}
+                            onValueChange={(selected) =>
+                                onChange({
+                                    ...value,
+                                    from_time: selected,
+                                })
+                            }
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {HOUR_TIME_OPTIONS.map((time) => (
+                                    <SelectItem key={time} value={time}>
+                                        {time}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.from_time?.[0] !== undefined && (
+                            <p className="text-sm text-red-500">{errors.from_time[0]}</p>
+                        )}
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label>{t('to')}</Label>
+                        <Select
+                            value={getValidPeriodTime(value.to_time, '23:00')}
+                            onValueChange={(selected) =>
+                                onChange({
+                                    ...value,
+                                    to_time: selected,
+                                })
+                            }
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {HOUR_TIME_OPTIONS.map((time) => (
+                                    <SelectItem key={time} value={time}>
+                                        {time}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.to_time?.[0] !== undefined && (
+                            <p className="text-sm text-red-500">{errors.to_time[0]}</p>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">

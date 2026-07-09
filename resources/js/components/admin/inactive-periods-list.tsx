@@ -55,6 +55,24 @@ function formatDateRange(
     return `${from} – ${to}`;
 }
 
+function formatPeriodLabel(
+    period: InactivePeriod,
+    locale: string,
+    t: (key: string) => string,
+): string {
+    const dateLabel = formatDateRange(period.from_date, period.to_date, locale);
+
+    if (period.block_type === 'time_range' && period.from_time && period.to_time) {
+        return `${dateLabel}, ${period.from_time} – ${period.to_time}`;
+    }
+
+    if (period.from_date !== period.to_date) {
+        return dateLabel;
+    }
+
+    return `${dateLabel} (${t('blocked_full_day')})`;
+}
+
 function isUpcoming(period: InactivePeriod): boolean {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -92,17 +110,18 @@ export function InactivePeriodsList({
                         <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium">
-                                    {formatDateRange(
-                                        period.from_date,
-                                        period.to_date,
-                                        locale,
-                                    )}
+                                    {formatPeriodLabel(period, locale, t)}
                                 </p>
                                 <Badge variant={isUpcoming(period) ? 'default' : 'secondary'}>
                                     {isUpcoming(period)
                                         ? t('blocked_day_upcoming')
                                         : t('blocked_day_past')}
                                 </Badge>
+                                {period.block_type === 'time_range' && (
+                                    <Badge variant="outline">
+                                        {t('blocked_time_range')}
+                                    </Badge>
+                                )}
                             </div>
                             <p className="text-sm text-muted-foreground">
                                 {period.terrain_name ?? t('all_terrains')}

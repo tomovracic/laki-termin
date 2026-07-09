@@ -32,19 +32,27 @@ export type GlobalSetting = {
 
 export type InactivePeriodReason = 'rain' | 'maintenance' | 'other';
 
+export type InactivePeriodBlockType = 'full_day' | 'time_range';
+
 export type InactivePeriod = {
     id: number;
     terrain_id: number | null;
     terrain_name: string | null;
     from_date: string;
     to_date: string;
+    block_type: InactivePeriodBlockType;
+    from_time: string | null;
+    to_time: string | null;
     reason: InactivePeriodReason;
     note: string | null;
 };
 
 export type InactivePeriodFormValue = {
+    block_type: InactivePeriodBlockType;
     from_date: string;
     to_date: string;
+    from_time: string;
+    to_time: string;
     terrain_id: number | null;
     reason: InactivePeriodReason;
     note: string;

@@ -52,7 +52,7 @@ class BuildDashboardDataAction
             },
         ]);
 
-        $terrains->each(function (Terrain $terrain) use ($inactivePeriods): void {
+        $terrains->each(function (Terrain $terrain) use ($inactivePeriods, $selectedDate): void {
             $terrainInactivePeriods = $this->inactivePeriodsForTerrain($inactivePeriods, $terrain->id);
             $availableSlots = $terrain->reservationSlots->filter(
                 fn (ReservationSlot $slot): bool => ! $this->slotOverlapsInactivePeriods($slot, $terrainInactivePeriods),
@@ -61,7 +61,9 @@ class BuildDashboardDataAction
             $terrain->setRelation('reservationSlots', $availableSlots->values());
             $terrain->setAttribute('reservation_slots_count', $availableSlots->count());
 
-            $blockedPeriod = $terrainInactivePeriods->first();
+            $blockedPeriod = $terrainInactivePeriods->first(
+                fn (TerrainInactivePeriod $period): bool => $this->periodCoversFullDay($period, $selectedDate),
+            );
 
             if ($blockedPeriod !== null) {
                 $terrain->setAttribute('blocked_for_day', [
@@ -97,6 +99,16 @@ class BuildDashboardDataAction
             fn (TerrainInactivePeriod $period): bool => $period->terrain_id === null
                 || $period->terrain_id === $terrainId,
         )->values();
+    }
+
+    protected function periodCoversFullDay(
+        TerrainInactivePeriod $period,
+        CarbonImmutable $selectedDate,
+    ): bool {
+        $dayStartsAt = $selectedDate->startOfDay()->toDateTimeString();
+        $dayEndsAt = $selectedDate->endOfDay()->toDateTimeString();
+
+        return $period->from_at <= $dayStartsAt && $period->to_at >= $dayEndsAt;
     }
 
     /**

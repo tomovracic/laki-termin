@@ -460,3 +460,77 @@ test('dashboard hides free slots and returns blocked day info when day is inacti
         CarbonImmutable::setTestNow();
     }
 });
+
+test('dashboard shows available slots outside time-range block and no blocked day banner', function () {
+    CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 7, 3, 10, 0, 0, 'Europe/Zagreb'));
+
+    try {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        TerrainSetting::query()->create([
+            'terrain_id' => null,
+            'is_global' => true,
+            'max_advance_days' => 30,
+            'availability_periods' => [
+                [
+                    'from' => '08:00',
+                    'to' => '22:00',
+                    'slot_duration_minutes' => 60,
+                ],
+            ],
+        ]);
+
+        $terrain = Terrain::query()->create([
+            'name' => 'Court Partial',
+            'code' => 'court-partial',
+            'is_active' => true,
+        ]);
+
+        ReservationSlot::query()->create([
+            'terrain_id' => $terrain->id,
+            'starts_at' => '2026-07-05 10:00:00',
+            'ends_at' => '2026-07-05 11:00:00',
+            'status' => ReservationSlotStatus::Available,
+        ]);
+        ReservationSlot::query()->create([
+            'terrain_id' => $terrain->id,
+            'starts_at' => '2026-07-05 20:00:00',
+            'ends_at' => '2026-07-05 21:00:00',
+            'status' => ReservationSlotStatus::Available,
+        ]);
+
+        TerrainInactivePeriod::query()->create([
+            'terrain_id' => $terrain->id,
+            'created_by' => $user->id,
+            'from_at' => '2026-07-05 20:00:00',
+            'to_at' => '2026-07-05 23:00:00',
+            'reason' => InactivePeriodReason::Other->value,
+            'note' => 'Evening maintenance',
+        ]);
+
+        $this->getJson(route('dashboard.availability', ['date' => '2026-07-05']))
+            ->assertOk()
+            ->assertJsonPath('data.terrains.0.name', 'Court Partial')
+            ->assertJsonMissingPath('data.terrains.0.blocked_for_day');
+
+        $terrainPayload = $this->getJson(route('dashboard.availability', ['date' => '2026-07-05']))
+            ->json('data.terrains.0');
+
+        expect($terrainPayload['available_slots_count'])->toBeGreaterThan(0);
+        expect($terrainPayload['slots'])->toBeArray();
+
+        $morningSlot = collect($terrainPayload['slots'])->first(
+            fn (array $slot): bool => str_contains($slot['starts_at'], '10:00:00'),
+        );
+        $eveningSlot = collect($terrainPayload['slots'])->first(
+            fn (array $slot): bool => str_contains($slot['starts_at'], '20:00:00'),
+        );
+
+        expect($morningSlot)->not->toBeNull();
+        expect($morningSlot['status'])->toBe(ReservationSlotStatus::Available->value);
+        expect($eveningSlot)->toBeNull();
+    } finally {
+        CarbonImmutable::setTestNow();
+    }
+});

@@ -108,8 +108,11 @@ export default function AdminTerrainsPage({
         initialInactivePeriods,
     );
     const [inactivePeriodForm, setInactivePeriodForm] = useState<InactivePeriodFormValue>(() => ({
+        block_type: 'full_day',
         from_date: todayIsoDate(),
         to_date: todayIsoDate(),
+        from_time: '20:00',
+        to_time: '23:00',
         terrain_id: null,
         reason: 'rain',
         note: '',
@@ -458,8 +461,20 @@ export default function AdminTerrainsPage({
                 ...csrfHeaders(),
             },
             body: JSON.stringify({
+                block_type: inactivePeriodForm.block_type,
                 from_date: inactivePeriodForm.from_date,
-                to_date: inactivePeriodForm.to_date,
+                to_date:
+                    inactivePeriodForm.block_type === 'time_range'
+                        ? inactivePeriodForm.from_date
+                        : inactivePeriodForm.to_date,
+                from_time:
+                    inactivePeriodForm.block_type === 'time_range'
+                        ? inactivePeriodForm.from_time
+                        : undefined,
+                to_time:
+                    inactivePeriodForm.block_type === 'time_range'
+                        ? inactivePeriodForm.to_time
+                        : undefined,
                 terrain_id: inactivePeriodForm.terrain_id,
                 reason: inactivePeriodForm.reason,
                 note: inactivePeriodForm.note.trim() === ''
@@ -483,8 +498,11 @@ export default function AdminTerrainsPage({
             ),
         );
         setInactivePeriodForm({
+            block_type: 'full_day',
             from_date: todayIsoDate(),
             to_date: todayIsoDate(),
+            from_time: '20:00',
+            to_time: '23:00',
             terrain_id: null,
             reason: 'rain',
             note: '',

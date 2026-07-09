@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\TerrainInactivePeriods;
 
+use App\Enums\InactivePeriodBlockType;
 use App\Enums\InactivePeriodReason;
 use App\Models\TerrainInactivePeriod;
 use Carbon\CarbonImmutable;
@@ -17,6 +18,8 @@ class StoreTerrainInactivePeriodRequest extends FormRequest
 
     private const MAX_DATE_RANGE_DAYS = 90;
 
+    private const TIME_FORMAT = 'H:i';
+
     public function authorize(): bool
     {
         return $this->user()?->can('create', TerrainInactivePeriod::class) ?? false;
@@ -24,12 +27,46 @@ class StoreTerrainInactivePeriodRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        if (! $this->filled('block_type')) {
+            $this->merge(['block_type' => InactivePeriodBlockType::FullDay->value]);
+        }
+
         $fromDate = $this->input('from_date');
-        $toDate = $this->input('to_date', $fromDate);
+        $blockType = $this->input('block_type', InactivePeriodBlockType::FullDay->value);
 
         if (! is_string($fromDate) || $fromDate === '') {
             return;
         }
+
+        if ($blockType === InactivePeriodBlockType::TimeRange->value) {
+            $fromTime = $this->input('from_time');
+            $toTime = $this->input('to_time');
+
+            if (! is_string($fromTime) || $fromTime === '' || ! is_string($toTime) || $toTime === '') {
+                return;
+            }
+
+            $fromAt = CarbonImmutable::createFromFormat(
+                'Y-m-d '.self::TIME_FORMAT,
+                "{$fromDate} {$fromTime}",
+                self::BUSINESS_TIMEZONE,
+            );
+            $toAt = CarbonImmutable::createFromFormat(
+                'Y-m-d '.self::TIME_FORMAT,
+                "{$fromDate} {$toTime}",
+                self::BUSINESS_TIMEZONE,
+            );
+
+            $this->merge([
+                'to_date' => $fromDate,
+                'from_at' => $fromAt->toDateTimeString(),
+                'to_at' => $toAt->toDateTimeString(),
+            ]);
+
+            return;
+        }
+
+        $toDate = $this->input('to_date', $fromDate);
 
         if (! is_string($toDate) || $toDate === '') {
             $toDate = $fromDate;
@@ -54,8 +91,19 @@ class StoreTerrainInactivePeriodRequest extends FormRequest
     {
         return [
             'terrain_id' => ['nullable', 'integer', 'exists:terrains,id'],
+            'block_type' => ['required', Rule::enum(InactivePeriodBlockType::class)],
             'from_date' => ['required', 'date_format:Y-m-d'],
             'to_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:from_date'],
+            'from_time' => [
+                Rule::requiredIf(fn (): bool => $this->input('block_type') === InactivePeriodBlockType::TimeRange->value),
+                'nullable',
+                'date_format:'.self::TIME_FORMAT,
+            ],
+            'to_time' => [
+                Rule::requiredIf(fn (): bool => $this->input('block_type') === InactivePeriodBlockType::TimeRange->value),
+                'nullable',
+                'date_format:'.self::TIME_FORMAT,
+            ],
             'from_at' => ['required', 'date'],
             'to_at' => ['required', 'date', 'after:from_at'],
             'reason' => ['required', Rule::enum(InactivePeriodReason::class)],
@@ -66,10 +114,32 @@ class StoreTerrainInactivePeriodRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $blockType = $this->input('block_type');
             $fromDate = $this->input('from_date');
             $toDate = $this->input('to_date');
 
             if (! is_string($fromDate) || ! is_string($toDate)) {
+                return;
+            }
+
+            if ($blockType === InactivePeriodBlockType::TimeRange->value) {
+                if ($fromDate !== $toDate) {
+                    $validator->errors()->add(
+                        'to_date',
+                        'Time range blocks must use a single date.',
+                    );
+                }
+
+                $fromTime = $this->input('from_time');
+                $toTime = $this->input('to_time');
+
+                if (is_string($fromTime) && is_string($toTime) && $fromTime >= $toTime) {
+                    $validator->errors()->add(
+                        'to_time',
+                        'The end time must be after the start time.',
+                    );
+                }
+
                 return;
             }
 
@@ -96,7 +166,7 @@ class StoreTerrainInactivePeriodRequest extends FormRequest
             return $validated;
         }
 
-        unset($validated['from_date'], $validated['to_date']);
+        unset($validated['from_date'], $validated['to_date'], $validated['block_type'], $validated['from_time'], $validated['to_time']);
 
         return $validated;
     }
