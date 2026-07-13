@@ -241,7 +241,7 @@ export default function AdminLeagueShowPage({
             />
 
             <Dialog open={selectedMatch !== null} onOpenChange={(open) => !open && setSelectedMatch(null)}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>{t('league_enter_result')}</DialogTitle>
                     </DialogHeader>

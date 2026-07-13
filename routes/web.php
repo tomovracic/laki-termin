@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\InvitationRegistrationController;
 use App\Http\Controllers\Dashboard\UserDashboardController;
 use App\Http\Controllers\Dashboard\UserLeagueIndexController;
 use App\Http\Controllers\Dashboard\UserLeagueShowController;
+use App\Http\Controllers\Dashboard\UserMatchHistoryController;
 use App\Http\Controllers\Dashboard\UserReservationsController;
 use App\Http\Controllers\Dashboard\UserTerrainReservationPageController;
 use App\Http\Controllers\Settings\LocaleController;
@@ -31,6 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard/terrains/{terrain}/slots', [UserTerrainReservationPageController::class, 'slots'])->name('dashboard.terrains.slots');
     Route::get('dashboard/leagues', UserLeagueIndexController::class)->name('dashboard.leagues');
     Route::get('dashboard/leagues/{league}', UserLeagueShowController::class)->name('dashboard.leagues.show');
+    Route::get('dashboard/match-history', UserMatchHistoryController::class)->name('dashboard.match-history');
     Route::redirect('admin', 'admin/users')->name('admin.index');
     Route::get('admin/users', AdminUserOverviewController::class)->name('admin.users');
     Route::get('admin/users/{user}/reservations', AdminUserReservationsController::class)->name('admin.users.reservations');
@@ -47,3 +49,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
 require __DIR__.'/settings.php';
 require __DIR__.'/reservations.php';
 require __DIR__.'/leagues.php';
+require __DIR__.'/match-history.php';

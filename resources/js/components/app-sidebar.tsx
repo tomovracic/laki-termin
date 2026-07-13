@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { CalendarDays, ClipboardList, LayoutGrid, Map, Trophy, Users } from 'lucide-react';
+import { CalendarDays, ClipboardList, History, LayoutGrid, Map, Trophy, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { NavMain } from '@/components/nav-main';
@@ -37,6 +37,11 @@ export function AppSidebar() {
             title: t('leagues'),
             href: '/dashboard/leagues',
             icon: Trophy,
+        },
+        {
+            title: t('match_history'),
+            href: '/dashboard/match-history',
+            icon: History,
         },
     ];
 

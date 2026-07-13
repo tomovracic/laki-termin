@@ -107,7 +107,6 @@ export function LeagueMatchesSection({
                         matches={statusFilteredMatches}
                         currentUserId={currentUserId}
                         filterUserId={currentUserId}
-                        perspectiveUserId={currentUserId}
                         onEnterResult={onEnterResult}
                     />
                 ) : (
@@ -115,7 +114,6 @@ export function LeagueMatchesSection({
                         matches={statusFilteredMatches}
                         currentUserId={currentUserId}
                         filterUserId={selectedFilterUserId}
-                        perspectiveUserId={selectedFilterUserId ?? currentUserId}
                         onEnterResult={onEnterResult}
                     />
                 )}
