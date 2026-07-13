@@ -105,7 +105,6 @@ export function LeagueMatchesList({
                                     playerTwo={toDisplayPlayer(match.player_two)}
                                     sets={setScores}
                                     highlightUserId={currentUserId}
-                                    winnerLabel={t('match_history_winner')}
                                 />
                                 {onEnterResult && (
                                     <div className="flex shrink-0 gap-2 self-end sm:self-start">

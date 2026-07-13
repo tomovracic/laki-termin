@@ -1,5 +1,4 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
 
@@ -73,12 +72,10 @@ function MatchPlayerRow({
     player,
     highlighted = false,
     isWinner = false,
-    winnerLabel,
 }: {
     player: MatchDisplayPlayer;
     highlighted?: boolean;
     isWinner?: boolean;
-    winnerLabel?: string;
 }) {
     const getInitials = useInitials();
 
@@ -99,11 +96,6 @@ function MatchPlayerRow({
             >
                 {player.name}
             </span>
-            {isWinner && winnerLabel !== undefined && (
-                <Badge variant="secondary" className="shrink-0 text-[10px] uppercase tracking-wide">
-                    {winnerLabel}
-                </Badge>
-            )}
         </div>
     );
 }
@@ -113,7 +105,6 @@ type MatchScoreboardProps = {
     playerTwo: MatchDisplayPlayer;
     sets: SetScore[];
     highlightUserId?: number | null;
-    winnerLabel: string;
 };
 
 export function MatchScoreboard({
@@ -121,7 +112,6 @@ export function MatchScoreboard({
     playerTwo,
     sets,
     highlightUserId,
-    winnerLabel,
 }: MatchScoreboardProps) {
     const winner = getMatchWinner(sets);
     const playerOneIsWinner = winner === 'player_one';
@@ -134,13 +124,11 @@ export function MatchScoreboard({
                     player={playerOne}
                     highlighted={highlightUserId === playerOne.userId}
                     isWinner={playerOneIsWinner}
-                    winnerLabel={winnerLabel}
                 />
                 <MatchPlayerRow
                     player={playerTwo}
                     highlighted={highlightUserId === playerTwo.userId}
                     isWinner={playerTwoIsWinner}
-                    winnerLabel={winnerLabel}
                 />
             </div>
 
