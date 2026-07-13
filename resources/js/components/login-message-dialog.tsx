@@ -1,4 +1,4 @@
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +18,7 @@ export function LoginMessageDialog() {
     const mustAcknowledge = sharedNav?.must_acknowledge_terrain_usage_rules ?? false;
     const { t } = useI18n();
     const [open, setOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (
@@ -33,6 +34,25 @@ export function LoginMessageDialog() {
         return null;
     }
 
+    function handleDismiss(): void {
+        setIsSubmitting(true);
+
+        router.post(
+            '/login-message/acknowledge',
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setOpen(false);
+                    setIsSubmitting(false);
+                },
+                onError: () => {
+                    setIsSubmitting(false);
+                },
+            },
+        );
+    }
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogContent className="sm:max-w-lg">
@@ -42,7 +62,7 @@ export function LoginMessageDialog() {
                 </DialogHeader>
                 <p className="whitespace-pre-wrap text-sm">{loginMessage}</p>
                 <DialogFooter>
-                    <Button type="button" onClick={() => setOpen(false)}>
+                    <Button type="button" disabled={isSubmitting} onClick={handleDismiss}>
                         {t('login_message_dismiss')}
                     </Button>
                 </DialogFooter>

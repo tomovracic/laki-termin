@@ -7,6 +7,8 @@ namespace App\Services;
 use App\Enums\TerrainUsageRuleEmphasis;
 use App\Enums\TerrainUsageRuleIcon;
 use App\Models\AppSetting;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Date;
 
 class AppSettingService
 {
@@ -160,8 +162,33 @@ class AppSettingService
 
     public function getLoginMessage(): ?string
     {
-        $message = AppSetting::instance()->login_message;
+        return $this->normalizeLoginMessage(AppSetting::instance()->login_message);
+    }
 
+    public function getLoginMessageUpdatedAt(): ?CarbonInterface
+    {
+        return AppSetting::instance()->login_message_updated_at;
+    }
+
+    public function updateLoginMessage(?string $message): AppSetting
+    {
+        $setting = AppSetting::instance();
+        $currentMessage = $this->normalizeLoginMessage($setting->login_message);
+        $newMessage = $this->normalizeLoginMessage($message);
+
+        $setting->login_message = $newMessage;
+
+        if ($currentMessage !== $newMessage) {
+            $setting->login_message_updated_at = $newMessage === null ? null : Date::now();
+        }
+
+        $setting->save();
+
+        return $setting;
+    }
+
+    private function normalizeLoginMessage(mixed $message): ?string
+    {
         if (! is_string($message)) {
             return null;
         }
@@ -169,21 +196,5 @@ class AppSettingService
         $trimmed = trim($message);
 
         return $trimmed === '' ? null : $trimmed;
-    }
-
-    public function updateLoginMessage(?string $message): AppSetting
-    {
-        $setting = AppSetting::instance();
-
-        if ($message === null) {
-            $setting->login_message = null;
-        } else {
-            $trimmed = trim($message);
-            $setting->login_message = $trimmed === '' ? null : $trimmed;
-        }
-
-        $setting->save();
-
-        return $setting;
     }
 }

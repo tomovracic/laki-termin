@@ -68,7 +68,7 @@ class InvitationRegistrationController extends Controller
 
         Auth::login($registeredUser);
         $request->session()->regenerate();
-        $flashLoginMessageAction->execute();
+        $flashLoginMessageAction->execute($registeredUser);
 
         return to_route('dashboard');
     }

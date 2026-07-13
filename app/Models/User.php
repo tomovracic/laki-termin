@@ -35,6 +35,7 @@ class User extends Authenticatable
         'invitation_expires_at',
         'invitation_accepted_at',
         'terrain_usage_rules_acknowledged_at',
+        'login_message_acknowledged_at',
     ];
 
     /**
@@ -62,6 +63,7 @@ class User extends Authenticatable
             'invitation_expires_at' => 'immutable_datetime',
             'invitation_accepted_at' => 'immutable_datetime',
             'terrain_usage_rules_acknowledged_at' => 'immutable_datetime',
+            'login_message_acknowledged_at' => 'immutable_datetime',
         ];
     }
 
@@ -134,5 +136,18 @@ class User extends Authenticatable
 
         return hash_equals($this->invitation_token_hash, hash('sha256', $token))
             && $this->invitation_expires_at->isFuture();
+    }
+
+    public function hasAcknowledgedCurrentLoginMessage(?\Carbon\CarbonInterface $messageUpdatedAt): bool
+    {
+        if ($this->login_message_acknowledged_at === null) {
+            return false;
+        }
+
+        if ($messageUpdatedAt === null) {
+            return true;
+        }
+
+        return $this->login_message_acknowledged_at >= $messageUpdatedAt;
     }
 }

@@ -6,25 +6,23 @@ namespace App\Actions\AppSettings;
 
 use App\Models\User;
 use App\Services\AppSettingService;
+use Illuminate\Support\Facades\Date;
 
-class FlashLoginMessageAction
+class AcknowledgeLoginMessageAction
 {
     public function __construct(
         private readonly AppSettingService $appSettingService,
     ) {}
 
-    public function execute(User $user): void
+    public function execute(User $user): User
     {
-        $message = $this->appSettingService->getLoginMessage();
-
-        if ($message === null) {
-            return;
-        }
-
         if ($user->hasAcknowledgedCurrentLoginMessage($this->appSettingService->getLoginMessageUpdatedAt())) {
-            return;
+            return $user;
         }
 
-        session()->flash('login_message', $message);
+        $user->login_message_acknowledged_at = Date::now();
+        $user->save();
+
+        return $user->refresh();
     }
 }

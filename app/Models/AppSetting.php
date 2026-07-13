@@ -13,6 +13,7 @@ class AppSetting extends Model
      */
     protected $fillable = [
         'login_message',
+        'login_message_updated_at',
         'terrain_usage_rules',
     ];
 
@@ -22,6 +23,7 @@ class AppSetting extends Model
     protected function casts(): array
     {
         return [
+            'login_message_updated_at' => 'immutable_datetime',
             'terrain_usage_rules' => 'array',
         ];
     }
