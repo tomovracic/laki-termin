@@ -17,7 +17,6 @@ class BuildMatchHistoryPageDataAction
     public function execute(User $user): array
     {
         $casualMatches = PlayedMatch::query()
-            ->forUser($user->id)
             ->with(['playerOne', 'playerTwo'])
             ->get()
             ->map(fn (PlayedMatch $match): array => $this->formatCasualMatch($match, $user))
@@ -25,7 +24,6 @@ class BuildMatchHistoryPageDataAction
 
         $leagueMatches = LeagueMatch::query()
             ->played()
-            ->forUser($user->id)
             ->with(['league', 'playerOne', 'playerTwo'])
             ->get()
             ->map(fn (LeagueMatch $match): array => $this->formatLeagueMatch($match))

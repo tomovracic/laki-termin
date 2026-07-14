@@ -344,3 +344,61 @@ test('match history exposes edit and delete flags for casual matches', function 
             ->where('matches.0.can_edit', true)
             ->where('matches.0.can_delete', true));
 });
+
+test('match history includes other users casual matches', function () {
+    $viewer = User::factory()->create();
+    $playerOne = User::factory()->create();
+    $playerTwo = User::factory()->create();
+
+    $otherMatch = PlayedMatch::factory()->create([
+        'player_one_user_id' => $playerOne->id,
+        'player_two_user_id' => $playerTwo->id,
+        'entered_by' => $playerOne->id,
+    ]);
+
+    $this->actingAs($viewer)
+        ->get(route('dashboard.match-history'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('matches', 1)
+            ->where('matches.0.id', "casual-{$otherMatch->id}")
+            ->where('matches.0.can_edit', false)
+            ->where('matches.0.can_delete', false));
+});
+
+test('match history includes played league matches user is not part of', function () {
+    $admin = User::factory()->create();
+    assignLeagueAdminRole($admin);
+
+    $viewer = User::factory()->create();
+    $playerOne = User::factory()->create();
+    $playerTwo = User::factory()->create();
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Javna liga',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: [$playerOne->id, $playerTwo->id],
+    ));
+
+    /** @var LeagueMatch $match */
+    $match = $league->matches()->first();
+    $match->forceFill([
+        'set1_player_one_games' => 6,
+        'set1_player_two_games' => 4,
+        'set2_player_one_games' => 6,
+        'set2_player_two_games' => 2,
+        'status' => LeagueMatchStatus::Played->value,
+        'played_at' => Date::now(),
+        'entered_by' => $admin->id,
+    ])->save();
+
+    $this->actingAs($viewer)
+        ->get(route('dashboard.match-history'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('matches', 1)
+            ->where('matches.0.id', "league-{$match->id}")
+            ->where('matches.0.can_edit', false)
+            ->where('matches.0.can_delete', false));
+});

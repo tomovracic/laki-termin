@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StatusBanner } from '@/components/admin/status-banner';
 import { CreatePlayedMatchForm } from '@/components/match-history/create-played-match-form';
 import { EditPlayedMatchForm } from '@/components/match-history/edit-played-match-form';
-import { MatchHistoryList } from '@/components/match-history/match-history-list';
+import { MatchHistorySection } from '@/components/match-history/match-history-section';
 import type {
     CreatePlayedMatchPayload,
     MatchHistoryEntry,
@@ -11,7 +11,6 @@ import type {
 } from '@/components/match-history/types';
 import { casualMatchIdToNumericId } from '@/components/match-history/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -221,20 +220,13 @@ export default function MatchHistoryPage({ matches: initialMatches }: MatchHisto
 
                 <StatusBanner message={message} errorMessage={errorMessage} />
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{t('match_history_list_title')}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <MatchHistoryList
-                            matches={matches}
-                            currentUserId={currentUser?.id ?? null}
-                            deletingMatchId={deletingMatchId}
-                            onEdit={openEditDialog}
-                            onDelete={setDeleteTarget}
-                        />
-                    </CardContent>
-                </Card>
+                <MatchHistorySection
+                    matches={matches}
+                    currentUserId={currentUser?.id ?? null}
+                    deletingMatchId={deletingMatchId}
+                    onEdit={openEditDialog}
+                    onDelete={setDeleteTarget}
+                />
             </div>
 
             <Dialog
