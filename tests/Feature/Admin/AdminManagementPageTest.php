@@ -101,6 +101,18 @@ test('admin can view paginated reservations for selected user', function () {
         'ends_at' => now()->addDays(2)->setTime(10, 0),
         'status' => ReservationSlotStatus::Reserved,
     ]);
+    $cancelledSlot = ReservationSlot::query()->create([
+        'terrain_id' => $terrain->id,
+        'starts_at' => now()->addDays(3)->setTime(9, 0),
+        'ends_at' => now()->addDays(3)->setTime(10, 0),
+        'status' => ReservationSlotStatus::Available,
+    ]);
+    $playedSlot = ReservationSlot::query()->create([
+        'terrain_id' => $terrain->id,
+        'starts_at' => now()->subDays(2)->setTime(9, 0),
+        'ends_at' => now()->subDays(2)->setTime(10, 0),
+        'status' => ReservationSlotStatus::Reserved,
+    ]);
 
     $targetReservation = Reservation::query()->create([
         'user_id' => $targetUser->id,
@@ -109,6 +121,24 @@ test('admin can view paginated reservations for selected user', function () {
         'reserved_for_date' => $targetSlot->starts_at->toDateString(),
         'reserved_from_time' => $targetSlot->starts_at->format('H:i:s'),
         'reserved_to_time' => $targetSlot->ends_at->format('H:i:s'),
+    ]);
+    $playedReservation = Reservation::query()->create([
+        'user_id' => $targetUser->id,
+        'reservation_slot_id' => $playedSlot->id,
+        'status' => ReservationStatus::Confirmed,
+        'reserved_for_date' => $playedSlot->starts_at->toDateString(),
+        'reserved_from_time' => $playedSlot->starts_at->format('H:i:s'),
+        'reserved_to_time' => $playedSlot->ends_at->format('H:i:s'),
+        'confirmed_at' => now()->subDays(2),
+    ]);
+    Reservation::query()->create([
+        'user_id' => $targetUser->id,
+        'reservation_slot_id' => $cancelledSlot->id,
+        'status' => ReservationStatus::Cancelled,
+        'reserved_for_date' => $cancelledSlot->starts_at->toDateString(),
+        'reserved_from_time' => $cancelledSlot->starts_at->format('H:i:s'),
+        'reserved_to_time' => $cancelledSlot->ends_at->format('H:i:s'),
+        'cancelled_at' => now()->subDay(),
     ]);
     Reservation::query()->create([
         'user_id' => $otherUser->id,
@@ -119,12 +149,20 @@ test('admin can view paginated reservations for selected user', function () {
         'reserved_to_time' => $otherSlot->ends_at->format('H:i:s'),
     ]);
 
-    $this->actingAs($admin)
+    $response = $this->actingAs($admin)
         ->getJson(route('admin.users.reservations', $targetUser))
         ->assertOk()
-        ->assertJsonPath('data.0.id', $targetReservation->id)
-        ->assertJsonPath('data.0.user_id', $targetUser->id)
-        ->assertJsonPath('meta.total', 1);
+        ->assertJsonPath('meta.total', 2);
+
+    $reservationIds = collect($response->json('data'))->pluck('id')->all();
+
+    expect($reservationIds)->toContain($targetReservation->id, $playedReservation->id)
+        ->and($reservationIds)->not->toContain(
+            Reservation::query()
+                ->where('user_id', $targetUser->id)
+                ->where('status', ReservationStatus::Cancelled)
+                ->value('id'),
+        );
 });
 
 test('non-admin cannot view user reservations from admin endpoint', function () {

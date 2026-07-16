@@ -20,6 +20,7 @@ class AdminUserReservationsController extends Controller
 
         $reservations = Reservation::query()
             ->ownedBy($user->id)
+            ->active()
             ->with(['slot.terrain'])
             ->latest()
             ->paginate(8)

@@ -18,7 +18,9 @@ class AdminUserOverviewController extends Controller
         Gate::authorize('viewAny', User::class);
 
         $users = User::query()
-            ->withCount('reservations')
+            ->withCount([
+                'reservations' => fn ($query) => $query->active(),
+            ])
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get([

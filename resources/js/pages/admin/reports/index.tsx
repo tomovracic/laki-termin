@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { CalendarX, ClipboardList, LogIn } from 'lucide-react';
+import { CalendarX, ClipboardList } from 'lucide-react';
 import { AdminSectionLayout } from '@/components/admin/admin-section-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,13 +15,6 @@ type AdminReportsOverviewPageProps = {
 };
 
 const reportLinks = [
-    {
-        href: '/admin/reports/logins',
-        titleKey: 'report_logins_title' as const,
-        descriptionKey: 'report_logins_description' as const,
-        icon: LogIn,
-        countKey: null,
-    },
     {
         href: '/admin/reports/reserved',
         titleKey: 'report_reserved_title' as const,
@@ -48,7 +41,7 @@ export default function AdminReportsOverviewPage({ stats }: AdminReportsOverview
         >
             <Head title={t('reports_overview')} />
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
                 {reportLinks.map((report) => {
                     const Icon = report.icon;
 
@@ -68,14 +61,12 @@ export default function AdminReportsOverviewPage({ stats }: AdminReportsOverview
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {report.countKey !== null && (
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">{t('report_total')}</p>
-                                        <p className="text-3xl font-semibold tracking-tight">
-                                            {stats[report.countKey]}
-                                        </p>
-                                    </div>
-                                )}
+                                <div>
+                                    <p className="text-sm text-muted-foreground">{t('report_total')}</p>
+                                    <p className="text-3xl font-semibold tracking-tight">
+                                        {stats[report.countKey]}
+                                    </p>
+                                </div>
                                 <Button asChild>
                                     <Link href={report.href}>{t('report_open')}</Link>
                                 </Button>
