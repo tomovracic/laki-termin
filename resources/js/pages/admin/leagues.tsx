@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react';
 import { AdminSectionLayout } from '@/components/admin/admin-section-layout';
 import { StatusBanner } from '@/components/admin/status-banner';
 import InputError from '@/components/input-error';
-import type { LeagueSummary, LeagueUserOption } from '@/components/league/types';
+import { KnockoutCreateWizard } from '@/components/league/knockout-create-wizard';
+import type { LeagueFormat, LeagueSummary, LeagueUserOption } from '@/components/league/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,9 +57,12 @@ function roundsLabel(rounds: number, t: (key: string) => string): string {
 
 export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPageProps) {
     const { t } = useI18n();
+    const [format, setFormat] = useState<LeagueFormat>('round_robin');
     const [name, setName] = useState('');
     const [rounds, setRounds] = useState('1');
+    const [setsBestOf, setSetsBestOf] = useState('3');
     const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
+    const [knockoutParticipantIds, setKnockoutParticipantIds] = useState<number[]>([]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -78,12 +82,37 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
         );
     }
 
+    function resetForm() {
+        setFormat('round_robin');
+        setName('');
+        setRounds('1');
+        setSetsBestOf('3');
+        setSelectedParticipantIds([]);
+        setKnockoutParticipantIds([]);
+        setErrors({});
+    }
+
     async function handleCreateLeague(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setIsCreating(true);
         setErrors({});
         setErrorMessage(null);
         setMessage(null);
+
+        const body =
+            format === 'knockout'
+                ? {
+                      name,
+                      format: 'knockout',
+                      sets_best_of: Number.parseInt(setsBestOf, 10),
+                      participant_ids: knockoutParticipantIds,
+                  }
+                : {
+                      name,
+                      format: 'round_robin',
+                      rounds: Number.parseInt(rounds, 10),
+                      participant_ids: selectedParticipantIds,
+                  };
 
         try {
             const response = await fetch('/leagues', {
@@ -94,11 +123,7 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
                     'X-Requested-With': 'XMLHttpRequest',
                     ...csrfHeaders(),
                 },
-                body: JSON.stringify({
-                    name,
-                    rounds: Number.parseInt(rounds, 10),
-                    participant_ids: selectedParticipantIds,
-                }),
+                body: JSON.stringify(body),
             });
 
             const payload = (await response.json()) as ApiErrorResponse & { data?: LeagueSummary };
@@ -112,11 +137,9 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
                 return;
             }
 
-            setMessage(t('league_created'));
+            setMessage(format === 'knockout' ? t('tournament_created') : t('league_created'));
             setIsCreateModalOpen(false);
-            setName('');
-            setRounds('1');
-            setSelectedParticipantIds([]);
+            resetForm();
             router.reload({ only: ['leagues'] });
         } catch {
             setErrorMessage(t('league_unable_create'));
@@ -134,60 +157,108 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
             <StatusBanner message={message} error={errorMessage} />
 
             <div className="flex justify-end">
-                <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+                <Dialog
+                    open={isCreateModalOpen}
+                    onOpenChange={(open) => {
+                        setIsCreateModalOpen(open);
+                        if (!open) {
+                            resetForm();
+                        }
+                    }}
+                >
                     <DialogTrigger asChild>
                         <Button>{t('league_create')}</Button>
                     </DialogTrigger>
-                    <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+                    <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                         <DialogHeader>
                             <DialogTitle>{t('league_create')}</DialogTitle>
                             <DialogDescription>{t('league_create_description')}</DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleCreateLeague} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="league-name">{t('name')}</Label>
-                                <Input
-                                    id="league-name"
-                                    value={name}
-                                    onChange={(event) => setName(event.target.value)}
-                                    required
-                                />
-                                <InputError message={errors.name?.[0]} />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>{t('league_rounds')}</Label>
-                                <Select value={rounds} onValueChange={setRounds}>
+                                <Label>{t('tournament_format')}</Label>
+                                <Select
+                                    value={format}
+                                    onValueChange={(value) => setFormat(value as LeagueFormat)}
+                                >
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {[1, 2, 3, 4, 5].map((value) => (
-                                            <SelectItem key={value} value={`${value}`}>
-                                                {roundsLabel(value, t)}
-                                            </SelectItem>
-                                        ))}
+                                        <SelectItem value="round_robin">
+                                            {t('tournament_format_round_robin')}
+                                        </SelectItem>
+                                        <SelectItem value="knockout">
+                                            {t('tournament_format_knockout')}
+                                        </SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <InputError message={errors.rounds?.[0]} />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label>{t('league_participants')}</Label>
-                                <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
-                                    {users.map((user) => (
-                                        <label key={user.id} className="flex items-center gap-2 text-sm">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedParticipantIds.includes(user.id)}
-                                                onChange={() => toggleParticipant(user.id)}
-                                            />
-                                            <span>{participantToggleLabel(user)}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                                <InputError message={errors.participant_ids?.[0]} />
-                            </div>
+                            {format === 'knockout' ? (
+                                <KnockoutCreateWizard
+                                    name={name}
+                                    onNameChange={setName}
+                                    setsBestOf={setsBestOf}
+                                    onSetsBestOfChange={setSetsBestOf}
+                                    users={users}
+                                    participantIds={knockoutParticipantIds}
+                                    onParticipantIdsChange={setKnockoutParticipantIds}
+                                    errors={errors}
+                                />
+                            ) : (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="league-name">{t('name')}</Label>
+                                        <Input
+                                            id="league-name"
+                                            value={name}
+                                            onChange={(event) => setName(event.target.value)}
+                                            required
+                                        />
+                                        <InputError message={errors.name?.[0]} />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>{t('league_rounds')}</Label>
+                                        <Select value={rounds} onValueChange={setRounds}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {[1, 2, 3, 4, 5].map((value) => (
+                                                    <SelectItem key={value} value={`${value}`}>
+                                                        {roundsLabel(value, t)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError message={errors.rounds?.[0]} />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>{t('league_participants')}</Label>
+                                        <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
+                                            {users.map((user) => (
+                                                <label
+                                                    key={user.id}
+                                                    className="flex items-center gap-2 text-sm"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedParticipantIds.includes(
+                                                            user.id,
+                                                        )}
+                                                        onChange={() => toggleParticipant(user.id)}
+                                                    />
+                                                    <span>{participantToggleLabel(user)}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <InputError message={errors.participant_ids?.[0]} />
+                                    </div>
+                                </>
+                            )}
 
                             <div className="flex justify-end gap-2">
                                 <Button
@@ -198,7 +269,13 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
                                 >
                                     {t('cancel')}
                                 </Button>
-                                <Button type="submit" disabled={isCreating}>
+                                <Button
+                                    type="submit"
+                                    disabled={
+                                        isCreating ||
+                                        (format === 'knockout' && knockoutParticipantIds.length < 2)
+                                    }
+                                >
                                     {isCreating ? t('creating') : t('league_create')}
                                 </Button>
                             </div>
@@ -215,13 +292,27 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <div className="flex flex-wrap gap-2">
-                                <Badge variant="outline">{roundsLabel(league.rounds, t)}</Badge>
+                                <Badge variant="outline">
+                                    {league.format === 'knockout'
+                                        ? t('tournament_format_knockout')
+                                        : roundsLabel(league.rounds, t)}
+                                </Badge>
+                                {league.format === 'knockout' && league.sets_best_of && (
+                                    <Badge variant="outline">
+                                        {t('tournament_best_of').replace(
+                                            '{count}',
+                                            `${league.sets_best_of}`,
+                                        )}
+                                    </Badge>
+                                )}
                                 <Badge variant="secondary">
-                                    {league.participants_count} {t('league_participants').toLowerCase()}
+                                    {league.participants_count}{' '}
+                                    {t('league_participants').toLowerCase()}
                                 </Badge>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                                {league.played_matches_count}/{league.matches_count} {t('league_matches_played').toLowerCase()}
+                                {league.played_matches_count}/{league.matches_count}{' '}
+                                {t('league_matches_played').toLowerCase()}
                             </p>
                             <Button
                                 variant="outline"

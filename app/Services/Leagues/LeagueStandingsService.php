@@ -45,6 +45,10 @@ class LeagueStandingsService
         }
 
         foreach ($playedMatches as $match) {
+            if ($match->is_bye || $match->isEmptyBracketSlot()) {
+                continue;
+            }
+
             $this->applyMatchToStats($stats, $match);
         }
 
@@ -93,7 +97,7 @@ class LeagueStandingsService
         $playerOneId = $match->player_one_id;
         $playerTwoId = $match->player_two_id;
 
-        if (! isset($stats[$playerOneId], $stats[$playerTwoId])) {
+        if ($playerOneId === null || $playerTwoId === null || ! isset($stats[$playerOneId], $stats[$playerTwoId])) {
             return;
         }
 

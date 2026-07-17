@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\LeagueFormat;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,9 +20,28 @@ class League extends Model
      */
     protected $fillable = [
         'name',
+        'format',
         'rounds',
+        'sets_best_of',
         'created_by',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'format' => LeagueFormat::class,
+            'sets_best_of' => 'integer',
+            'rounds' => 'integer',
+        ];
+    }
+
+    public function isKnockout(): bool
+    {
+        return $this->format === LeagueFormat::Knockout;
+    }
 
     public function creator(): BelongsTo
     {

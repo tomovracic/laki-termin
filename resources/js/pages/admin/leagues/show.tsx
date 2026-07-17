@@ -5,6 +5,7 @@ import { AdminSectionLayout } from '@/components/admin/admin-section-layout';
 import { StatusBanner } from '@/components/admin/status-banner';
 import { LeagueMatchesSection } from '@/components/league/league-matches-section';
 import { LeagueStandingsTable } from '@/components/league/league-standings-table';
+import { TournamentBracket } from '@/components/league/tournament-bracket';
 import type {
     LeagueDetail,
     LeagueMatch,
@@ -69,6 +70,11 @@ export default function AdminLeagueShowPage({
     const [message, setMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+    const isKnockout = league.format === 'knockout';
+    const bestOf = (league.sets_best_of === 1 || league.sets_best_of === 5 ? league.sets_best_of : 3) as
+        | 1
+        | 3
+        | 5;
     const isParticipant = standings.some((entry) => entry.user_id === currentUserId);
 
     async function reloadLeagueData() {
@@ -110,7 +116,11 @@ export default function AdminLeagueShowPage({
             const payload = (await response.json()) as ApiErrorResponse;
 
             if (!response.ok) {
-                setErrorMessage(payload.errors?.user_id?.[0] ?? payload.message ?? t('league_unable_add_participant'));
+                setErrorMessage(
+                    payload.errors?.user_id?.[0] ??
+                        payload.message ??
+                        t('league_unable_add_participant'),
+                );
                 return;
             }
 
@@ -152,7 +162,9 @@ export default function AdminLeagueShowPage({
             const body = (await response.json()) as ApiErrorResponse;
 
             if (!response.ok) {
-                setResultErrors(body.errors?.result ?? [body.message ?? t('league_unable_save_result')]);
+                setResultErrors(
+                    body.errors?.result ?? [body.message ?? t('league_unable_save_result')],
+                );
                 return;
             }
 
@@ -173,21 +185,48 @@ export default function AdminLeagueShowPage({
 
             <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">
-                    {league.participants_count} {t('league_participants').toLowerCase()}
+                    {isKnockout
+                        ? t('tournament_format_knockout')
+                        : `${league.participants_count} ${t('league_participants').toLowerCase()}`}
                 </Badge>
+                {isKnockout && (
+                    <Badge variant="outline">
+                        {t('tournament_best_of').replace('{count}', `${bestOf}`)}
+                    </Badge>
+                )}
                 <Badge variant="secondary">
-                    {league.played_matches_count}/{league.matches_count} {t('league_matches_played').toLowerCase()}
+                    {league.played_matches_count}/{league.matches_count}{' '}
+                    {t('league_matches_played').toLowerCase()}
                 </Badge>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>{t('league_standings')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <LeagueStandingsTable standings={standings} />
-                </CardContent>
-            </Card>
+            {isKnockout ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{t('tournament_bracket')}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <TournamentBracket
+                            matches={matches}
+                            canEnterResults
+                            currentUserId={currentUserId}
+                            onEnterResult={(match) => {
+                                setResultErrors([]);
+                                setSelectedMatch(match);
+                            }}
+                        />
+                    </CardContent>
+                </Card>
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{t('league_standings')}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <LeagueStandingsTable standings={standings} />
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
                 <CardHeader>
@@ -197,12 +236,13 @@ export default function AdminLeagueShowPage({
                     <div className="flex flex-wrap gap-2">
                         {participants.map((participant) => (
                             <Badge key={participant.id} variant="outline">
+                                {participant.seed ? `${participant.seed}. ` : ''}
                                 {participant.name}
                             </Badge>
                         ))}
                     </div>
 
-                    {availableUsers.length > 0 && (
+                    {!isKnockout && availableUsers.length > 0 && (
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                             <div className="flex-1 space-y-2">
                                 <Select value={selectedUserId} onValueChange={setSelectedUserId}>
@@ -229,18 +269,23 @@ export default function AdminLeagueShowPage({
                 </CardContent>
             </Card>
 
-            <LeagueMatchesSection
-                matches={matches}
-                standings={standings}
-                currentUserId={currentUserId}
-                isParticipant={isParticipant}
-                onEnterResult={(match) => {
-                    setResultErrors([]);
-                    setSelectedMatch(match);
-                }}
-            />
+            {!isKnockout && (
+                <LeagueMatchesSection
+                    matches={matches}
+                    standings={standings}
+                    currentUserId={currentUserId}
+                    isParticipant={isParticipant}
+                    onEnterResult={(match) => {
+                        setResultErrors([]);
+                        setSelectedMatch(match);
+                    }}
+                />
+            )}
 
-            <Dialog open={selectedMatch !== null} onOpenChange={(open) => !open && setSelectedMatch(null)}>
+            <Dialog
+                open={selectedMatch !== null}
+                onOpenChange={(open) => !open && setSelectedMatch(null)}
+            >
                 <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>{t('league_enter_result')}</DialogTitle>
@@ -248,6 +293,7 @@ export default function AdminLeagueShowPage({
                     {selectedMatch !== null && (
                         <LeagueMatchResultForm
                             match={selectedMatch}
+                            bestOf={bestOf}
                             onSubmit={handleSubmitResult}
                             onCancel={() => setSelectedMatch(null)}
                             isSubmitting={isSubmittingResult}

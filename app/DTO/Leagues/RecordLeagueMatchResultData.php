@@ -11,9 +11,13 @@ readonly class RecordLeagueMatchResultData
         public int $enteredBy,
         public int $set1PlayerOneGames,
         public int $set1PlayerTwoGames,
-        public int $set2PlayerOneGames,
-        public int $set2PlayerTwoGames,
-        public ?int $set3PlayerOneGames,
-        public ?int $set3PlayerTwoGames,
+        public ?int $set2PlayerOneGames = null,
+        public ?int $set2PlayerTwoGames = null,
+        public ?int $set3PlayerOneGames = null,
+        public ?int $set3PlayerTwoGames = null,
+        public ?int $set4PlayerOneGames = null,
+        public ?int $set4PlayerTwoGames = null,
+        public ?int $set5PlayerOneGames = null,
+        public ?int $set5PlayerTwoGames = null,
     ) {}
 }

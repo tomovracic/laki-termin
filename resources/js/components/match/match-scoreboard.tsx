@@ -15,6 +15,10 @@ export type MatchSetScoreFields = {
     set2_player_two_games: number | null;
     set3_player_one_games: number | null;
     set3_player_two_games: number | null;
+    set4_player_one_games?: number | null;
+    set4_player_two_games?: number | null;
+    set5_player_one_games?: number | null;
+    set5_player_two_games?: number | null;
 };
 
 type SetScore = {
@@ -30,14 +34,21 @@ const scoreBoxClassName =
 const playerRowClassName = 'flex h-9 items-center md:h-10';
 
 export function getSetScores(match: MatchSetScoreFields): SetScore[] {
-    const rawSets: Array<[number | null, number | null]> = [
+    const rawSets: Array<[number | null | undefined, number | null | undefined]> = [
         [match.set1_player_one_games, match.set1_player_two_games],
         [match.set2_player_one_games, match.set2_player_two_games],
         [match.set3_player_one_games, match.set3_player_two_games],
+        [match.set4_player_one_games, match.set4_player_two_games],
+        [match.set5_player_one_games, match.set5_player_two_games],
     ];
 
     return rawSets.flatMap(([playerOneGames, playerTwoGames]) => {
-        if (playerOneGames === null || playerTwoGames === null) {
+        if (
+            playerOneGames === null ||
+            playerOneGames === undefined ||
+            playerTwoGames === null ||
+            playerTwoGames === undefined
+        ) {
             return [];
         }
 
@@ -136,26 +147,35 @@ export function MatchScoreboard({
                 <span className={cn(playerRowClassName, 'text-sm text-muted-foreground')}>—</span>
             ) : (
                 <div className="flex gap-1.5 sm:gap-2">
-                    {sets.map((set, index) => (
-                        <div key={index} className="flex flex-col gap-1.5">
-                            <span
-                                className={cn(
-                                    scoreBoxClassName,
-                                    playerOneIsWinner ? 'font-bold' : 'font-medium text-muted-foreground',
-                                )}
-                            >
-                                {set.playerOneGames}
-                            </span>
-                            <span
-                                className={cn(
-                                    scoreBoxClassName,
-                                    playerTwoIsWinner ? 'font-bold' : 'font-medium text-muted-foreground',
-                                )}
-                            >
-                                {set.playerTwoGames}
-                            </span>
-                        </div>
-                    ))}
+                    {sets.map((set, index) => {
+                        const playerOneWonSet = set.playerOneGames > set.playerTwoGames;
+                        const playerTwoWonSet = set.playerTwoGames > set.playerOneGames;
+
+                        return (
+                            <div key={index} className="flex flex-col gap-1.5">
+                                <span
+                                    className={cn(
+                                        scoreBoxClassName,
+                                        playerOneWonSet
+                                            ? 'font-bold'
+                                            : 'font-medium text-muted-foreground',
+                                    )}
+                                >
+                                    {set.playerOneGames}
+                                </span>
+                                <span
+                                    className={cn(
+                                        scoreBoxClassName,
+                                        playerTwoWonSet
+                                            ? 'font-bold'
+                                            : 'font-medium text-muted-foreground',
+                                    )}
+                                >
+                                    {set.playerTwoGames}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>

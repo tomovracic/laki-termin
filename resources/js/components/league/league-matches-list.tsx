@@ -19,16 +19,16 @@ type LeagueMatchesListProps = {
     onEnterResult?: (match: LeagueMatch) => void;
 };
 
-function toDisplayPlayer(player: LeagueMatchPlayer): MatchDisplayPlayer {
+function toDisplayPlayer(player: LeagueMatchPlayer | null): MatchDisplayPlayer {
     return {
-        userId: player.id,
-        name: player.name,
-        avatar: player.avatar,
+        userId: player?.id ?? null,
+        name: player?.name ?? 'TBD',
+        avatar: player?.avatar,
     };
 }
 
 function matchInvolvesUser(match: LeagueMatch, userId: number): boolean {
-    return match.player_one.id === userId || match.player_two.id === userId;
+    return match.player_one?.id === userId || match.player_two?.id === userId;
 }
 
 function LeagueMatchMetadata({

@@ -53,7 +53,19 @@ export default function UserLeaguesPage({ leagues }: UserLeaguesPageProps) {
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 <div className="flex flex-wrap gap-2">
-                                    <Badge variant="outline">{roundsLabel(league.rounds, t)}</Badge>
+                                    <Badge variant="outline">
+                                        {league.format === 'knockout'
+                                            ? t('tournament_format_knockout')
+                                            : roundsLabel(league.rounds, t)}
+                                    </Badge>
+                                    {league.format === 'knockout' && league.sets_best_of ? (
+                                        <Badge variant="outline">
+                                            {t('tournament_best_of').replace(
+                                                '{count}',
+                                                `${league.sets_best_of}`,
+                                            )}
+                                        </Badge>
+                                    ) : null}
                                     <Badge variant="secondary">
                                         {league.participants_count} {t('league_participants').toLowerCase()}
                                     </Badge>

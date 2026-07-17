@@ -23,6 +23,12 @@ class AddLeagueParticipantAction
     {
         $league = League::query()->findOrFail($data->leagueId);
 
+        if ($league->isKnockout()) {
+            throw ValidationException::withMessages([
+                'user_id' => ['Sudionici se ne mogu dodavati u knockout turnir nakon kreiranja.'],
+            ]);
+        }
+
         if (! User::query()->whereKey($data->userId)->exists()) {
             throw ValidationException::withMessages([
                 'user_id' => ['Korisnik ne postoji.'],

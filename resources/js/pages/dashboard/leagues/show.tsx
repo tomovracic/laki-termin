@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import { LeagueMatchesSection } from '@/components/league/league-matches-section';
 import { LeagueStandingsTable } from '@/components/league/league-standings-table';
+import { TournamentBracket } from '@/components/league/tournament-bracket';
 import type { LeagueDetail, LeagueMatch, LeagueStandingsEntry } from '@/components/league/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +25,8 @@ export default function UserLeagueShowPage({
     const { t } = useI18n();
     const { auth } = usePage<{ auth: Auth }>().props;
     const currentUserId = auth.user?.id ?? null;
+    const isKnockout = league.format === 'knockout';
+    const bestOf = league.sets_best_of ?? 3;
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: t('dashboard'), href: dashboard() },
@@ -41,8 +44,15 @@ export default function UserLeagueShowPage({
                     <h1 className="text-2xl font-semibold tracking-tight">{league.name}</h1>
                     <div className="mt-2 flex flex-wrap gap-2">
                         <Badge variant="outline">
-                            {league.participants_count} {t('league_participants').toLowerCase()}
+                            {isKnockout
+                                ? t('tournament_format_knockout')
+                                : `${league.participants_count} ${t('league_participants').toLowerCase()}`}
                         </Badge>
+                        {isKnockout && (
+                            <Badge variant="outline">
+                                {t('tournament_best_of').replace('{count}', `${bestOf}`)}
+                            </Badge>
+                        )}
                         <Badge variant="secondary">
                             {league.played_matches_count}/{league.matches_count}{' '}
                             {t('league_matches_played').toLowerCase()}
@@ -50,24 +60,37 @@ export default function UserLeagueShowPage({
                     </div>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{t('league_standings')}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <LeagueStandingsTable
-                            standings={standings}
-                            highlightUserId={currentUserId}
-                        />
-                    </CardContent>
-                </Card>
+                {isKnockout ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>{t('tournament_bracket')}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <TournamentBracket matches={matches} currentUserId={currentUserId} />
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>{t('league_standings')}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <LeagueStandingsTable
+                                    standings={standings}
+                                    highlightUserId={currentUserId}
+                                />
+                            </CardContent>
+                        </Card>
 
-                <LeagueMatchesSection
-                    matches={matches}
-                    standings={standings}
-                    currentUserId={currentUserId}
-                    isParticipant={isParticipant}
-                />
+                        <LeagueMatchesSection
+                            matches={matches}
+                            standings={standings}
+                            currentUserId={currentUserId}
+                            isParticipant={isParticipant}
+                        />
+                    </>
+                )}
             </div>
         </AppLayout>
     );

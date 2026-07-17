@@ -2,6 +2,7 @@ import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import {
     buildScorePayload,
+    emptyMatchScoreValues,
     MatchScoreInputs,
     type MatchScoreValues,
 } from '@/components/match-history/match-score-inputs';
@@ -27,6 +28,7 @@ function scoreValue(value: number | null): string {
 
 function buildInitialScoreValues(match: MatchHistoryEntry): MatchScoreValues {
     return {
+        ...emptyMatchScoreValues(),
         set1_player_one_games: scoreValue(match.set1_player_one_games),
         set1_player_two_games: scoreValue(match.set1_player_two_games),
         set2_player_one_games: scoreValue(match.set2_player_one_games),
@@ -53,7 +55,15 @@ export function EditPlayedMatchForm({
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        await onSubmit(buildScorePayload(scoreValues));
+        const scorePayload = buildScorePayload(scoreValues);
+        await onSubmit({
+            set1_player_one_games: scorePayload.set1_player_one_games,
+            set1_player_two_games: scorePayload.set1_player_two_games,
+            set2_player_one_games: scorePayload.set2_player_one_games ?? 0,
+            set2_player_two_games: scorePayload.set2_player_two_games ?? 0,
+            set3_player_one_games: scorePayload.set3_player_one_games,
+            set3_player_two_games: scorePayload.set3_player_two_games,
+        });
     }
 
     return (

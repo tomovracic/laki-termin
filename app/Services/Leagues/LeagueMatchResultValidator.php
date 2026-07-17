@@ -14,57 +14,106 @@ class LeagueMatchResultValidator
     public function validate(
         int $set1PlayerOneGames,
         int $set1PlayerTwoGames,
-        int $set2PlayerOneGames,
-        int $set2PlayerTwoGames,
-        ?int $set3PlayerOneGames,
-        ?int $set3PlayerTwoGames,
+        ?int $set2PlayerOneGames = null,
+        ?int $set2PlayerTwoGames = null,
+        ?int $set3PlayerOneGames = null,
+        ?int $set3PlayerTwoGames = null,
+        ?int $set4PlayerOneGames = null,
+        ?int $set4PlayerTwoGames = null,
+        ?int $set5PlayerOneGames = null,
+        ?int $set5PlayerTwoGames = null,
+        int $bestOf = 3,
     ): array {
+        if (! in_array($bestOf, [1, 3, 5], true)) {
+            return ['Dozvoljeni formati su best of 1, 3 ili 5.'];
+        }
+
+        $setsToWin = (int) ceil($bestOf / 2);
+        $rawSets = [
+            [$set1PlayerOneGames, $set1PlayerTwoGames],
+            [$set2PlayerOneGames, $set2PlayerTwoGames],
+            [$set3PlayerOneGames, $set3PlayerTwoGames],
+            [$set4PlayerOneGames, $set4PlayerTwoGames],
+            [$set5PlayerOneGames, $set5PlayerTwoGames],
+        ];
+
         $errors = [];
+        $playedSets = [];
 
-        $setOneWinner = $this->validateSet($set1PlayerOneGames, $set1PlayerTwoGames, 'set1', $errors);
-        $setTwoWinner = $this->validateSet($set2PlayerOneGames, $set2PlayerTwoGames, 'set2', $errors);
+        foreach ($rawSets as $index => [$playerOneGames, $playerTwoGames]) {
+            $setNumber = $index + 1;
+            $hasAny = $playerOneGames !== null || $playerTwoGames !== null;
 
-        if ($setOneWinner === null || $setTwoWinner === null) {
-            return $errors;
-        }
-
-        $playerOneSets = ($setOneWinner === 1 ? 1 : 0) + ($setTwoWinner === 1 ? 1 : 0);
-        $playerTwoSets = ($setOneWinner === 2 ? 1 : 0) + ($setTwoWinner === 2 ? 1 : 0);
-
-        $hasSetThree = $set3PlayerOneGames !== null || $set3PlayerTwoGames !== null;
-
-        if ($playerOneSets === 2 || $playerTwoSets === 2) {
-            if ($hasSetThree) {
-                $errors[] = 'Treci set nije potreban kada je mec zavrsen u dva seta.';
+            if (! $hasAny) {
+                break;
             }
 
-            return $errors;
-        }
-
-        if ($playerOneSets === 1 && $playerTwoSets === 1) {
-            if ($set3PlayerOneGames === null || $set3PlayerTwoGames === null) {
-                $errors[] = 'Treci set je obavezan kada je rezultat 1-1 nakon prva dva seta.';
+            if ($playerOneGames === null || $playerTwoGames === null) {
+                $errors[] = "Set {$setNumber} mora imati oba rezultata.";
 
                 return $errors;
             }
 
-            $setThreeWinner = $this->validateSet($set3PlayerOneGames, $set3PlayerTwoGames, 'set3', $errors);
+            if ($setNumber > $bestOf) {
+                $errors[] = "Best of {$bestOf} ne dopusta set {$setNumber}.";
 
-            if ($setThreeWinner === null) {
                 return $errors;
             }
 
-            $playerOneSets += $setThreeWinner === 1 ? 1 : 0;
-            $playerTwoSets += $setThreeWinner === 2 ? 1 : 0;
+            $winner = $this->validateSet($playerOneGames, $playerTwoGames, "set{$setNumber}", $errors);
 
-            if ($playerOneSets !== 2 && $playerTwoSets !== 2) {
-                $errors[] = 'Jedan igrac mora imati tocno dva dobivena seta.';
+            if ($winner === null) {
+                return $errors;
             }
+
+            $playedSets[] = $winner;
+        }
+
+        for ($i = count($playedSets); $i < 5; $i++) {
+            [$playerOneGames, $playerTwoGames] = $rawSets[$i];
+
+            if ($playerOneGames !== null || $playerTwoGames !== null) {
+                $errors[] = 'Setovi moraju biti uneseni redom bez praznina.';
+
+                return $errors;
+            }
+        }
+
+        if ($playedSets === []) {
+            $errors[] = 'Potrebno je unijeti barem jedan set.';
 
             return $errors;
         }
 
-        $errors[] = 'Nakon dva seta jedan igrac mora imati dva dobivena seta ili rezultat mora biti 1-1.';
+        $playerOneSets = 0;
+        $playerTwoSets = 0;
+
+        foreach ($playedSets as $index => $winner) {
+            if ($playerOneSets >= $setsToWin || $playerTwoSets >= $setsToWin) {
+                $errors[] = 'Uneseno je previse setova nakon sto je mec vec zavrsen.';
+
+                return $errors;
+            }
+
+            if ($winner === 1) {
+                $playerOneSets++;
+            } else {
+                $playerTwoSets++;
+            }
+        }
+
+        if ($playerOneSets !== $setsToWin && $playerTwoSets !== $setsToWin) {
+            $errors[] = "Jedan igrac mora imati tocno {$setsToWin} dobivena seta.";
+
+            return $errors;
+        }
+
+        $minimumSets = $setsToWin;
+        $maximumSets = ($setsToWin * 2) - 1;
+
+        if (count($playedSets) < $minimumSets || count($playedSets) > $maximumSets) {
+            $errors[] = "Broj odigranih setova mora biti izmedu {$minimumSets} i {$maximumSets}.";
+        }
 
         return $errors;
     }
@@ -90,33 +139,46 @@ class LeagueMatchResultValidator
         return $playerOneGames > $playerTwoGames ? 1 : 2;
     }
 
-    public function winnerUserId(LeagueMatch $match): int
+    /**
+     * @return 1|2
+     */
+    public function winnerSlot(LeagueMatch $match): int
     {
         $playerOneSets = 0;
         $playerTwoSets = 0;
 
-        if ($match->set1_player_one_games > $match->set1_player_two_games) {
-            $playerOneSets++;
-        } else {
-            $playerTwoSets++;
-        }
+        $sets = [
+            [$match->set1_player_one_games, $match->set1_player_two_games],
+            [$match->set2_player_one_games, $match->set2_player_two_games],
+            [$match->set3_player_one_games, $match->set3_player_two_games],
+            [$match->set4_player_one_games, $match->set4_player_two_games],
+            [$match->set5_player_one_games, $match->set5_player_two_games],
+        ];
 
-        if ($match->set2_player_one_games > $match->set2_player_two_games) {
-            $playerOneSets++;
-        } else {
-            $playerTwoSets++;
-        }
+        foreach ($sets as [$playerOneGames, $playerTwoGames]) {
+            if ($playerOneGames === null || $playerTwoGames === null) {
+                continue;
+            }
 
-        if ($match->set3_player_one_games !== null && $match->set3_player_two_games !== null) {
-            if ($match->set3_player_one_games > $match->set3_player_two_games) {
+            if ($playerOneGames > $playerTwoGames) {
                 $playerOneSets++;
-            } else {
+            } elseif ($playerTwoGames > $playerOneGames) {
                 $playerTwoSets++;
             }
         }
 
-        return $playerOneSets > $playerTwoSets
-            ? $match->player_one_id
-            : $match->player_two_id;
+        return $playerOneSets > $playerTwoSets ? 1 : 2;
+    }
+
+    public function winnerUserId(LeagueMatch $match): int
+    {
+        $slot = $this->winnerSlot($match);
+        $userId = $slot === 1 ? $match->player_one_id : $match->player_two_id;
+
+        if ($userId === null) {
+            throw new \RuntimeException('Pobjednik meca nema korisnicki ID.');
+        }
+
+        return $userId;
     }
 }

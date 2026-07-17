@@ -12,6 +12,10 @@ export type MatchScoreValues = {
     set2_player_two_games: string;
     set3_player_one_games: string;
     set3_player_two_games: string;
+    set4_player_one_games: string;
+    set4_player_two_games: string;
+    set5_player_one_games: string;
+    set5_player_two_games: string;
 };
 
 const scoreInputClassName =
@@ -57,6 +61,7 @@ type MatchScoreInputsProps = {
     values: MatchScoreValues;
     onChange: (values: MatchScoreValues) => void;
     errors?: string[];
+    bestOf?: 1 | 3 | 5;
 };
 
 type SetRowProps = {
@@ -144,33 +149,61 @@ function SetRow({
     );
 }
 
-export function MatchScoreInputs({ values, onChange, errors = [] }: MatchScoreInputsProps) {
+const SET_ROWS: Array<{
+    labelKey: number;
+    playerOneField: keyof MatchScoreValues;
+    playerTwoField: keyof MatchScoreValues;
+}> = [
+    {
+        labelKey: 1,
+        playerOneField: 'set1_player_one_games',
+        playerTwoField: 'set1_player_two_games',
+    },
+    {
+        labelKey: 2,
+        playerOneField: 'set2_player_one_games',
+        playerTwoField: 'set2_player_two_games',
+    },
+    {
+        labelKey: 3,
+        playerOneField: 'set3_player_one_games',
+        playerTwoField: 'set3_player_two_games',
+    },
+    {
+        labelKey: 4,
+        playerOneField: 'set4_player_one_games',
+        playerTwoField: 'set4_player_two_games',
+    },
+    {
+        labelKey: 5,
+        playerOneField: 'set5_player_one_games',
+        playerTwoField: 'set5_player_two_games',
+    },
+];
+
+export function MatchScoreInputs({
+    values,
+    onChange,
+    errors = [],
+    bestOf = 3,
+}: MatchScoreInputsProps) {
     const { t } = useI18n();
+    const maxSets = bestOf;
+    const setsToWin = Math.ceil(bestOf / 2);
 
     return (
         <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-3">
-            <SetRow
-                label={`${t('league_set')} 1`}
-                playerOneField="set1_player_one_games"
-                playerTwoField="set1_player_two_games"
-                values={values}
-                onChange={onChange}
-            />
-            <SetRow
-                label={`${t('league_set')} 2`}
-                playerOneField="set2_player_one_games"
-                playerTwoField="set2_player_two_games"
-                values={values}
-                onChange={onChange}
-            />
-            <SetRow
-                label={`${t('league_set')} 3`}
-                playerOneField="set3_player_one_games"
-                playerTwoField="set3_player_two_games"
-                values={values}
-                onChange={onChange}
-                required={false}
-            />
+            {SET_ROWS.slice(0, maxSets).map((row, index) => (
+                <SetRow
+                    key={row.labelKey}
+                    label={`${t('league_set')} ${row.labelKey}`}
+                    playerOneField={row.playerOneField}
+                    playerTwoField={row.playerTwoField}
+                    values={values}
+                    onChange={onChange}
+                    required={index < setsToWin}
+                />
+            ))}
 
             {errors.length > 0 && (
                 <div className="w-full space-y-1 text-center">
@@ -183,24 +216,89 @@ export function MatchScoreInputs({ values, onChange, errors = [] }: MatchScoreIn
     );
 }
 
-export function buildScorePayload(values: MatchScoreValues) {
+export function emptyMatchScoreValues(): MatchScoreValues {
+    return {
+        set1_player_one_games: '',
+        set1_player_two_games: '',
+        set2_player_one_games: '',
+        set2_player_two_games: '',
+        set3_player_one_games: '',
+        set3_player_two_games: '',
+        set4_player_one_games: '',
+        set4_player_two_games: '',
+        set5_player_one_games: '',
+        set5_player_two_games: '',
+    };
+}
+
+export function buildScorePayload(values: MatchScoreValues, bestOf: 1 | 3 | 5 = 3) {
     const payload: {
         set1_player_one_games: number;
         set1_player_two_games: number;
-        set2_player_one_games: number;
-        set2_player_two_games: number;
+        set2_player_one_games?: number;
+        set2_player_two_games?: number;
         set3_player_one_games?: number | null;
         set3_player_two_games?: number | null;
+        set4_player_one_games?: number | null;
+        set4_player_two_games?: number | null;
+        set5_player_one_games?: number | null;
+        set5_player_two_games?: number | null;
     } = {
         set1_player_one_games: Number.parseInt(values.set1_player_one_games, 10),
         set1_player_two_games: Number.parseInt(values.set1_player_two_games, 10),
-        set2_player_one_games: Number.parseInt(values.set2_player_one_games, 10),
-        set2_player_two_games: Number.parseInt(values.set2_player_two_games, 10),
     };
 
-    if (values.set3_player_one_games.trim() !== '' && values.set3_player_two_games.trim() !== '') {
-        payload.set3_player_one_games = Number.parseInt(values.set3_player_one_games, 10);
-        payload.set3_player_two_games = Number.parseInt(values.set3_player_two_games, 10);
+    if (bestOf >= 3) {
+        payload.set2_player_one_games = Number.parseInt(values.set2_player_one_games || '0', 10);
+        payload.set2_player_two_games = Number.parseInt(values.set2_player_two_games || '0', 10);
+    }
+
+    const optionalPairs: Array<{
+        one: keyof MatchScoreValues;
+        two: keyof MatchScoreValues;
+        minBestOf: number;
+        assign: (one: number, two: number) => void;
+    }> = [
+        {
+            one: 'set3_player_one_games',
+            two: 'set3_player_two_games',
+            minBestOf: 3,
+            assign: (one, two) => {
+                payload.set3_player_one_games = one;
+                payload.set3_player_two_games = two;
+            },
+        },
+        {
+            one: 'set4_player_one_games',
+            two: 'set4_player_two_games',
+            minBestOf: 5,
+            assign: (one, two) => {
+                payload.set4_player_one_games = one;
+                payload.set4_player_two_games = two;
+            },
+        },
+        {
+            one: 'set5_player_one_games',
+            two: 'set5_player_two_games',
+            minBestOf: 5,
+            assign: (one, two) => {
+                payload.set5_player_one_games = one;
+                payload.set5_player_two_games = two;
+            },
+        },
+    ];
+
+    for (const pair of optionalPairs) {
+        if (bestOf < pair.minBestOf) {
+            continue;
+        }
+
+        if (values[pair.one].trim() !== '' && values[pair.two].trim() !== '') {
+            pair.assign(
+                Number.parseInt(values[pair.one], 10),
+                Number.parseInt(values[pair.two], 10),
+            );
+        }
     }
 
     return payload;

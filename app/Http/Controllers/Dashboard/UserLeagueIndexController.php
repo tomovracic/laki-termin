@@ -28,7 +28,9 @@ class UserLeagueIndexController extends Controller
             ->map(fn (League $league): array => [
                 'id' => $league->id,
                 'name' => $league->name,
+                'format' => $league->format->value,
                 'rounds' => $league->rounds,
+                'sets_best_of' => $league->sets_best_of,
                 'participants_count' => $league->participants_count,
                 'matches_count' => $league->matches_count,
                 'played_matches_count' => $league->played_matches_count,
