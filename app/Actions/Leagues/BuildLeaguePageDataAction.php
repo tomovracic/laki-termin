@@ -8,12 +8,14 @@ use App\Enums\LeagueMatchStatus;
 use App\Models\League;
 use App\Models\LeagueMatch;
 use App\Models\User;
+use App\Services\Leagues\KnockoutBracketGeneratorService;
 use App\Services\Leagues\LeagueStandingsService;
 
 class BuildLeaguePageDataAction
 {
     public function __construct(
         protected LeagueStandingsService $standingsService,
+        protected KnockoutBracketGeneratorService $bracketGenerator,
     ) {}
 
     /**
@@ -22,7 +24,8 @@ class BuildLeaguePageDataAction
      *     standings: list<array<string, mixed>>,
      *     matches: list<array<string, mixed>>,
      *     participants: list<array<string, mixed>>,
-     *     available_users: list<array<string, mixed>>
+     *     available_users: list<array<string, mixed>>,
+     *     knockout_champion: array{id: int, user_id: int, name: string}|null
      * }
      */
     public function execute(League $league, bool $includeAvailableUsers = false): array
@@ -67,6 +70,7 @@ class BuildLeaguePageDataAction
                 'first_name' => $participant->user?->first_name ?? $participant->first_name ?? '',
                 'last_name' => $participant->user?->last_name ?? $participant->last_name ?? '',
                 'seed' => $participant->seed,
+                'received_bye' => (bool) $participant->received_bye,
             ])
             ->values()
             ->all();
@@ -83,6 +87,21 @@ class BuildLeaguePageDataAction
             ->values()
             ->all();
 
+        $currentBracketRound = (int) ($league->matches->max('bracket_round') ?? 0);
+        $currentRoundMatches = $league->matches->where('bracket_round', $currentBracketRound);
+        $roundComplete = $league->isKnockout()
+            && $this->bracketGenerator->isRoundComplete($currentRoundMatches);
+        $isTerminalRound = $league->isKnockout()
+            && $this->bracketGenerator->isTerminalRound($currentRoundMatches);
+        $knockoutChampion = $league->isKnockout()
+            ? $this->bracketGenerator->resolveChampion($league)
+            : null;
+        $canFinishRound = $league->isKnockout()
+            && $roundComplete
+            && ! $isTerminalRound
+            && $currentBracketRound > 0
+            && $knockoutChampion === null;
+
         $payload = [
             'league' => [
                 'id' => $league->id,
@@ -90,14 +109,22 @@ class BuildLeaguePageDataAction
                 'format' => $league->format->value,
                 'rounds' => $league->rounds,
                 'sets_best_of' => $league->sets_best_of,
+                'knockout_draw_mode' => $league->knockout_draw_mode?->value,
                 'participants_count' => count($participants),
                 'matches_count' => count($matches),
                 'played_matches_count' => $league->matches->where('status', LeagueMatchStatus::Played)->count(),
+                'current_bracket_round' => $currentBracketRound > 0 ? $currentBracketRound : null,
+                'next_round_pending' => $league->isKnockout()
+                    && ! $roundComplete
+                    && $currentBracketRound > 0
+                    && $knockoutChampion === null,
+                'can_finish_round' => $canFinishRound,
             ],
             'standings' => $standings,
             'matches' => $matches,
             'participants' => $participants,
             'available_users' => [],
+            'knockout_champion' => $knockoutChampion,
         ];
 
         if ($includeAvailableUsers && ! $league->isKnockout()) {

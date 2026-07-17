@@ -7,7 +7,6 @@ namespace App\Actions\Leagues;
 use App\DTO\Leagues\RecordLeagueMatchResultData;
 use App\Enums\LeagueMatchStatus;
 use App\Models\LeagueMatch;
-use App\Services\Leagues\KnockoutBracketGeneratorService;
 use App\Services\Leagues\LeagueMatchResultValidator;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Validation\ValidationException;
@@ -16,7 +15,6 @@ class RecordLeagueMatchResultAction
 {
     public function __construct(
         protected LeagueMatchResultValidator $validator,
-        protected KnockoutBracketGeneratorService $bracketGenerator,
         protected DatabaseManager $database,
     ) {}
 
@@ -59,6 +57,10 @@ class RecordLeagueMatchResultAction
                 ]);
             }
 
+            if ($match->league?->isKnockout()) {
+                $this->assertKnockoutResultEditable($match);
+            }
+
             $match->forceFill([
                 'set1_player_one_games' => $data->set1PlayerOneGames,
                 'set1_player_two_games' => $data->set1PlayerTwoGames,
@@ -75,12 +77,22 @@ class RecordLeagueMatchResultAction
                 'entered_by' => $data->enteredBy,
             ])->save();
 
-            if ($match->league?->isKnockout()) {
-                $winnerSlot = $this->validator->winnerSlot($match);
-                $this->bracketGenerator->advanceWinner($match, $winnerSlot);
-            }
-
             return $match->load(['playerOne', 'playerTwo', 'enteredBy', 'league']);
         });
+    }
+
+    private function assertKnockoutResultEditable(LeagueMatch $match): void
+    {
+        $league = $match->league;
+        $league?->loadMissing('matches');
+
+        $currentRound = (int) ($league?->matches->max('bracket_round') ?? 0);
+        $matchRound = (int) ($match->bracket_round ?? $match->round);
+
+        if ($currentRound > 0 && $matchRound < $currentRound) {
+            throw ValidationException::withMessages([
+                'result' => ['Rezultat se ne može mijenjati nakon što je kolo završeno.'],
+            ]);
+        }
     }
 }

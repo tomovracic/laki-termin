@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Leagues;
 
+use App\Enums\KnockoutDrawMode;
 use App\Enums\LeagueFormat;
 use App\Models\League;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,6 +29,7 @@ class StoreLeagueRequest extends FormRequest
                 'name' => ['required', 'string', 'max:255'],
                 'format' => ['required', Rule::enum(LeagueFormat::class)],
                 'sets_best_of' => ['required', 'integer', Rule::in([1, 3, 5])],
+                'knockout_draw_mode' => ['nullable', Rule::enum(KnockoutDrawMode::class)],
                 'participant_ids' => ['required', 'array', 'min:2'],
                 'participant_ids.*' => ['required', 'integer', 'distinct', 'exists:users,id'],
             ];

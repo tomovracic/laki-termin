@@ -41,7 +41,7 @@ function MatchMetadata({
     const playedAtDate = formatPlayedAtDate(match.played_at, locale);
 
     return (
-        <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+        <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-2">
             <Badge variant={match.source === 'league' ? 'default' : 'secondary'}>
                 {match.source === 'league' ? t('match_history_league') : t('match_history_casual')}
             </Badge>
@@ -97,10 +97,13 @@ export function MatchHistoryList({
                 return (
                     <Card
                         key={match.id}
-                        className={cn(involvesCurrentUser && 'border-primary/40 bg-primary/5')}
+                        className={cn(
+                            'gap-0 py-0',
+                            involvesCurrentUser && 'border-primary/40 bg-primary/5',
+                        )}
                     >
-                        <CardContent className="space-y-3 p-4">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <CardContent className="space-y-2 p-3">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <MatchScoreboard
                                     playerOne={toDisplayPlayer(match.player_one)}
                                     playerTwo={toDisplayPlayer(match.player_two)}
@@ -108,7 +111,7 @@ export function MatchHistoryList({
                                     highlightUserId={currentUserId}
                                 />
                                 {showActions && (
-                                    <div className="flex shrink-0 gap-2 self-end sm:self-start">
+                                    <div className="flex shrink-0 gap-2 self-end sm:self-auto">
                                         {match.can_edit && onEdit && (
                                             <Button
                                                 type="button"

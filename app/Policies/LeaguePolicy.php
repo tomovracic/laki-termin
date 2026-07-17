@@ -43,4 +43,9 @@ class LeaguePolicy
     {
         return $user->hasRole('admin');
     }
+
+    public function finishRound(User $user, League $league): bool
+    {
+        return $user->hasRole('admin');
+    }
 }

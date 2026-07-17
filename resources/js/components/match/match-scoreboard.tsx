@@ -29,9 +29,9 @@ type SetScore = {
 type MatchWinner = 'player_one' | 'player_two' | null;
 
 const scoreBoxClassName =
-    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-muted/50 text-sm tabular-nums md:h-10 md:w-10';
+    'flex h-6 w-6 shrink-0 items-center justify-center rounded border bg-muted/50 text-xs tabular-nums leading-none';
 
-const playerRowClassName = 'flex h-9 items-center md:h-10';
+const playerRowClassName = 'flex h-6 items-center';
 
 export function getSetScores(match: MatchSetScoreFields): SetScore[] {
     const rawSets: Array<[number | null | undefined, number | null | undefined]> = [
@@ -83,26 +83,36 @@ function MatchPlayerRow({
     player,
     highlighted = false,
     isWinner = false,
+    isLoser = false,
 }: {
     player: MatchDisplayPlayer;
     highlighted?: boolean;
     isWinner?: boolean;
+    isLoser?: boolean;
 }) {
     const getInitials = useInitials();
 
     return (
-        <div className={cn(playerRowClassName, 'min-w-0 gap-2')}>
-            <Avatar className="size-8 shrink-0">
+        <div
+            className={cn(
+                playerRowClassName,
+                'min-w-0 gap-2 rounded-md px-1.5 -mx-1.5',
+                isWinner && 'bg-emerald-500/10',
+                isLoser && 'opacity-55',
+            )}
+        >
+            <Avatar className="size-6 shrink-0">
                 <AvatarImage src={player.avatar ?? undefined} alt={player.name} />
-                <AvatarFallback className="bg-neutral-200 text-xs font-medium text-black dark:bg-neutral-700 dark:text-white">
+                <AvatarFallback className="bg-neutral-200 text-[10px] font-medium text-black dark:bg-neutral-700 dark:text-white">
                     {getInitials(player.name)}
                 </AvatarFallback>
             </Avatar>
             <span
                 className={cn(
-                    'truncate font-medium',
+                    'truncate text-sm font-medium',
                     highlighted && 'text-primary',
-                    isWinner && 'font-bold',
+                    isWinner && 'font-bold text-emerald-700 dark:text-emerald-400',
+                    isLoser && 'text-muted-foreground',
                 )}
             >
                 {player.name}
@@ -127,38 +137,42 @@ export function MatchScoreboard({
     const winner = getMatchWinner(sets);
     const playerOneIsWinner = winner === 'player_one';
     const playerTwoIsWinner = winner === 'player_two';
+    const hasWinner = winner !== null;
 
     return (
         <div className="flex items-start gap-3 sm:gap-4">
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <MatchPlayerRow
                     player={playerOne}
                     highlighted={highlightUserId === playerOne.userId}
                     isWinner={playerOneIsWinner}
+                    isLoser={hasWinner && !playerOneIsWinner}
                 />
                 <MatchPlayerRow
                     player={playerTwo}
                     highlighted={highlightUserId === playerTwo.userId}
                     isWinner={playerTwoIsWinner}
+                    isLoser={hasWinner && !playerTwoIsWinner}
                 />
             </div>
 
             {sets.length === 0 ? (
                 <span className={cn(playerRowClassName, 'text-sm text-muted-foreground')}>—</span>
             ) : (
-                <div className="flex gap-1.5 sm:gap-2">
+                <div className="flex gap-1 sm:gap-1.5">
                     {sets.map((set, index) => {
                         const playerOneWonSet = set.playerOneGames > set.playerTwoGames;
                         const playerTwoWonSet = set.playerTwoGames > set.playerOneGames;
 
                         return (
-                            <div key={index} className="flex flex-col gap-1.5">
+                            <div key={index} className="flex flex-col gap-1">
                                 <span
                                     className={cn(
                                         scoreBoxClassName,
                                         playerOneWonSet
-                                            ? 'font-bold'
+                                            ? 'border-emerald-500/40 bg-emerald-500/10 font-bold text-emerald-700 dark:text-emerald-400'
                                             : 'font-medium text-muted-foreground',
+                                        hasWinner && !playerOneIsWinner && 'opacity-55',
                                     )}
                                 >
                                     {set.playerOneGames}
@@ -167,8 +181,9 @@ export function MatchScoreboard({
                                     className={cn(
                                         scoreBoxClassName,
                                         playerTwoWonSet
-                                            ? 'font-bold'
+                                            ? 'border-emerald-500/40 bg-emerald-500/10 font-bold text-emerald-700 dark:text-emerald-400'
                                             : 'font-medium text-muted-foreground',
+                                        hasWinner && !playerTwoIsWinner && 'opacity-55',
                                     )}
                                 >
                                     {set.playerTwoGames}

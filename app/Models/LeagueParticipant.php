@@ -22,6 +22,7 @@ class LeagueParticipant extends Model
         'first_name',
         'last_name',
         'seed',
+        'received_bye',
     ];
 
     /**
@@ -31,6 +32,7 @@ class LeagueParticipant extends Model
     {
         return [
             'seed' => 'integer',
+            'received_bye' => 'boolean',
         ];
     }
 

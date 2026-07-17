@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\DTO\Leagues;
 
+use App\Enums\KnockoutDrawMode;
 use App\Enums\LeagueFormat;
 
 readonly class CreateLeagueData
@@ -19,6 +20,7 @@ readonly class CreateLeagueData
         public array $participantIds,
         public LeagueFormat $format = LeagueFormat::RoundRobin,
         public int $setsBestOf = 3,
+        public KnockoutDrawMode $knockoutDrawMode = KnockoutDrawMode::Seeded,
         public array $participants = [],
     ) {}
 }

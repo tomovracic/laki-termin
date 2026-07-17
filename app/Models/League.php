@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\KnockoutDrawMode;
 use App\Enums\LeagueFormat;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +24,7 @@ class League extends Model
         'format',
         'rounds',
         'sets_best_of',
+        'knockout_draw_mode',
         'created_by',
     ];
 
@@ -35,6 +37,7 @@ class League extends Model
             'format' => LeagueFormat::class,
             'sets_best_of' => 'integer',
             'rounds' => 'integer',
+            'knockout_draw_mode' => KnockoutDrawMode::class,
         ];
     }
 

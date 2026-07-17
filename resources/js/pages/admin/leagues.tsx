@@ -5,7 +5,7 @@ import { AdminSectionLayout } from '@/components/admin/admin-section-layout';
 import { StatusBanner } from '@/components/admin/status-banner';
 import InputError from '@/components/input-error';
 import { KnockoutCreateWizard } from '@/components/league/knockout-create-wizard';
-import type { LeagueFormat, LeagueSummary, LeagueUserOption } from '@/components/league/types';
+import type { KnockoutDrawMode, LeagueFormat, LeagueSummary, LeagueUserOption } from '@/components/league/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,6 +62,7 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
     const [name, setName] = useState('');
     const [rounds, setRounds] = useState('1');
     const [setsBestOf, setSetsBestOf] = useState('3');
+    const [knockoutDrawMode, setKnockoutDrawMode] = useState<KnockoutDrawMode>('seeded');
     const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
     const [knockoutParticipantIds, setKnockoutParticipantIds] = useState<number[]>([]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -90,6 +91,7 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
         setName('');
         setRounds('1');
         setSetsBestOf('3');
+        setKnockoutDrawMode('seeded');
         setSelectedParticipantIds([]);
         setKnockoutParticipantIds([]);
         setErrors({});
@@ -108,6 +110,7 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
                       name,
                       format: 'knockout',
                       sets_best_of: Number.parseInt(setsBestOf, 10),
+                      knockout_draw_mode: knockoutDrawMode,
                       participant_ids: knockoutParticipantIds,
                   }
                 : {
@@ -236,6 +239,8 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
                                     onNameChange={setName}
                                     setsBestOf={setsBestOf}
                                     onSetsBestOfChange={setSetsBestOf}
+                                    drawMode={knockoutDrawMode}
+                                    onDrawModeChange={setKnockoutDrawMode}
                                     users={users}
                                     participantIds={knockoutParticipantIds}
                                     onParticipantIdsChange={setKnockoutParticipantIds}

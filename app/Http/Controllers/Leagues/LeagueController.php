@@ -7,12 +7,15 @@ namespace App\Http\Controllers\Leagues;
 use App\Actions\Leagues\AddLeagueParticipantAction;
 use App\Actions\Leagues\CreateLeagueAction;
 use App\Actions\Leagues\DeleteLeagueAction;
+use App\Actions\Leagues\FinishKnockoutRoundAction;
 use App\Actions\Leagues\RecordLeagueMatchResultAction;
 use App\DTO\Leagues\AddLeagueParticipantData;
 use App\DTO\Leagues\CreateLeagueData;
 use App\DTO\Leagues\RecordLeagueMatchResultData;
+use App\Enums\KnockoutDrawMode;
 use App\Enums\LeagueFormat;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Leagues\FinishKnockoutRoundRequest;
 use App\Http\Requests\Leagues\RecordLeagueMatchResultRequest;
 use App\Http\Requests\Leagues\StoreLeagueParticipantRequest;
 use App\Http\Requests\Leagues\StoreLeagueRequest;
@@ -31,6 +34,9 @@ class LeagueController extends Controller
             ?? LeagueFormat::RoundRobin;
 
         if ($format === LeagueFormat::Knockout) {
+            $drawMode = KnockoutDrawMode::tryFrom((string) ($validated['knockout_draw_mode'] ?? KnockoutDrawMode::Seeded->value))
+                ?? KnockoutDrawMode::Seeded;
+
             $league = $action->execute(new CreateLeagueData(
                 name: (string) $validated['name'],
                 rounds: 1,
@@ -38,6 +44,7 @@ class LeagueController extends Controller
                 participantIds: array_map('intval', $validated['participant_ids']),
                 format: LeagueFormat::Knockout,
                 setsBestOf: (int) $validated['sets_best_of'],
+                knockoutDrawMode: $drawMode,
             ));
         } else {
             $league = $action->execute(new CreateLeagueData(
@@ -94,6 +101,16 @@ class LeagueController extends Controller
         ));
 
         return LeagueMatchResource::make($match);
+    }
+
+    public function finishRound(
+        FinishKnockoutRoundRequest $request,
+        League $league,
+        FinishKnockoutRoundAction $action,
+    ): LeagueResource {
+        $league = $action->execute($league);
+
+        return LeagueResource::make($league->loadCount(['participants', 'matches']));
     }
 
     public function destroy(League $league, DeleteLeagueAction $action): JsonResponse

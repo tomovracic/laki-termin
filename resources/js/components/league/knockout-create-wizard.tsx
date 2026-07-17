@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react';
 import { buildBracketPreview, shuffleParticipants } from '@/components/league/bracket-utils';
 import { TournamentBracket } from '@/components/league/tournament-bracket';
-import type { KnockoutParticipantDraft, LeagueUserOption } from '@/components/league/types';
+import type {
+    KnockoutDrawMode,
+    KnockoutParticipantDraft,
+    LeagueUserOption,
+} from '@/components/league/types';
 import { SearchInput } from '@/components/admin/search-input';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -22,6 +26,8 @@ type KnockoutCreateWizardProps = {
     onNameChange: (value: string) => void;
     setsBestOf: string;
     onSetsBestOfChange: (value: string) => void;
+    drawMode: KnockoutDrawMode;
+    onDrawModeChange: (value: KnockoutDrawMode) => void;
     users: LeagueUserOption[];
     participantIds: number[];
     onParticipantIdsChange: (participantIds: number[]) => void;
@@ -55,6 +61,8 @@ export function KnockoutCreateWizard({
     onNameChange,
     setsBestOf,
     onSetsBestOfChange,
+    drawMode,
+    onDrawModeChange,
     users,
     participantIds,
     onParticipantIdsChange,
@@ -68,7 +76,10 @@ export function KnockoutCreateWizard({
         [participantIds, users],
     );
 
-    const previewMatches = useMemo(() => buildBracketPreview(participants), [participants]);
+    const previewMatches = useMemo(
+        () => buildBracketPreview(participants, drawMode),
+        [participants, drawMode],
+    );
 
     const filteredUsers = useMemo(() => {
         const term = userSearch.trim().toLowerCase();
@@ -134,6 +145,24 @@ export function KnockoutCreateWizard({
                     </SelectContent>
                 </Select>
                 <InputError message={errors.sets_best_of?.[0]} />
+            </div>
+
+            <div className="space-y-2">
+                <Label>{t('tournament_draw_mode')}</Label>
+                <Select
+                    value={drawMode}
+                    onValueChange={(value) => onDrawModeChange(value as KnockoutDrawMode)}
+                >
+                    <SelectTrigger>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="seeded">{t('tournament_draw_seeded')}</SelectItem>
+                        <SelectItem value="random">{t('tournament_draw_random')}</SelectItem>
+                    </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">{t('tournament_draw_mode_hint')}</p>
+                <InputError message={errors.knockout_draw_mode?.[0]} />
             </div>
 
             <div className="space-y-2">

@@ -1,71 +1,117 @@
-import type { BracketPreviewMatch, KnockoutParticipantDraft } from '@/components/league/types';
-
-export function nextPowerOfTwo(n: number): number {
-    let power = 1;
-
-    while (power < n) {
-        power *= 2;
-    }
-
-    return power;
-}
-
-export function standardSeedSlots(size: number): number[] {
-    let slots = [1];
-
-    for (let currentSize = 1; currentSize < size; currentSize *= 2) {
-        const next: number[] = [];
-
-        for (const seed of slots) {
-            next.push(seed);
-            next.push(currentSize * 2 + 1 - seed);
-        }
-
-        slots = next;
-    }
-
-    return slots;
-}
+import type { BracketPreviewMatch, KnockoutDrawMode, KnockoutParticipantDraft } from '@/components/league/types';
 
 /**
- * First-round seeds (1-based) or null for empty slots.
- * Standard placement keeps all byes in round 1 so later rounds stay full.
+ * Preview of the first knockout round only: at most one bye when count is odd
+ * (except three players → round-robin of three matches).
  */
-export function firstRoundSeedSlots(
-    participantCount: number,
-    bracketSize: number,
-): Array<number | null> {
-    return standardSeedSlots(bracketSize).map((seed) =>
-        seed <= participantCount ? seed : null,
-    );
-}
-
-export function buildBracketPreview(participants: KnockoutParticipantDraft[]): BracketPreviewMatch[] {
+export function buildBracketPreview(
+    participants: KnockoutParticipantDraft[],
+    drawMode: KnockoutDrawMode = 'seeded',
+): BracketPreviewMatch[] {
     if (participants.length < 2) {
         return [];
     }
 
-    const bracketSize = nextPowerOfTwo(participants.length);
-    const seedSlots = firstRoundSeedSlots(participants.length, bracketSize);
-    const firstRoundMatchCount = bracketSize / 2;
+    if (participants.length === 3) {
+        return [
+            {
+                round: 1,
+                position: 0,
+                player_one: participants[0]?.display_name ?? null,
+                player_two: participants[1]?.display_name ?? null,
+                is_bye: false,
+                is_empty: false,
+            },
+            {
+                round: 1,
+                position: 1,
+                player_one: participants[0]?.display_name ?? null,
+                player_two: participants[2]?.display_name ?? null,
+                is_bye: false,
+                is_empty: false,
+            },
+            {
+                round: 1,
+                position: 2,
+                player_one: participants[1]?.display_name ?? null,
+                player_two: participants[2]?.display_name ?? null,
+                is_bye: false,
+                is_empty: false,
+            },
+        ];
+    }
+
+    if (participants.length === 2) {
+        return [
+            {
+                round: 1,
+                position: 0,
+                player_one: participants[0]?.display_name ?? null,
+                player_two: participants[1]?.display_name ?? null,
+                is_bye: false,
+                is_empty: false,
+            },
+        ];
+    }
+
     const matches: BracketPreviewMatch[] = [];
+    let remaining = [...participants];
+    let position = 0;
 
-    for (let position = 0; position < firstRoundMatchCount; position++) {
-        const leftSeed = seedSlots[position * 2];
-        const rightSeed = seedSlots[position * 2 + 1];
-        const left = leftSeed !== null ? participants[leftSeed - 1] : null;
-        const right = rightSeed !== null ? participants[rightSeed - 1] : null;
-        const hasLeft = left !== null;
-        const hasRight = right !== null;
+    if (remaining.length % 2 === 1) {
+        if (drawMode === 'seeded') {
+            const byePlayer = remaining[0];
+            remaining = remaining.slice(1);
+            matches.push({
+                round: 1,
+                position,
+                player_one: byePlayer?.display_name ?? null,
+                player_two: null,
+                is_bye: true,
+                is_empty: false,
+            });
+        } else {
+            matches.push({
+                round: 1,
+                position,
+                player_one: '?',
+                player_two: null,
+                is_bye: true,
+                is_empty: false,
+            });
+            // Preview only: drop last seat so pair count matches odd field size.
+            remaining = remaining.slice(0, remaining.length - 1);
+        }
 
-        matches.push({
-            round: 1,
-            position,
-            player_one: left?.display_name ?? null,
-            player_two: right?.display_name ?? null,
-            is_bye: hasLeft !== hasRight,
-            is_empty: !hasLeft && !hasRight,
-        });
+        position++;
+    }
+
+    if (drawMode === 'seeded') {
+        const half = remaining.length / 2;
+
+        for (let i = 0; i < half; i++) {
+            const left = remaining[i];
+            const right = remaining[remaining.length - 1 - i];
+            matches.push({
+                round: 1,
+                position: position + i,
+                player_one: left?.display_name ?? null,
+                player_two: right?.display_name ?? null,
+                is_bye: false,
+                is_empty: false,
+            });
+        }
+    } else {
+        for (let i = 0; i < remaining.length; i += 2) {
+            matches.push({
+                round: 1,
+                position: position + i / 2,
+                player_one: remaining[i]?.display_name ?? null,
+                player_two: remaining[i + 1]?.display_name ?? null,
+                is_bye: false,
+                is_empty: false,
+            });
+        }
     }
 
     return matches;

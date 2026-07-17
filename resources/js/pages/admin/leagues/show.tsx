@@ -7,6 +7,7 @@ import { LeagueMatchesSection } from '@/components/league/league-matches-section
 import { LeagueStandingsTable } from '@/components/league/league-standings-table';
 import { TournamentBracket } from '@/components/league/tournament-bracket';
 import type {
+    KnockoutChampion,
     LeagueDetail,
     LeagueMatch,
     LeagueMatchResultPayload,
@@ -42,6 +43,7 @@ type AdminLeagueShowPageProps = {
     matches: LeagueMatch[];
     participants: LeagueParticipant[];
     available_users: LeagueUserOption[];
+    knockout_champion?: KnockoutChampion | null;
 };
 
 type ApiErrorResponse = {
@@ -55,15 +57,17 @@ export default function AdminLeagueShowPage({
     matches: initialMatches,
     participants: initialParticipants,
     available_users: initialAvailableUsers,
+    knockout_champion: initialChampion = null,
 }: AdminLeagueShowPageProps) {
     const { t } = useI18n();
     const { auth } = usePage<{ auth: Auth }>().props;
     const currentUserId = auth.user?.id ?? null;
-    const [league] = useState(initialLeague);
+    const [league, setLeague] = useState(initialLeague);
     const [standings, setStandings] = useState(initialStandings);
     const [matches, setMatches] = useState(initialMatches);
     const [participants, setParticipants] = useState(initialParticipants);
     const [availableUsers, setAvailableUsers] = useState(initialAvailableUsers);
+    const [knockoutChampion, setKnockoutChampion] = useState(initialChampion);
     const [selectedUserId, setSelectedUserId] = useState<string>('');
     const [isAddingParticipant, setIsAddingParticipant] = useState(false);
     const [selectedMatch, setSelectedMatch] = useState<LeagueMatch | null>(null);
@@ -71,6 +75,7 @@ export default function AdminLeagueShowPage({
     const [resultErrors, setResultErrors] = useState<string[]>([]);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isFinishingRound, setIsFinishingRound] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -83,13 +88,15 @@ export default function AdminLeagueShowPage({
 
     async function reloadLeagueData() {
         router.reload({
-            only: ['league', 'standings', 'matches', 'participants', 'available_users'],
+            only: ['league', 'standings', 'matches', 'participants', 'available_users', 'knockout_champion'],
             onSuccess: (visit) => {
                 const props = visit.props as AdminLeagueShowPageProps;
+                setLeague(props.league);
                 setStandings(props.standings);
                 setMatches(props.matches);
                 setParticipants(props.participants);
                 setAvailableUsers(props.available_users);
+                setKnockoutChampion(props.knockout_champion ?? null);
             },
         });
     }
@@ -182,6 +189,39 @@ export default function AdminLeagueShowPage({
         }
     }
 
+    async function handleFinishRound() {
+        setIsFinishingRound(true);
+        setMessage(null);
+        setErrorMessage(null);
+
+        try {
+            const response = await fetch(`/leagues/${league.id}/rounds/finish`, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...csrfHeaders(),
+                },
+            });
+
+            const body = (await response.json()) as ApiErrorResponse;
+
+            if (!response.ok) {
+                setErrorMessage(
+                    body.errors?.round?.[0] ?? body.message ?? t('tournament_unable_finish_round'),
+                );
+                return;
+            }
+
+            setMessage(t('tournament_round_finished'));
+            await reloadLeagueData();
+        } catch {
+            setErrorMessage(t('tournament_unable_finish_round'));
+        } finally {
+            setIsFinishingRound(false);
+        }
+    }
+
     async function handleDeleteLeague() {
         setIsDeleting(true);
         setMessage(null);
@@ -231,6 +271,17 @@ export default function AdminLeagueShowPage({
                             {t('tournament_best_of').replace('{count}', `${bestOf}`)}
                         </Badge>
                     )}
+                    {isKnockout && league.knockout_draw_mode === 'random' && (
+                        <Badge variant="outline">{t('tournament_draw_random')}</Badge>
+                    )}
+                    {isKnockout && league.knockout_draw_mode === 'seeded' && (
+                        <Badge variant="outline">{t('tournament_draw_seeded')}</Badge>
+                    )}
+                    {knockoutChampion && (
+                        <Badge variant="default">
+                            {t('tournament_champion')}: {knockoutChampion.name}
+                        </Badge>
+                    )}
                     <Badge variant="secondary">
                         {league.played_matches_count}/{league.matches_count}{' '}
                         {t('league_matches_played').toLowerCase()}
@@ -250,7 +301,15 @@ export default function AdminLeagueShowPage({
                         <TournamentBracket
                             matches={matches}
                             canEnterResults
+                            canFinishRound={Boolean(league.can_finish_round)}
+                            isFinishingRound={isFinishingRound}
                             currentUserId={currentUserId}
+                            currentBracketRound={league.current_bracket_round ?? null}
+                            nextRoundPending={Boolean(league.next_round_pending)}
+                            championName={knockoutChampion?.name ?? null}
+                            onFinishRound={() => {
+                                void handleFinishRound();
+                            }}
                             onEnterResult={(match) => {
                                 setResultErrors([]);
                                 setSelectedMatch(match);
@@ -329,7 +388,11 @@ export default function AdminLeagueShowPage({
             >
                 <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>{t('league_enter_result')}</DialogTitle>
+                        <DialogTitle>
+                            {selectedMatch?.status === 'played'
+                                ? t('league_edit_result')
+                                : t('league_enter_result')}
+                        </DialogTitle>
                     </DialogHeader>
                     {selectedMatch !== null && (
                         <LeagueMatchResultForm

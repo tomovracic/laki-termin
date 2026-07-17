@@ -2,7 +2,12 @@ import { Head, usePage } from '@inertiajs/react';
 import { LeagueMatchesSection } from '@/components/league/league-matches-section';
 import { LeagueStandingsTable } from '@/components/league/league-standings-table';
 import { TournamentBracket } from '@/components/league/tournament-bracket';
-import type { LeagueDetail, LeagueMatch, LeagueStandingsEntry } from '@/components/league/types';
+import type {
+    KnockoutChampion,
+    LeagueDetail,
+    LeagueMatch,
+    LeagueStandingsEntry,
+} from '@/components/league/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
@@ -15,12 +20,14 @@ type UserLeagueShowPageProps = {
     league: LeagueDetail;
     standings: LeagueStandingsEntry[];
     matches: LeagueMatch[];
+    knockout_champion?: KnockoutChampion | null;
 };
 
 export default function UserLeagueShowPage({
     league,
     standings,
     matches,
+    knockout_champion = null,
 }: UserLeagueShowPageProps) {
     const { t } = useI18n();
     const { auth } = usePage<{ auth: Auth }>().props;
@@ -53,6 +60,11 @@ export default function UserLeagueShowPage({
                                 {t('tournament_best_of').replace('{count}', `${bestOf}`)}
                             </Badge>
                         )}
+                        {knockout_champion && (
+                            <Badge variant="default">
+                                {t('tournament_champion')}: {knockout_champion.name}
+                            </Badge>
+                        )}
                         <Badge variant="secondary">
                             {league.played_matches_count}/{league.matches_count}{' '}
                             {t('league_matches_played').toLowerCase()}
@@ -66,7 +78,14 @@ export default function UserLeagueShowPage({
                             <CardTitle>{t('tournament_bracket')}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <TournamentBracket matches={matches} currentUserId={currentUserId} />
+                            <TournamentBracket
+                                matches={matches}
+                                currentUserId={currentUserId}
+                                currentBracketRound={league.current_bracket_round ?? null}
+                                canFinishRound={Boolean(league.can_finish_round)}
+                                nextRoundPending={Boolean(league.next_round_pending)}
+                                championName={knockout_champion?.name ?? null}
+                            />
                         </CardContent>
                     </Card>
                 ) : (

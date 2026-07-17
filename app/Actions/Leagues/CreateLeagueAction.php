@@ -112,6 +112,7 @@ class CreateLeagueAction
                 'format' => LeagueFormat::Knockout->value,
                 'rounds' => 1,
                 'sets_best_of' => $data->setsBestOf,
+                'knockout_draw_mode' => $data->knockoutDrawMode->value,
                 'created_by' => $data->createdBy,
             ]);
 
@@ -122,6 +123,7 @@ class CreateLeagueAction
                     'league_id' => $league->id,
                     'user_id' => $userId,
                     'seed' => $index + 1,
+                    'received_bye' => false,
                 ]);
             }
 

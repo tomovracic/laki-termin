@@ -369,8 +369,25 @@ const translations = {
         tournament_empty_slot: 'Prazno kolo',
         tournament_tba: 'TBD',
         tournament_final: 'Finale',
+        tournament_final_three: 'Finalna trojka (svako sa svakim)',
         tournament_prev_round: 'Prethodno kolo',
         tournament_next_round: 'Sljedeće kolo',
+        tournament_next_round_pending:
+            'Sljedeće kolo bit će izvučeno kad admin završi trenutno kolo (nakon unosa svih rezultata).',
+        tournament_finish_round: 'Završi kolo',
+        tournament_finish_round_hint:
+            'Svi rezultati u kolu su uneseni. Završite kolo da se izvuče sljedeće.',
+        tournament_awaiting_finish_round:
+            'Svi rezultati u kolu su uneseni. Sljedeće kolo bit će izvučeno kad admin završi kolo.',
+        tournament_round_finished: 'Kolo je završeno i sljedeće je izvučeno.',
+        tournament_unable_finish_round: 'Nije moguće završiti kolo.',
+        tournament_winner: 'Pobjednik',
+        tournament_draw_mode: 'Način ždrijeba',
+        tournament_draw_seeded: 'Po nositeljima',
+        tournament_draw_random: 'Nasumični ždrijeb',
+        tournament_draw_mode_hint:
+            'Po nositeljima: bye ide najboljem seedu koji još nije bio slobodan; parovi bolji vs lošiji. Nasumično: bye i parovi se ždrijebaju.',
+        tournament_champion: 'Prvak',
         tournament_no_bracket: 'Bracket jos nije dostupan.',
         tournament_created: 'Turnir je kreiran.',
         match_history: 'Povijest meceva',
@@ -790,8 +807,25 @@ const translations = {
         tournament_empty_slot: 'Empty slot',
         tournament_tba: 'TBD',
         tournament_final: 'Final',
+        tournament_final_three: 'Final three (round-robin)',
         tournament_prev_round: 'Previous round',
         tournament_next_round: 'Next round',
+        tournament_next_round_pending:
+            'The next round will be drawn when an admin finishes the current round (after all results are entered).',
+        tournament_finish_round: 'Finish round',
+        tournament_finish_round_hint:
+            'All results in this round are entered. Finish the round to draw the next one.',
+        tournament_awaiting_finish_round:
+            'All results in this round are entered. The next round will be drawn when an admin finishes the round.',
+        tournament_round_finished: 'Round finished and the next round has been drawn.',
+        tournament_unable_finish_round: 'Unable to finish the round.',
+        tournament_winner: 'Winner',
+        tournament_draw_mode: 'Draw method',
+        tournament_draw_seeded: 'By seeds',
+        tournament_draw_random: 'Random draw',
+        tournament_draw_mode_hint:
+            'By seeds: bye goes to the best seed who has not had a bye yet; pairings are best vs worst. Random: bye and pairings are drawn.',
+        tournament_champion: 'Champion',
         tournament_no_bracket: 'Bracket is not available yet.',
         tournament_created: 'Tournament created.',
         match_history: 'Match history',
