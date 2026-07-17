@@ -29,6 +29,11 @@ class LeaguePolicy
         return $user->hasRole('admin');
     }
 
+    public function delete(User $user, League $league): bool
+    {
+        return $user->hasRole('admin');
+    }
+
     public function manageParticipants(User $user, League $league): bool
     {
         return $user->hasRole('admin');

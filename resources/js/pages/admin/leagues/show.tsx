@@ -20,6 +20,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
@@ -67,6 +69,8 @@ export default function AdminLeagueShowPage({
     const [selectedMatch, setSelectedMatch] = useState<LeagueMatch | null>(null);
     const [isSubmittingResult, setIsSubmittingResult] = useState(false);
     const [resultErrors, setResultErrors] = useState<string[]>([]);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -178,26 +182,63 @@ export default function AdminLeagueShowPage({
         }
     }
 
+    async function handleDeleteLeague() {
+        setIsDeleting(true);
+        setMessage(null);
+        setErrorMessage(null);
+
+        try {
+            const response = await fetch(`/leagues/${league.id}`, {
+                method: 'DELETE',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...csrfHeaders(),
+                },
+            });
+
+            const body = (await response.json()) as ApiErrorResponse;
+
+            if (!response.ok) {
+                setErrorMessage(body.message ?? t('league_unable_delete'));
+                setIsDeleteDialogOpen(false);
+                return;
+            }
+
+            router.visit('/admin/leagues');
+        } catch {
+            setErrorMessage(t('league_unable_delete'));
+            setIsDeleteDialogOpen(false);
+        } finally {
+            setIsDeleting(false);
+        }
+    }
+
     return (
         <AdminSectionLayout title={league.name} description={t('league_admin_show_description')}>
             <Head title={league.name} />
             <StatusBanner message={message} error={errorMessage} />
 
-            <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">
-                    {isKnockout
-                        ? t('tournament_format_knockout')
-                        : `${league.participants_count} ${t('league_participants').toLowerCase()}`}
-                </Badge>
-                {isKnockout && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">
-                        {t('tournament_best_of').replace('{count}', `${bestOf}`)}
+                        {isKnockout
+                            ? t('tournament_format_knockout')
+                            : `${league.participants_count} ${t('league_participants').toLowerCase()}`}
                     </Badge>
-                )}
-                <Badge variant="secondary">
-                    {league.played_matches_count}/{league.matches_count}{' '}
-                    {t('league_matches_played').toLowerCase()}
-                </Badge>
+                    {isKnockout && (
+                        <Badge variant="outline">
+                            {t('tournament_best_of').replace('{count}', `${bestOf}`)}
+                        </Badge>
+                    )}
+                    <Badge variant="secondary">
+                        {league.played_matches_count}/{league.matches_count}{' '}
+                        {t('league_matches_played').toLowerCase()}
+                    </Badge>
+                </div>
+                <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
+                    {t('league_delete')}
+                </Button>
             </div>
 
             {isKnockout ? (
@@ -300,6 +341,35 @@ export default function AdminLeagueShowPage({
                             errors={resultErrors}
                         />
                     )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{t('league_delete')}</DialogTitle>
+                        <DialogDescription>{t('league_confirm_delete')}</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsDeleteDialogOpen(false)}
+                            disabled={isDeleting}
+                        >
+                            {t('cancel')}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={isDeleting}
+                            onClick={() => {
+                                void handleDeleteLeague();
+                            }}
+                        >
+                            {isDeleting ? t('saving') : t('league_delete')}
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </AdminSectionLayout>

@@ -324,6 +324,11 @@ const translations = {
         league_unable_create: 'Kreiranje lige nije uspjelo.',
         league_no_leagues: 'Nema kreiranih liga.',
         league_manage: 'Upravljaj',
+        league_delete: 'Obrisi ligu',
+        league_confirm_delete:
+            'Jeste li sigurni da zelite obrisati ovu ligu? Svi mecevi lige bit ce obrisani. Ova radnja se ne moze ponistiti.',
+        league_deleted: 'Liga je obrisana.',
+        league_unable_delete: 'Brisanje lige nije uspjelo.',
         league_view: 'Pregledaj',
         league_standings: 'Tablica',
         league_player: 'Igrac',
@@ -740,6 +745,11 @@ const translations = {
         league_unable_create: 'Unable to create league.',
         league_no_leagues: 'No leagues created yet.',
         league_manage: 'Manage',
+        league_delete: 'Delete league',
+        league_confirm_delete:
+            'Are you sure you want to delete this league? All league matches will be deleted. This action cannot be undone.',
+        league_deleted: 'League deleted.',
+        league_unable_delete: 'Unable to delete league.',
         league_view: 'View',
         league_standings: 'Standings',
         league_player: 'Player',

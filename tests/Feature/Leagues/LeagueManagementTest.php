@@ -7,6 +7,7 @@ use App\DTO\Leagues\CreateLeagueData;
 use App\Enums\LeagueMatchStatus;
 use App\Models\League;
 use App\Models\LeagueMatch;
+use App\Models\LeagueParticipant;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Leagues\LeagueStandingsService;
@@ -222,6 +223,45 @@ test('non admin cannot create league or record result', function () {
             'set2_player_two_games' => 2,
         ],
     )->assertForbidden();
+
+    $this->actingAs($user)
+        ->deleteJson(route('leagues.destroy', $league))
+        ->assertForbidden();
+
+    expect(League::query()->whereKey($league->id)->exists())->toBeTrue();
+});
+
+test('admin can delete league with matches and participants', function () {
+    $admin = User::factory()->create();
+    assignLeagueAdminRole($admin);
+
+    $players = User::factory()->count(3)->create();
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Za brisanje',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: $players->pluck('id')->all(),
+    ));
+
+    $match = $league->matches()->first();
+    expect($match)->not->toBeNull();
+
+    recordLeagueWin($admin, $league, $match, $players[0], $players[1]);
+
+    $leagueId = $league->id;
+    expect($league->matches()->count())->toBe(3);
+    expect($league->participants()->count())->toBe(3);
+    expect($league->matches()->played()->count())->toBe(1);
+
+    $this->actingAs($admin)
+        ->deleteJson(route('leagues.destroy', $league))
+        ->assertOk()
+        ->assertJson(['data' => ['deleted' => true]]);
+
+    expect(League::query()->whereKey($leagueId)->exists())->toBeFalse();
+    expect(LeagueMatch::query()->where('league_id', $leagueId)->exists())->toBeFalse();
+    expect(LeagueParticipant::query()->where('league_id', $leagueId)->exists())->toBeFalse();
 });
 
 test('authenticated users can view league pages', function () {

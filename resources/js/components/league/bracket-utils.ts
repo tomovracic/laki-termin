@@ -29,71 +29,15 @@ export function standardSeedSlots(size: number): number[] {
 
 /**
  * First-round seeds (1-based) or null for empty slots.
- * Empty slots are paired into the same match so at most one player gets a bye.
+ * Standard placement keeps all byes in round 1 so later rounds stay full.
  */
 export function firstRoundSeedSlots(
     participantCount: number,
     bracketSize: number,
 ): Array<number | null> {
-    const slots: Array<number | null> = Array.from({ length: bracketSize }, () => null);
-    const matchCount = bracketSize / 2;
-    const emptySlots = bracketSize - participantCount;
-    const emptyMatchCount = Math.floor(emptySlots / 2);
-    const hasBye = emptySlots % 2 === 1;
-
-    const matchRoles: Array<'bye' | 'full' | 'empty' | null> = Array.from(
-        { length: matchCount },
-        () => null,
+    return standardSeedSlots(bracketSize).map((seed) =>
+        seed <= participantCount ? seed : null,
     );
-
-    let emptyPlaced = 0;
-
-    for (let position = matchCount - 1; position >= 0 && emptyPlaced < emptyMatchCount; position--) {
-        if (position % 2 === 1) {
-            matchRoles[position] = 'empty';
-            emptyPlaced++;
-        }
-    }
-
-    for (let position = matchCount - 1; position >= 0 && emptyPlaced < emptyMatchCount; position--) {
-        if (matchRoles[position] === null) {
-            matchRoles[position] = 'empty';
-            emptyPlaced++;
-        }
-    }
-
-    if (hasBye) {
-        for (let position = 0; position < matchCount; position++) {
-            if (matchRoles[position] === null) {
-                matchRoles[position] = 'bye';
-                break;
-            }
-        }
-    }
-
-    for (let position = 0; position < matchCount; position++) {
-        if (matchRoles[position] === null) {
-            matchRoles[position] = 'full';
-        }
-    }
-
-    const remainingSeeds = Array.from({ length: participantCount }, (_, i) => i + 1);
-
-    for (let position = 0; position < matchCount; position++) {
-        const role = matchRoles[position];
-
-        if (role === 'bye' && remainingSeeds.length > 0) {
-            slots[position * 2] = remainingSeeds.shift() ?? null;
-            continue;
-        }
-
-        if (role === 'full' && remainingSeeds.length >= 2) {
-            slots[position * 2] = remainingSeeds.shift() ?? null;
-            slots[position * 2 + 1] = remainingSeeds.pop() ?? null;
-        }
-    }
-
-    return slots;
 }
 
 export function buildBracketPreview(participants: KnockoutParticipantDraft[]): BracketPreviewMatch[] {

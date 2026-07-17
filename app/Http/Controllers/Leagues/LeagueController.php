@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Leagues;
 
 use App\Actions\Leagues\AddLeagueParticipantAction;
 use App\Actions\Leagues\CreateLeagueAction;
+use App\Actions\Leagues\DeleteLeagueAction;
 use App\Actions\Leagues\RecordLeagueMatchResultAction;
 use App\DTO\Leagues\AddLeagueParticipantData;
 use App\DTO\Leagues\CreateLeagueData;
@@ -93,5 +94,18 @@ class LeagueController extends Controller
         ));
 
         return LeagueMatchResource::make($match);
+    }
+
+    public function destroy(League $league, DeleteLeagueAction $action): JsonResponse
+    {
+        $this->authorize('delete', $league);
+
+        $action->execute($league);
+
+        return response()->json([
+            'data' => [
+                'deleted' => true,
+            ],
+        ]);
     }
 }

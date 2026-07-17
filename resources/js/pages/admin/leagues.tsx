@@ -13,6 +13,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -65,6 +66,8 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
     const [knockoutParticipantIds, setKnockoutParticipantIds] = useState<number[]>([]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<LeagueSummary | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string[]>>({});
     const [message, setMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -145,6 +148,38 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
             setErrorMessage(t('league_unable_create'));
         } finally {
             setIsCreating(false);
+        }
+    }
+
+    async function handleDeleteLeague(league: LeagueSummary) {
+        setIsDeleting(true);
+        setMessage(null);
+        setErrorMessage(null);
+
+        try {
+            const response = await fetch(`/leagues/${league.id}`, {
+                method: 'DELETE',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...csrfHeaders(),
+                },
+            });
+
+            const payload = (await response.json()) as ApiErrorResponse;
+
+            if (!response.ok) {
+                setErrorMessage(payload.message ?? t('league_unable_delete'));
+                return;
+            }
+
+            setDeleteTarget(null);
+            setMessage(t('league_deleted'));
+            router.reload({ only: ['leagues'] });
+        } catch {
+            setErrorMessage(t('league_unable_delete'));
+        } finally {
+            setIsDeleting(false);
         }
     }
 
@@ -314,13 +349,21 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
                                 {league.played_matches_count}/{league.matches_count}{' '}
                                 {t('league_matches_played').toLowerCase()}
                             </p>
-                            <Button
-                                variant="outline"
-                                className="w-full"
-                                onClick={() => router.visit(`/admin/leagues/${league.id}`)}
-                            >
-                                {t('league_manage')}
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={() => router.visit(`/admin/leagues/${league.id}`)}
+                                >
+                                    {t('league_manage')}
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => setDeleteTarget(league)}
+                                >
+                                    {t('league_delete')}
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 ))}
@@ -329,6 +372,46 @@ export default function AdminLeaguesPage({ leagues, users }: AdminLeaguesPagePro
             {leagues.length === 0 && (
                 <p className="text-sm text-muted-foreground">{t('league_no_leagues')}</p>
             )}
+
+            <Dialog
+                open={deleteTarget !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDeleteTarget(null);
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{t('league_delete')}</DialogTitle>
+                        <DialogDescription>{t('league_confirm_delete')}</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDeleteTarget(null)}
+                            disabled={isDeleting}
+                        >
+                            {t('cancel')}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={deleteTarget === null || isDeleting}
+                            onClick={() => {
+                                if (deleteTarget === null) {
+                                    return;
+                                }
+
+                                void handleDeleteLeague(deleteTarget);
+                            }}
+                        >
+                            {isDeleting ? t('saving') : t('league_delete')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AdminSectionLayout>
     );
 }

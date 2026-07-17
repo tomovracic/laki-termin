@@ -113,73 +113,17 @@ class KnockoutBracketGeneratorService
     /**
      * First-round slot seeds (1-based), or null for an empty slot.
      *
-     * Empty slots are paired into the same match whenever possible so that
-     * at most one player receives a bye (player vs empty).
+     * Uses standard single-elimination placement so all byes are in round 1
+     * (count = bracketSize - participantCount) and later rounds stay full.
      *
      * @return list<?int>
      */
     public function firstRoundSeedSlots(int $participantCount, int $bracketSize): array
     {
-        $slots = array_fill(0, $bracketSize, null);
-        $matchCount = (int) ($bracketSize / 2);
-        $emptySlots = $bracketSize - $participantCount;
-        $emptyMatchCount = intdiv($emptySlots, 2);
-        $hasBye = $emptySlots % 2 === 1;
-
-        /** @var list<'bye'|'full'|'empty'|null> $matchRoles */
-        $matchRoles = array_fill(0, $matchCount, null);
-
-        // Prefer odd positions for empty matches so each next-round feeder pair
-        // has at most one vacant side when possible.
-        $emptyPlaced = 0;
-
-        for ($position = $matchCount - 1; $position >= 0 && $emptyPlaced < $emptyMatchCount; $position--) {
-            if ($position % 2 === 1) {
-                $matchRoles[$position] = 'empty';
-                $emptyPlaced++;
-            }
-        }
-
-        for ($position = $matchCount - 1; $position >= 0 && $emptyPlaced < $emptyMatchCount; $position--) {
-            if ($matchRoles[$position] === null) {
-                $matchRoles[$position] = 'empty';
-                $emptyPlaced++;
-            }
-        }
-
-        if ($hasBye) {
-            for ($position = 0; $position < $matchCount; $position++) {
-                if ($matchRoles[$position] === null) {
-                    $matchRoles[$position] = 'bye';
-                    break;
-                }
-            }
-        }
-
-        for ($position = 0; $position < $matchCount; $position++) {
-            if ($matchRoles[$position] === null) {
-                $matchRoles[$position] = 'full';
-            }
-        }
-
-        $remainingSeeds = range(1, $participantCount);
-
-        for ($position = 0; $position < $matchCount; $position++) {
-            $role = $matchRoles[$position];
-
-            if ($role === 'bye' && $remainingSeeds !== []) {
-                $slots[$position * 2] = array_shift($remainingSeeds);
-
-                continue;
-            }
-
-            if ($role === 'full' && count($remainingSeeds) >= 2) {
-                $slots[$position * 2] = array_shift($remainingSeeds);
-                $slots[$position * 2 + 1] = array_pop($remainingSeeds);
-            }
-        }
-
-        return $slots;
+        return array_map(
+            static fn (int $seed): ?int => $seed <= $participantCount ? $seed : null,
+            $this->standardSeedSlots($bracketSize),
+        );
     }
 
     /**

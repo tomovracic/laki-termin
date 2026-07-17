@@ -18,7 +18,7 @@ function assignTournamentAdminRole(User $user): void
 
 }
 
-test('admin can create knockout tournament with at most one bye for five players', function () {
+test('admin can create knockout tournament with first-round byes for five players', function () {
 
     $admin = User::factory()->create();
 
@@ -53,23 +53,14 @@ test('admin can create knockout tournament with at most one bye for five players
     expect($league->participants()->whereNull('user_id')->count())->toBe(0);
 
     // Bracket size 8 => 7 matches total (4 R1 + 2 R2 + 1 final)
-
     expect($league->matches()->count())->toBe(7);
 
     expect($league->matches()->where('bracket_round', 1)->count())->toBe(4);
 
-    // Max one player bye; remaining vacant slots become one empty match.
-    expect($league->matches()->where('is_bye', true)->count())->toBe(1);
+    // 8 - 5 = 3 byes in round 1; later rounds have no byes.
+    expect($league->matches()->where('is_bye', true)->where('bracket_round', 1)->count())->toBe(3);
 
-    $emptyRoundOne = $league->matches()
-        ->where('bracket_round', 1)
-        ->where('is_bye', false)
-        ->whereNull('player_one_id')
-        ->whereNull('player_two_id')
-        ->where('status', LeagueMatchStatus::Played->value)
-        ->count();
-
-    expect($emptyRoundOne)->toBe(1);
+    expect($league->matches()->where('is_bye', true)->where('bracket_round', '>', 1)->count())->toBe(0);
 
     expect(
         $league->matches()
@@ -77,11 +68,11 @@ test('admin can create knockout tournament with at most one bye for five players
             ->where('is_bye', false)
             ->where('status', LeagueMatchStatus::Pending->value)
             ->count()
-    )->toBe(2);
+    )->toBe(1);
 
 });
 
-test('knockout with six players has three first-round matches and one empty slot', function () {
+test('knockout with six players has two first-round matches and two byes', function () {
 
     $admin = User::factory()->create();
 
@@ -105,7 +96,10 @@ test('knockout with six players has three first-round matches and one empty slot
 
     ));
 
-    expect($league->matches()->where('is_bye', true)->count())->toBe(0);
+    // 8 - 6 = 2 byes in round 1; 2 real matches; no later-round byes.
+    expect($league->matches()->where('is_bye', true)->where('bracket_round', 1)->count())->toBe(2);
+
+    expect($league->matches()->where('is_bye', true)->where('bracket_round', '>', 1)->count())->toBe(0);
 
     expect($league->matches()->where('bracket_round', 1)->count())->toBe(4);
 
@@ -117,17 +111,63 @@ test('knockout with six players has three first-round matches and one empty slot
             ->whereNotNull('player_one_id')
             ->whereNotNull('player_two_id')
             ->count()
-    )->toBe(3);
+    )->toBe(2);
+
+});
+
+test('knockout with ten players puts all six byes in round one', function () {
+
+    $admin = User::factory()->create();
+
+    assignTournamentAdminRole($admin);
+
+    $players = User::factory()->count(10)->create();
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+
+        name: 'Deset igraca',
+
+        rounds: 1,
+
+        createdBy: $admin->id,
+
+        participantIds: $players->pluck('id')->all(),
+
+        format: LeagueFormat::Knockout,
+
+        setsBestOf: 3,
+
+    ));
+
+    // Bracket size 16: 16 - 10 = 6 byes in R1, 2 real matches, then clean quarters.
+    expect($league->matches()->where('bracket_round', 1)->count())->toBe(8);
+
+    expect($league->matches()->where('is_bye', true)->where('bracket_round', 1)->count())->toBe(6);
+
+    expect($league->matches()->where('is_bye', true)->where('bracket_round', '>', 1)->count())->toBe(0);
 
     expect(
         $league->matches()
             ->where('bracket_round', 1)
             ->where('is_bye', false)
-            ->whereNull('player_one_id')
-            ->whereNull('player_two_id')
-            ->where('status', LeagueMatchStatus::Played->value)
+            ->where('status', LeagueMatchStatus::Pending->value)
+            ->whereNotNull('player_one_id')
+            ->whereNotNull('player_two_id')
             ->count()
-    )->toBe(1);
+    )->toBe(2);
+
+    // Six bye winners already fill round-2 slots; two slots wait on real R1 matches.
+    $roundTwo = $league->matches()->where('bracket_round', 2)->get();
+
+    expect($roundTwo)->toHaveCount(4);
+
+    expect($roundTwo->where('is_bye', true))->toHaveCount(0);
+
+    $filledSlots = $roundTwo->sum(
+        fn (LeagueMatch $match): int => (int) $match->hasPlayerOne() + (int) $match->hasPlayerTwo()
+    );
+
+    expect($filledSlots)->toBe(6);
 
 });
 
