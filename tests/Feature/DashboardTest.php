@@ -268,6 +268,7 @@ test('terrain reservation page shows all slot statuses for selected date', funct
                 ->where('available_terrains.0.name', 'Court C')
                 ->where('available_terrains.1.name', 'Court C2')
                 ->has('slots', 3)
+                ->has('inactive_periods')
                 ->where('slots.0.status', ReservationSlotStatus::Available->value)
                 ->where('slots.1.status', ReservationSlotStatus::Reserved->value)
                 ->where('slots.1.reserved_by.first_name', 'John')

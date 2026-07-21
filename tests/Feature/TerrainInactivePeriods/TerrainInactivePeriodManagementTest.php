@@ -136,6 +136,13 @@ test('slots endpoint returns blocked status only for slots overlapping time-rang
             ->toBe(ReservationSlotStatus::Available->value);
         expect($slots->firstWhere('id', $eveningSlot->id)['status'])
             ->toBe(ReservationSlotStatus::Blocked->value);
+
+        $response
+            ->assertJsonCount(1, 'data.inactive_periods')
+            ->assertJsonPath('data.inactive_periods.0.block_type', 'time_range')
+            ->assertJsonPath('data.inactive_periods.0.from_time', '20:00')
+            ->assertJsonPath('data.inactive_periods.0.to_time', '23:00')
+            ->assertJsonPath('data.inactive_periods.0.reason', 'other');
     } finally {
         CarbonImmutable::setTestNow();
     }

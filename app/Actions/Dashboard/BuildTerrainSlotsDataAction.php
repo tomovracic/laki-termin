@@ -6,6 +6,7 @@ namespace App\Actions\Dashboard;
 
 use App\Actions\Reservations\SyncTerrainSlotsForDateAction;
 use App\Http\Resources\ReservationSlotResource;
+use App\Http\Resources\TerrainInactivePeriodResource;
 use App\Models\ReservationSlot;
 use App\Models\Terrain;
 use App\Models\TerrainInactivePeriod;
@@ -20,7 +21,7 @@ class BuildTerrainSlotsDataAction
     ) {}
 
     /**
-     * @return array{selected_date: string, max_advance_days: int, slots: array<int, array<string, mixed>>}
+     * @return array{selected_date: string, max_advance_days: int, inactive_periods: array<int, array<string, mixed>>, slots: array<int, array<string, mixed>>}
      */
     public function execute(Terrain $terrain, ?string $requestedDate): array
     {
@@ -37,7 +38,7 @@ class BuildTerrainSlotsDataAction
                     ->orWhere('terrain_id', $terrain->id);
             })
             ->overlapping($dayStartsAt, $dayEndsAt)
-            ->get(['id', 'terrain_id', 'from_at', 'to_at']);
+            ->get(['id', 'terrain_id', 'from_at', 'to_at', 'reason', 'note']);
 
         $slots = ReservationSlot::query()
             ->with(['reservation.user:id,first_name,last_name'])
@@ -54,6 +55,7 @@ class BuildTerrainSlotsDataAction
         return [
             'selected_date' => $selectedDate->toDateString(),
             'max_advance_days' => $maxAdvanceDays,
+            'inactive_periods' => TerrainInactivePeriodResource::collection($inactivePeriods)->resolve(),
             'slots' => ReservationSlotResource::collection($slots)
                 ->resolve($request instanceof Request ? $request : null),
         ];

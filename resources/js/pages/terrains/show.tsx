@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { StatusBanner } from '@/components/admin/status-banner';
+import { BlockedPeriodsInfoBox } from '@/components/blocked-periods-info-box';
 import { ReservationToolbar } from '@/components/reservation-toolbar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import { dashboard } from '@/routes';
 import dashboardRoutes from '@/routes/dashboard';
 import reservationsRoutes from '@/routes/reservations';
 import type { BreadcrumbItem } from '@/types';
+import type { InactivePeriod } from '@/components/admin/types';
 
 type SlotStatus = 'available' | 'reserved' | 'blocked' | 'maintenance' | 'past';
 
@@ -56,12 +58,14 @@ type TerrainSlotsPageProps = {
     available_terrains: TerrainSummary[];
     selected_date: string;
     max_advance_days: number;
+    inactive_periods: InactivePeriod[];
     slots: ReservationSlot[];
 };
 
 type SlotsPayload = {
     selected_date: string;
     max_advance_days: number;
+    inactive_periods: InactivePeriod[];
     slots: ReservationSlot[];
     token_count: number;
 };
@@ -161,6 +165,7 @@ export default function TerrainReservationPage({
     available_terrains: availableTerrains,
     selected_date: initialDate,
     max_advance_days: initialMaxAdvanceDays,
+    inactive_periods: initialInactivePeriods,
     slots: initialSlots,
 }: TerrainSlotsPageProps) {
     const { locale, t } = useI18n();
@@ -169,6 +174,7 @@ export default function TerrainReservationPage({
     const [currentTerrain, setCurrentTerrain] = useState<TerrainDetails>(initialTerrain);
     const [selectedDate, setSelectedDate] = useState<string>(initialDate);
     const [maxAdvanceDays, setMaxAdvanceDays] = useState<number>(initialMaxAdvanceDays);
+    const [inactivePeriods, setInactivePeriods] = useState<InactivePeriod[]>(initialInactivePeriods);
     const [slots, setSlots] = useState<ReservationSlot[]>(initialSlots);
     const [selectedSlotIds, setSelectedSlotIds] = useState<number[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -233,6 +239,7 @@ export default function TerrainReservationPage({
             const payload = (await response.json()) as { data: SlotsPayload };
             setSelectedDate(payload.data.selected_date);
             setMaxAdvanceDays(payload.data.max_advance_days);
+            setInactivePeriods(payload.data.inactive_periods);
             setSlots(payload.data.slots);
             publishNavTokenCount(payload.data.token_count);
             setSelectedSlotIds([]);
@@ -461,6 +468,7 @@ export default function TerrainReservationPage({
                         </span>
                     </div>
                     <StatusBanner message={message} error={errorMessage} />
+                    <BlockedPeriodsInfoBox periods={inactivePeriods} selectedDate={selectedDate} />
                 </div>
  
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
