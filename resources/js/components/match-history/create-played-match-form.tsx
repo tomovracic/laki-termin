@@ -6,6 +6,7 @@ import {
     MatchScoreInputs,
     type MatchScoreValues,
 } from '@/components/match-history/match-score-inputs';
+import { MatchOptionToggles } from '@/components/match-history/match-option-toggles';
 import { PlayerNameAutocomplete } from '@/components/match-history/player-name-autocomplete';
 import type { CreatePlayedMatchPayload, MatchHistoryPlayerInput } from '@/components/match-history/types';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,8 @@ export function CreatePlayedMatchForm({
         display_name: '',
     });
     const [scoreValues, setScoreValues] = useState<MatchScoreValues>(emptyMatchScoreValues);
+    const [isPublic, setIsPublic] = useState(true);
+    const [isRanked, setIsRanked] = useState(true);
 
     const opponentError =
         errors['player_two']?.[0] ??
@@ -67,6 +70,8 @@ export function CreatePlayedMatchForm({
             set2_player_two_games: scorePayload.set2_player_two_games ?? 0,
             set3_player_one_games: scorePayload.set3_player_one_games,
             set3_player_two_games: scorePayload.set3_player_two_games,
+            is_public: isPublic,
+            is_ranked: isRanked,
         };
 
         await onSubmit(payload);
@@ -103,6 +108,14 @@ export function CreatePlayedMatchForm({
                 values={scoreValues}
                 onChange={setScoreValues}
                 errors={resultErrors}
+            />
+
+            <MatchOptionToggles
+                idPrefix="played-match"
+                isPublic={isPublic}
+                isRanked={isRanked}
+                onPublicChange={setIsPublic}
+                onRankedChange={setIsRanked}
             />
 
             <div className="flex justify-end gap-2">

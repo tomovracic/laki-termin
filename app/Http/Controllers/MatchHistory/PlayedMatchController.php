@@ -41,6 +41,8 @@ class PlayedMatchController extends Controller
             playedAt: isset($validated['played_at'])
                 ? Date::parse($validated['played_at'])
                 : Date::now(),
+            isPublic: (bool) ($validated['is_public'] ?? true),
+            isRanked: (bool) ($validated['is_ranked'] ?? true),
         ));
 
         return PlayedMatchResource::make($playedMatch);
@@ -60,6 +62,8 @@ class PlayedMatchController extends Controller
             set2PlayerTwoGames: (int) $validated['set2_player_two_games'],
             set3PlayerOneGames: isset($validated['set3_player_one_games']) ? (int) $validated['set3_player_one_games'] : null,
             set3PlayerTwoGames: isset($validated['set3_player_two_games']) ? (int) $validated['set3_player_two_games'] : null,
+            isPublic: (bool) ($validated['is_public'] ?? true),
+            isRanked: (bool) ($validated['is_ranked'] ?? true),
         ));
 
         return PlayedMatchResource::make($playedMatch);

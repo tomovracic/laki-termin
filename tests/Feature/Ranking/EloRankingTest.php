@@ -42,6 +42,23 @@ test('guest opponent matches are excluded from elo ranking', function () {
     expect($rankings)->toBeEmpty();
 });
 
+test('non ranked casual matches are excluded from elo ranking', function () {
+    $playerOne = User::factory()->create();
+    $playerTwo = User::factory()->create();
+
+    PlayedMatch::factory()->create([
+        'player_one_user_id' => $playerOne->id,
+        'player_two_user_id' => $playerTwo->id,
+        'entered_by' => $playerOne->id,
+        'is_ranked' => false,
+        'played_at' => Date::now()->subDay(),
+    ]);
+
+    $rankings = app(EloRankingService::class)->build();
+
+    expect($rankings)->toBeEmpty();
+});
+
 test('elo ranking ranks winner above loser after one rated match', function () {
     $winner = User::factory()->create(['first_name' => 'Ana', 'last_name' => 'Pobjednica']);
     $loser = User::factory()->create(['first_name' => 'Bruno', 'last_name' => 'Gubitnik']);

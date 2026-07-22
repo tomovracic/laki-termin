@@ -6,6 +6,7 @@ import {
     MatchScoreInputs,
     type MatchScoreValues,
 } from '@/components/match-history/match-score-inputs';
+import { MatchOptionToggles } from '@/components/match-history/match-option-toggles';
 import type { MatchHistoryEntry, UpdatePlayedMatchPayload } from '@/components/match-history/types';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
@@ -48,9 +49,13 @@ export function EditPlayedMatchForm({
 }: EditPlayedMatchFormProps) {
     const { t } = useI18n();
     const [scoreValues, setScoreValues] = useState<MatchScoreValues>(() => buildInitialScoreValues(match));
+    const [isPublic, setIsPublic] = useState(match.is_public ?? true);
+    const [isRanked, setIsRanked] = useState(match.is_ranked ?? true);
 
     useEffect(() => {
         setScoreValues(buildInitialScoreValues(match));
+        setIsPublic(match.is_public ?? true);
+        setIsRanked(match.is_ranked ?? true);
     }, [match]);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -63,6 +68,8 @@ export function EditPlayedMatchForm({
             set2_player_two_games: scorePayload.set2_player_two_games ?? 0,
             set3_player_one_games: scorePayload.set3_player_one_games,
             set3_player_two_games: scorePayload.set3_player_two_games,
+            is_public: isPublic,
+            is_ranked: isRanked,
         });
     }
 
@@ -77,6 +84,14 @@ export function EditPlayedMatchForm({
                 values={scoreValues}
                 onChange={setScoreValues}
                 errors={resultErrors.length > 0 ? resultErrors : errors.result}
+            />
+
+            <MatchOptionToggles
+                idPrefix="edit-played-match"
+                isPublic={isPublic}
+                isRanked={isRanked}
+                onPublicChange={setIsPublic}
+                onRankedChange={setIsRanked}
             />
 
             <div className="flex justify-end gap-2">

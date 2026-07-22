@@ -7,6 +7,7 @@ namespace App\Actions\MatchHistory;
 use App\Models\LeagueMatch;
 use App\Models\PlayedMatch;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 
 class BuildMatchHistoryPageDataAction
@@ -17,6 +18,11 @@ class BuildMatchHistoryPageDataAction
     public function execute(User $user): array
     {
         $casualMatches = PlayedMatch::query()
+            ->where(function (Builder $query) use ($user): void {
+                $query->where('is_public', true)
+                    ->orWhere('player_one_user_id', $user->id)
+                    ->orWhere('player_two_user_id', $user->id);
+            })
             ->with(['playerOne', 'playerTwo'])
             ->get()
             ->map(fn (PlayedMatch $match): array => $this->formatCasualMatch($match, $user))
@@ -47,6 +53,8 @@ class BuildMatchHistoryPageDataAction
             'id' => "casual-{$match->id}",
             'source' => 'casual',
             'played_at' => $match->played_at?->toIso8601String(),
+            'is_public' => $match->is_public,
+            'is_ranked' => $match->is_ranked,
             'player_one' => [
                 'user_id' => $match->player_one_user_id,
                 'name' => $match->playerOneDisplayName(),

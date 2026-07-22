@@ -103,6 +103,7 @@ class EloRankingService
     private function ratedMatchesChronologically(): array
     {
         $casual = PlayedMatch::query()
+            ->where('is_ranked', true)
             ->whereNotNull('player_one_user_id')
             ->whereNotNull('player_two_user_id')
             ->with(['playerOne', 'playerTwo'])

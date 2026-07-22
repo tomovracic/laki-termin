@@ -36,6 +36,8 @@ class PlayedMatchFactory extends Factory
             'set3_player_two_games' => null,
             'played_at' => Date::now(),
             'entered_by' => User::factory(),
+            'is_public' => true,
+            'is_ranked' => true,
         ];
     }
 

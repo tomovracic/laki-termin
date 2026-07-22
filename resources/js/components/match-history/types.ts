@@ -14,6 +14,8 @@ export type MatchHistoryEntry = {
     id: string;
     source: 'casual' | 'league';
     played_at: string | null;
+    is_public?: boolean;
+    is_ranked?: boolean;
     player_one: MatchHistoryPlayer;
     player_two: MatchHistoryPlayer;
     set1_player_one_games: number | null;
@@ -55,6 +57,8 @@ export type CreatePlayedMatchPayload = {
     set2_player_two_games: number;
     set3_player_one_games?: number | null;
     set3_player_two_games?: number | null;
+    is_public?: boolean;
+    is_ranked?: boolean;
 };
 
 export type UpdatePlayedMatchPayload = {
@@ -64,6 +68,8 @@ export type UpdatePlayedMatchPayload = {
     set2_player_two_games: number;
     set3_player_one_games?: number | null;
     set3_player_two_games?: number | null;
+    is_public?: boolean;
+    is_ranked?: boolean;
 };
 
 export function casualMatchIdToNumericId(id: string): string {

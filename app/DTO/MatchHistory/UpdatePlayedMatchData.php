@@ -13,5 +13,7 @@ readonly class UpdatePlayedMatchData
         public int $set2PlayerTwoGames,
         public ?int $set3PlayerOneGames,
         public ?int $set3PlayerTwoGames,
+        public bool $isPublic,
+        public bool $isRanked,
     ) {}
 }

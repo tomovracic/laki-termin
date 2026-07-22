@@ -60,6 +60,8 @@ class CreatePlayedMatchAction
             'set3_player_two_games' => $data->set3PlayerTwoGames,
             'played_at' => $data->playedAt,
             'entered_by' => $data->currentUserId,
+            'is_public' => $data->isPublic,
+            'is_ranked' => $data->isRanked,
         ]);
 
         return $playedMatch->load(['playerOne', 'playerTwo', 'enteredBy']);

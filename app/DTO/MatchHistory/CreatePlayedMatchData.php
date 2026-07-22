@@ -16,5 +16,7 @@ readonly class CreatePlayedMatchData
         public ?int $set3PlayerOneGames,
         public ?int $set3PlayerTwoGames,
         public \DateTimeInterface $playedAt,
+        public bool $isPublic,
+        public bool $isRanked,
     ) {}
 }

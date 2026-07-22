@@ -39,6 +39,8 @@ class UpdatePlayedMatchAction
             'set2_player_two_games' => $data->set2PlayerTwoGames,
             'set3_player_one_games' => $data->set3PlayerOneGames,
             'set3_player_two_games' => $data->set3PlayerTwoGames,
+            'is_public' => $data->isPublic,
+            'is_ranked' => $data->isRanked,
         ])->save();
 
         return $playedMatch->load(['playerOne', 'playerTwo', 'enteredBy']);

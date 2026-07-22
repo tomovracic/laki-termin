@@ -32,6 +32,8 @@ class PlayedMatch extends Model
         'set3_player_two_games',
         'played_at',
         'entered_by',
+        'is_public',
+        'is_ranked',
     ];
 
     /**
@@ -41,6 +43,8 @@ class PlayedMatch extends Model
     {
         return [
             'played_at' => 'immutable_datetime',
+            'is_public' => 'boolean',
+            'is_ranked' => 'boolean',
         ];
     }
 

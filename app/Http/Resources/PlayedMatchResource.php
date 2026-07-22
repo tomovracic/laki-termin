@@ -32,6 +32,8 @@ class PlayedMatchResource extends JsonResource
             'set3_player_one_games' => $this->set3_player_one_games,
             'set3_player_two_games' => $this->set3_player_two_games,
             'played_at' => $this->played_at?->toIso8601String(),
+            'is_public' => $this->is_public,
+            'is_ranked' => $this->is_ranked,
         ];
     }
 }

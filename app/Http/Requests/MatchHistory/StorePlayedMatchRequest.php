@@ -25,6 +25,8 @@ class StorePlayedMatchRequest extends FormRequest
             'player_two.first_name' => ['nullable', 'string', 'max:255'],
             'player_two.last_name' => ['nullable', 'string', 'max:255'],
             'played_at' => ['nullable', 'date'],
+            'is_public' => ['nullable', 'boolean'],
+            'is_ranked' => ['nullable', 'boolean'],
             'set1_player_one_games' => ['required', 'integer', 'min:0'],
             'set1_player_two_games' => ['required', 'integer', 'min:0'],
             'set2_player_one_games' => ['required', 'integer', 'min:0'],

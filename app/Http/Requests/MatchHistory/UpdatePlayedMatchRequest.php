@@ -29,6 +29,8 @@ class UpdatePlayedMatchRequest extends FormRequest
             'set2_player_two_games' => ['required', 'integer', 'min:0'],
             'set3_player_one_games' => ['nullable', 'integer', 'min:0'],
             'set3_player_two_games' => ['nullable', 'integer', 'min:0'],
+            'is_public' => ['nullable', 'boolean'],
+            'is_ranked' => ['nullable', 'boolean'],
         ];
     }
 }

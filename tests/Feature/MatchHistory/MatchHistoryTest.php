@@ -79,6 +79,30 @@ test('user can create casual match with registered opponent', function () {
     expect($playedMatch->player_one_user_id)->toBe($user->id);
     expect($playedMatch->player_two_user_id)->toBe($opponent->id);
     expect($playedMatch->entered_by)->toBe($user->id);
+    expect($playedMatch->is_public)->toBeTrue();
+    expect($playedMatch->is_ranked)->toBeTrue();
+});
+
+test('user can create casual match with visibility and ranked flags', function () {
+    $user = User::factory()->create();
+    $opponent = User::factory()->create();
+
+    $response = $this->actingAs($user)->postJson(route('played-matches.store'), validPlayedMatchPayload([
+        'player_two' => [
+            'user_id' => $opponent->id,
+        ],
+        'is_public' => false,
+        'is_ranked' => false,
+    ]));
+
+    $response->assertCreated()
+        ->assertJsonPath('data.is_public', false)
+        ->assertJsonPath('data.is_ranked', false);
+
+    $playedMatch = PlayedMatch::query()->first();
+    expect($playedMatch)->not->toBeNull();
+    expect($playedMatch->is_public)->toBeFalse();
+    expect($playedMatch->is_ranked)->toBeFalse();
 });
 
 test('user can create casual match with guest opponent', function () {
@@ -219,6 +243,8 @@ test('user can update casual match scores', function () {
         'player_one_user_id' => $user->id,
         'player_two_user_id' => $opponent->id,
         'entered_by' => $user->id,
+        'is_public' => true,
+        'is_ranked' => true,
         'set1_player_one_games' => 6,
         'set1_player_two_games' => 4,
         'set2_player_one_games' => 6,
@@ -230,13 +256,19 @@ test('user can update casual match scores', function () {
         'set1_player_two_games' => 5,
         'set2_player_one_games' => 6,
         'set2_player_two_games' => 4,
+        'is_public' => false,
+        'is_ranked' => false,
     ])->assertOk()
         ->assertJsonPath('data.set1_player_one_games', 7)
-        ->assertJsonPath('data.set1_player_two_games', 5);
+        ->assertJsonPath('data.set1_player_two_games', 5)
+        ->assertJsonPath('data.is_public', false)
+        ->assertJsonPath('data.is_ranked', false);
 
     $playedMatch->refresh();
     expect($playedMatch->set1_player_one_games)->toBe(7);
     expect($playedMatch->set1_player_two_games)->toBe(5);
+    expect($playedMatch->is_public)->toBeFalse();
+    expect($playedMatch->is_ranked)->toBeFalse();
 });
 
 test('registered opponent can update casual match scores', function () {
@@ -364,6 +396,44 @@ test('match history includes other users casual matches', function () {
             ->where('matches.0.id', "casual-{$otherMatch->id}")
             ->where('matches.0.can_edit', false)
             ->where('matches.0.can_delete', false));
+});
+
+test('private casual match is hidden from users outside the match', function () {
+    $viewer = User::factory()->create();
+    $playerOne = User::factory()->create();
+    $playerTwo = User::factory()->create();
+
+    PlayedMatch::factory()->create([
+        'player_one_user_id' => $playerOne->id,
+        'player_two_user_id' => $playerTwo->id,
+        'entered_by' => $playerOne->id,
+        'is_public' => false,
+    ]);
+
+    $this->actingAs($viewer)
+        ->get(route('dashboard.match-history'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('matches', 0));
+});
+
+test('private casual match is visible to participants', function () {
+    $viewer = User::factory()->create();
+    $opponent = User::factory()->create();
+
+    $privateMatch = PlayedMatch::factory()->create([
+        'player_one_user_id' => $viewer->id,
+        'player_two_user_id' => $opponent->id,
+        'entered_by' => $viewer->id,
+        'is_public' => false,
+    ]);
+
+    $this->actingAs($viewer)
+        ->get(route('dashboard.match-history'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('matches', 1)
+            ->where('matches.0.id', "casual-{$privateMatch->id}"));
 });
 
 test('match history includes played league matches user is not part of', function () {
