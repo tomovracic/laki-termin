@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\AdminUserOverviewController;
 use App\Http\Controllers\Admin\AdminUserReservationsController;
 use App\Http\Controllers\Auth\InvitationRegistrationController;
 use App\Http\Controllers\Dashboard\UserDashboardController;
+use App\Http\Controllers\Dashboard\UserEloRankingController;
 use App\Http\Controllers\Dashboard\UserLeagueIndexController;
 use App\Http\Controllers\Dashboard\UserLeagueShowController;
 use App\Http\Controllers\Dashboard\UserMatchHistoryController;
@@ -33,6 +34,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard/leagues', UserLeagueIndexController::class)->name('dashboard.leagues');
     Route::get('dashboard/leagues/{league}', UserLeagueShowController::class)->name('dashboard.leagues.show');
     Route::get('dashboard/match-history', UserMatchHistoryController::class)->name('dashboard.match-history');
+    Route::get('dashboard/ranking', UserEloRankingController::class)->name('dashboard.ranking');
     Route::redirect('admin', 'admin/users')->name('admin.index');
     Route::get('admin/users', AdminUserOverviewController::class)->name('admin.users');
     Route::get('admin/users/{user}/reservations', AdminUserReservationsController::class)->name('admin.users.reservations');
