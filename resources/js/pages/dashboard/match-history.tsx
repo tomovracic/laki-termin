@@ -9,7 +9,7 @@ import type {
     MatchHistoryEntry,
     UpdatePlayedMatchPayload,
 } from '@/components/match-history/types';
-import { casualMatchIdToNumericId } from '@/components/match-history/types';
+import { casualMatchIdToNumericId, leagueMatchIdToNumericId } from '@/components/match-history/types';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -118,8 +118,13 @@ export default function MatchHistoryPage({ matches: initialMatches }: MatchHisto
         setMessage(null);
         setErrorMessage(null);
 
+        const updateUrl =
+            editingMatch.source === 'league' && editingMatch.league !== null
+                ? `/leagues/${editingMatch.league.id}/matches/${leagueMatchIdToNumericId(editingMatch.id)}/result`
+                : `/played-matches/${casualMatchIdToNumericId(editingMatch.id)}`;
+
         try {
-            const response = await fetch(`/played-matches/${casualMatchIdToNumericId(editingMatch.id)}`, {
+            const response = await fetch(updateUrl, {
                 method: 'PATCH',
                 headers: {
                     Accept: 'application/json',

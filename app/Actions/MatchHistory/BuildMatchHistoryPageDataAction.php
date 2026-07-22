@@ -26,7 +26,7 @@ class BuildMatchHistoryPageDataAction
             ->played()
             ->with(['league', 'playerOne', 'playerTwo'])
             ->get()
-            ->map(fn (LeagueMatch $match): array => $this->formatLeagueMatch($match))
+            ->map(fn (LeagueMatch $match): array => $this->formatLeagueMatch($match, $user))
             ->all();
 
         $entries = array_merge($casualMatches, $leagueMatches);
@@ -70,8 +70,11 @@ class BuildMatchHistoryPageDataAction
     /**
      * @return array<string, mixed>
      */
-    private function formatLeagueMatch(LeagueMatch $match): array
+    private function formatLeagueMatch(LeagueMatch $match, User $user): array
     {
+        $canEdit = $match->league !== null
+            && Gate::forUser($user)->allows('recordResult', $match->league);
+
         return [
             'id' => "league-{$match->id}",
             'source' => 'league',
@@ -90,12 +93,17 @@ class BuildMatchHistoryPageDataAction
             'set2_player_two_games' => $match->set2_player_two_games,
             'set3_player_one_games' => $match->set3_player_one_games,
             'set3_player_two_games' => $match->set3_player_two_games,
+            'set4_player_one_games' => $match->set4_player_one_games,
+            'set4_player_two_games' => $match->set4_player_two_games,
+            'set5_player_one_games' => $match->set5_player_one_games,
+            'set5_player_two_games' => $match->set5_player_two_games,
             'league' => [
                 'id' => $match->league_id,
                 'name' => $match->league?->name ?? '',
                 'round' => $match->round,
+                'sets_best_of' => $match->league?->sets_best_of ?? 3,
             ],
-            'can_edit' => false,
+            'can_edit' => $canEdit,
             'can_delete' => false,
         ];
     }
