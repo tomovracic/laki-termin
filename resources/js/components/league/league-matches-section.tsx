@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { LeagueMatchesList } from '@/components/league/league-matches-list';
 import type { LeagueMatch, LeagueStandingsEntry } from '@/components/league/types';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
     Select,
@@ -46,12 +47,6 @@ export function LeagueMatchesSection({
         return matches.filter((match) => statusFilter.includes(match.status));
     }, [matches, statusFilter]);
 
-    function handleTabChange(value: string) {
-        if (value === 'mine' || value === 'all') {
-            setActiveTab(value);
-        }
-    }
-
     function handleStatusFilterChange(value: string[]) {
         setStatusFilter(value.filter((item): item is MatchStatus => item === 'played' || item === 'pending'));
     }
@@ -61,17 +56,28 @@ export function LeagueMatchesSection({
             <CardHeader>
                 <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <ToggleGroup
-                            type="single"
-                            variant="outline"
-                            value={activeTab}
-                            onValueChange={handleTabChange}
-                        >
+                        <div className="flex items-center gap-2" role="tablist">
+                            <Button
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === 'all'}
+                                variant={activeTab === 'all' ? 'default' : 'outline'}
+                                onClick={() => setActiveTab('all')}
+                            >
+                                {t('league_all_matches')}
+                            </Button>
                             {isParticipant && (
-                                <ToggleGroupItem value="mine">{t('league_my_matches')}</ToggleGroupItem>
+                                <Button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activeTab === 'mine'}
+                                    variant={activeTab === 'mine' ? 'default' : 'outline'}
+                                    onClick={() => setActiveTab('mine')}
+                                >
+                                    {t('league_my_matches')}
+                                </Button>
                             )}
-                            <ToggleGroupItem value="all">{t('league_all_matches')}</ToggleGroupItem>
-                        </ToggleGroup>
+                        </div>
 
                         {activeTab === 'all' && (
                             <Select value={filterUserId} onValueChange={setFilterUserId}>

@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { MatchHistoryList } from '@/components/match-history/match-history-list';
 import { PlayerNameAutocomplete } from '@/components/match-history/player-name-autocomplete';
 import type { MatchHistoryEntry, MatchHistoryPlayerInput } from '@/components/match-history/types';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useI18n } from '@/lib/i18n';
 
 type MatchTab = 'mine' | 'all';
@@ -35,7 +35,7 @@ export function MatchHistorySection({
     onDelete,
 }: MatchHistorySectionProps) {
     const { t } = useI18n();
-    const [activeTab, setActiveTab] = useState<MatchTab>('mine');
+    const [activeTab, setActiveTab] = useState<MatchTab>('all');
     const [playerFilter, setPlayerFilter] = useState<MatchHistoryPlayerInput>(emptyPlayerFilter);
 
     const filteredMatches = useMemo(() => {
@@ -50,13 +50,11 @@ export function MatchHistorySection({
         return matches;
     }, [activeTab, currentUserId, matches, playerFilter.user_id]);
 
-    function handleTabChange(value: string) {
-        if (value === 'mine' || value === 'all') {
-            setActiveTab(value);
+    function handleTabChange(value: MatchTab) {
+        setActiveTab(value);
 
-            if (value === 'mine') {
-                setPlayerFilter(emptyPlayerFilter);
-            }
+        if (value === 'mine') {
+            setPlayerFilter(emptyPlayerFilter);
         }
     }
 
@@ -64,15 +62,26 @@ export function MatchHistorySection({
         <Card>
             <CardHeader>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <ToggleGroup
-                        type="single"
-                        variant="outline"
-                        value={activeTab}
-                        onValueChange={handleTabChange}
-                    >
-                        <ToggleGroupItem value="mine">{t('league_my_matches')}</ToggleGroupItem>
-                        <ToggleGroupItem value="all">{t('league_all_matches')}</ToggleGroupItem>
-                    </ToggleGroup>
+                    <div className="flex items-center gap-2" role="tablist">
+                        <Button
+                            type="button"
+                            role="tab"
+                            aria-selected={activeTab === 'all'}
+                            variant={activeTab === 'all' ? 'default' : 'outline'}
+                            onClick={() => handleTabChange('all')}
+                        >
+                            {t('league_all_matches')}
+                        </Button>
+                        <Button
+                            type="button"
+                            role="tab"
+                            aria-selected={activeTab === 'mine'}
+                            variant={activeTab === 'mine' ? 'default' : 'outline'}
+                            onClick={() => handleTabChange('mine')}
+                        >
+                            {t('league_my_matches')}
+                        </Button>
+                    </div>
 
                     {activeTab === 'all' && (
                         <div className="w-full sm:w-72">

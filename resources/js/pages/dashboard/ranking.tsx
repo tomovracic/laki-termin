@@ -24,7 +24,7 @@ export default function RankingPage({ rankings }: RankingPageProps) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={t('ranking')} />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto p-4">
+            <div className="flex h-full flex-1 flex-col gap-4 p-4">
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight">{t('ranking')}</h1>
                     <p className="text-sm text-muted-foreground">{t('ranking_description')}</p>
