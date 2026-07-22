@@ -16,26 +16,18 @@ class PlayedMatchPolicy
 
     public function view(User $user, PlayedMatch $playedMatch): bool
     {
-        return $this->isAdminOrParticipant($user, $playedMatch);
+        return $playedMatch->player_one_user_id === $user->id
+            || $playedMatch->player_two_user_id === $user->id;
     }
 
     public function update(User $user, PlayedMatch $playedMatch): bool
     {
-        return $this->isAdminOrParticipant($user, $playedMatch);
+        return $playedMatch->player_one_user_id === $user->id
+            || $playedMatch->player_two_user_id === $user->id;
     }
 
     public function delete(User $user, PlayedMatch $playedMatch): bool
     {
-        return $this->isAdminOrParticipant($user, $playedMatch);
-    }
-
-    private function isAdminOrParticipant(User $user, PlayedMatch $playedMatch): bool
-    {
-        if ($user->hasRole('admin')) {
-            return true;
-        }
-
-        return $playedMatch->player_one_user_id === $user->id
-            || $playedMatch->player_two_user_id === $user->id;
+        return $this->update($user, $playedMatch);
     }
 }

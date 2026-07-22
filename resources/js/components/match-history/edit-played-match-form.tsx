@@ -7,7 +7,6 @@ import {
     type MatchScoreValues,
 } from '@/components/match-history/match-score-inputs';
 import type { MatchHistoryEntry, UpdatePlayedMatchPayload } from '@/components/match-history/types';
-import { resolveMatchHistoryBestOf } from '@/components/match-history/types';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -23,8 +22,8 @@ type EditPlayedMatchFormProps = {
 
 const playerRowClassName = 'flex h-9 items-center truncate font-medium md:h-10';
 
-function scoreValue(value: number | null | undefined): string {
-    return value === null || value === undefined ? '' : String(value);
+function scoreValue(value: number | null): string {
+    return value === null ? '' : String(value);
 }
 
 function buildInitialScoreValues(match: MatchHistoryEntry): MatchScoreValues {
@@ -36,10 +35,6 @@ function buildInitialScoreValues(match: MatchHistoryEntry): MatchScoreValues {
         set2_player_two_games: scoreValue(match.set2_player_two_games),
         set3_player_one_games: scoreValue(match.set3_player_one_games),
         set3_player_two_games: scoreValue(match.set3_player_two_games),
-        set4_player_one_games: scoreValue(match.set4_player_one_games),
-        set4_player_two_games: scoreValue(match.set4_player_two_games),
-        set5_player_one_games: scoreValue(match.set5_player_one_games),
-        set5_player_two_games: scoreValue(match.set5_player_two_games),
     };
 }
 
@@ -52,7 +47,6 @@ export function EditPlayedMatchForm({
     resultErrors = [],
 }: EditPlayedMatchFormProps) {
     const { t } = useI18n();
-    const bestOf = resolveMatchHistoryBestOf(match);
     const [scoreValues, setScoreValues] = useState<MatchScoreValues>(() => buildInitialScoreValues(match));
 
     useEffect(() => {
@@ -61,7 +55,15 @@ export function EditPlayedMatchForm({
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        await onSubmit(buildScorePayload(scoreValues, bestOf));
+        const scorePayload = buildScorePayload(scoreValues);
+        await onSubmit({
+            set1_player_one_games: scorePayload.set1_player_one_games,
+            set1_player_two_games: scorePayload.set1_player_two_games,
+            set2_player_one_games: scorePayload.set2_player_one_games ?? 0,
+            set2_player_two_games: scorePayload.set2_player_two_games ?? 0,
+            set3_player_one_games: scorePayload.set3_player_one_games,
+            set3_player_two_games: scorePayload.set3_player_two_games,
+        });
     }
 
     return (
@@ -75,7 +77,6 @@ export function EditPlayedMatchForm({
                 values={scoreValues}
                 onChange={setScoreValues}
                 errors={resultErrors.length > 0 ? resultErrors : errors.result}
-                bestOf={bestOf}
             />
 
             <div className="flex justify-end gap-2">
