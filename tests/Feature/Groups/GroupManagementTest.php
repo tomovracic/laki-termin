@@ -25,6 +25,8 @@ test('admin can view groups overview page', function () {
         'color' => GroupColor::Blue->value,
         'can_access_ranking' => true,
         'can_view_all_ranking_groups' => false,
+        'can_access_match_history' => true,
+        'can_view_all_match_history_groups' => false,
     ]);
 
     $this->actingAs($admin)
@@ -55,6 +57,8 @@ test('admin can create a group', function () {
         'color' => GroupColor::Emerald->value,
         'can_access_ranking' => true,
         'can_view_all_ranking_groups' => true,
+        'can_access_match_history' => true,
+        'can_view_all_match_history_groups' => true,
     ]);
 
     $response
@@ -62,13 +66,17 @@ test('admin can create a group', function () {
         ->assertJsonPath('data.name', 'Juniors')
         ->assertJsonPath('data.color', GroupColor::Emerald->value)
         ->assertJsonPath('data.can_access_ranking', true)
-        ->assertJsonPath('data.can_view_all_ranking_groups', true);
+        ->assertJsonPath('data.can_view_all_ranking_groups', true)
+        ->assertJsonPath('data.can_access_match_history', true)
+        ->assertJsonPath('data.can_view_all_match_history_groups', true);
 
     $this->assertDatabaseHas('groups', [
         'name' => 'Juniors',
         'color' => GroupColor::Emerald->value,
         'can_access_ranking' => true,
         'can_view_all_ranking_groups' => true,
+        'can_access_match_history' => true,
+        'can_view_all_match_history_groups' => true,
     ]);
 });
 
@@ -80,6 +88,8 @@ test('admin can update a group', function () {
         'color' => GroupColor::Slate->value,
         'can_access_ranking' => false,
         'can_view_all_ranking_groups' => false,
+        'can_access_match_history' => false,
+        'can_view_all_match_history_groups' => false,
     ]);
 
     $response = $this->actingAs($admin)->patch(route('groups.update', $group), [
@@ -87,13 +97,16 @@ test('admin can update a group', function () {
         'color' => GroupColor::Rose->value,
         'can_access_ranking' => true,
         'can_view_all_ranking_groups' => false,
+        'can_access_match_history' => true,
+        'can_view_all_match_history_groups' => false,
     ]);
 
     $response
         ->assertOk()
         ->assertJsonPath('data.name', 'New name')
         ->assertJsonPath('data.color', GroupColor::Rose->value)
-        ->assertJsonPath('data.can_access_ranking', true);
+        ->assertJsonPath('data.can_access_ranking', true)
+        ->assertJsonPath('data.can_access_match_history', true);
 
     expect($group->fresh()->name)->toBe('New name');
 });
@@ -124,6 +137,8 @@ test('non-admin cannot manage groups', function () {
         'color' => GroupColor::Blue->value,
         'can_access_ranking' => false,
         'can_view_all_ranking_groups' => false,
+        'can_access_match_history' => false,
+        'can_view_all_match_history_groups' => false,
     ])->assertForbidden();
 
     $this->actingAs($user)->patch(route('groups.update', $group), [
@@ -131,6 +146,8 @@ test('non-admin cannot manage groups', function () {
         'color' => GroupColor::Blue->value,
         'can_access_ranking' => false,
         'can_view_all_ranking_groups' => false,
+        'can_access_match_history' => false,
+        'can_view_all_match_history_groups' => false,
     ])->assertForbidden();
 
     $this->actingAs($user)->delete(route('groups.destroy', $group))->assertForbidden();

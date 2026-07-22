@@ -13,7 +13,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     $this->withoutVite();
-    $this->matchHistoryGroup = Group::factory()->create();
+    $this->matchHistoryGroup = Group::factory()->withMatchHistoryAccess()->create();
 });
 
 function assignLeagueAdminRole(User $user): void
@@ -52,16 +52,25 @@ test('authenticated grouped user can view empty match history page', function ()
             ->has('matches', 0));
 });
 
-test('user without group cannot view match history page', function () {
+test('user without match history access cannot view match history page', function () {
     $user = User::factory()->create();
+    $group = Group::factory()->create([
+        'can_access_match_history' => false,
+        'can_view_all_match_history_groups' => false,
+    ]);
+    $user->groups()->attach($group->id);
 
     $this->actingAs($user)
         ->get(route('dashboard.match-history'))
         ->assertForbidden();
 });
 
-test('user without group cannot create casual match', function () {
+test('user without match history access cannot create casual match', function () {
     $user = User::factory()->create();
+    $group = Group::factory()->create([
+        'can_access_match_history' => false,
+    ]);
+    $user->groups()->attach($group->id);
     $opponent = User::factory()->create();
 
     $this->actingAs($user)->postJson(route('played-matches.store'), validPlayedMatchPayload([
@@ -71,24 +80,26 @@ test('user without group cannot create casual match', function () {
     ]))->assertForbidden();
 });
 
-test('shared auth exposes match history access for grouped users', function () {
+test('shared auth exposes match history access for users with permission', function () {
     $user = createGroupedUser();
 
     $this->actingAs($user)
         ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('auth.canAccessMatchHistory', true));
+            ->where('auth.canAccessMatchHistory', true)
+            ->where('auth.canViewAllMatchHistoryGroups', false));
 });
 
-test('shared auth hides match history access for users without groups', function () {
+test('shared auth hides match history access for users without permission', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('auth.canAccessMatchHistory', false));
+            ->where('auth.canAccessMatchHistory', false)
+            ->where('auth.canViewAllMatchHistoryGroups', false));
 });
 
 test('user search returns matching users by name', function () {
@@ -426,10 +437,11 @@ test('match history exposes edit and delete flags for casual matches', function 
             ->where('matches.0.can_delete', true));
 });
 
-test('match history includes other users casual matches', function () {
+test('match history includes other users casual matches from own group', function () {
     $viewer = createGroupedUser();
     $playerOne = User::factory()->create();
     $playerTwo = User::factory()->create();
+    test()->matchHistoryGroup->users()->attach([$playerOne->id, $playerTwo->id]);
 
     $otherMatch = PlayedMatch::factory()->create([
         'player_one_user_id' => $playerOne->id,
@@ -485,13 +497,14 @@ test('private casual match is visible to participants', function () {
             ->where('matches.0.id', "casual-{$privateMatch->id}"));
 });
 
-test('match history includes played league matches user is not part of', function () {
+test('match history includes played league matches from own group user is not part of', function () {
     $admin = User::factory()->create();
     assignLeagueAdminRole($admin);
 
     $viewer = createGroupedUser();
     $playerOne = User::factory()->create();
     $playerTwo = User::factory()->create();
+    test()->matchHistoryGroup->users()->attach([$playerOne->id, $playerTwo->id]);
 
     $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
         name: 'Javna liga',

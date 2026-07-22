@@ -50,6 +50,9 @@ class HandleInertiaRequests extends Middleware
                 'canAccessMatchHistory' => $user !== null
                     ? $permissionResolver->canAccessMatchHistory($user)
                     : false,
+                'canViewAllMatchHistoryGroups' => $user !== null
+                    ? $permissionResolver->canViewAllMatchHistoryGroups($user)
+                    : false,
                 'canAccessRanking' => $user !== null
                     ? $permissionResolver->canAccessRanking($user)
                     : false,

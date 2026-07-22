@@ -28,6 +28,8 @@ class AdminGroupOverviewController extends Controller
                 'color_hex' => $group->color->hex(),
                 'can_access_ranking' => $group->can_access_ranking,
                 'can_view_all_ranking_groups' => $group->can_view_all_ranking_groups,
+                'can_access_match_history' => $group->can_access_match_history,
+                'can_view_all_match_history_groups' => $group->can_view_all_match_history_groups,
                 'users_count' => $group->users_count,
                 'created_at' => $group->created_at?->toISOString(),
             ])

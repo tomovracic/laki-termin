@@ -16,6 +16,7 @@ export type Auth = {
     user: User;
     isAdmin: boolean;
     canAccessMatchHistory: boolean;
+    canViewAllMatchHistoryGroups: boolean;
     canAccessRanking: boolean;
     canViewAllRankingGroups: boolean;
 };

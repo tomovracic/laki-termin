@@ -24,6 +24,8 @@ class GroupResource extends JsonResource
                 : null,
             'can_access_ranking' => (bool) $this->can_access_ranking,
             'can_view_all_ranking_groups' => (bool) $this->can_view_all_ranking_groups,
+            'can_access_match_history' => (bool) $this->can_access_match_history,
+            'can_view_all_match_history_groups' => (bool) $this->can_view_all_match_history_groups,
             'created_at' => $this->created_at,
         ];
     }

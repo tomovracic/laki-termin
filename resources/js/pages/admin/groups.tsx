@@ -36,6 +36,8 @@ type GroupFormState = {
     color: string;
     can_access_ranking: boolean;
     can_view_all_ranking_groups: boolean;
+    can_access_match_history: boolean;
+    can_view_all_match_history_groups: boolean;
 };
 
 const emptyForm = (defaultColor: string): GroupFormState => ({
@@ -43,6 +45,8 @@ const emptyForm = (defaultColor: string): GroupFormState => ({
     color: defaultColor,
     can_access_ranking: false,
     can_view_all_ranking_groups: false,
+    can_access_match_history: false,
+    can_view_all_match_history_groups: false,
 });
 
 export default function AdminGroupsPage({
@@ -125,6 +129,8 @@ export default function AdminGroupsPage({
             color: group.color,
             can_access_ranking: group.can_access_ranking,
             can_view_all_ranking_groups: group.can_view_all_ranking_groups,
+            can_access_match_history: group.can_access_match_history,
+            can_view_all_match_history_groups: group.can_view_all_match_history_groups,
         });
         setErrors({});
     }
@@ -266,7 +272,7 @@ export default function AdminGroupsPage({
                 </div>
                 <div className="flex items-start gap-3">
                     <Checkbox
-                        id={`${idPrefix}-view-all`}
+                        id={`${idPrefix}-view-all-rankings`}
                         checked={form.can_view_all_ranking_groups}
                         disabled={!form.can_access_ranking}
                         onCheckedChange={(checked) =>
@@ -277,11 +283,56 @@ export default function AdminGroupsPage({
                         }
                     />
                     <div className="space-y-1">
-                        <Label htmlFor={`${idPrefix}-view-all`}>
+                        <Label htmlFor={`${idPrefix}-view-all-rankings`}>
                             {t('group_permission_view_all_rankings')}
                         </Label>
                         <p className="text-xs text-muted-foreground">
                             {t('group_permission_view_all_rankings_help')}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-start gap-3">
+                    <Checkbox
+                        id={`${idPrefix}-access-match-history`}
+                        checked={form.can_access_match_history}
+                        onCheckedChange={(checked) =>
+                            setForm((current) => ({
+                                ...current,
+                                can_access_match_history: checked === true,
+                                can_view_all_match_history_groups:
+                                    checked === true
+                                        ? current.can_view_all_match_history_groups
+                                        : false,
+                            }))
+                        }
+                    />
+                    <div className="space-y-1">
+                        <Label htmlFor={`${idPrefix}-access-match-history`}>
+                            {t('group_permission_access_match_history')}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                            {t('group_permission_access_match_history_help')}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-start gap-3">
+                    <Checkbox
+                        id={`${idPrefix}-view-all-match-history`}
+                        checked={form.can_view_all_match_history_groups}
+                        disabled={!form.can_access_match_history}
+                        onCheckedChange={(checked) =>
+                            setForm((current) => ({
+                                ...current,
+                                can_view_all_match_history_groups: checked === true,
+                            }))
+                        }
+                    />
+                    <div className="space-y-1">
+                        <Label htmlFor={`${idPrefix}-view-all-match-history`}>
+                            {t('group_permission_view_all_match_history')}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                            {t('group_permission_view_all_match_history_help')}
                         </p>
                     </div>
                 </div>
@@ -434,6 +485,16 @@ export default function AdminGroupsPage({
                                     {group.can_view_all_ranking_groups ? (
                                         <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300">
                                             {t('group_permission_view_all_rankings')}
+                                        </span>
+                                    ) : null}
+                                    {group.can_access_match_history ? (
+                                        <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+                                            {t('group_permission_access_match_history')}
+                                        </span>
+                                    ) : null}
+                                    {group.can_view_all_match_history_groups ? (
+                                        <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300">
+                                            {t('group_permission_view_all_match_history')}
                                         </span>
                                     ) : null}
                                 </div>

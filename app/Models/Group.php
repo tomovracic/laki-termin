@@ -22,6 +22,8 @@ class Group extends Model
         'color',
         'can_access_ranking',
         'can_view_all_ranking_groups',
+        'can_access_match_history',
+        'can_view_all_match_history_groups',
     ];
 
     /**
@@ -33,6 +35,8 @@ class Group extends Model
             'color' => GroupColor::class,
             'can_access_ranking' => 'boolean',
             'can_view_all_ranking_groups' => 'boolean',
+            'can_access_match_history' => 'boolean',
+            'can_view_all_match_history_groups' => 'boolean',
         ];
     }
 

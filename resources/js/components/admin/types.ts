@@ -26,6 +26,8 @@ export type ManagedGroup = {
     color_hex: string;
     can_access_ranking: boolean;
     can_view_all_ranking_groups: boolean;
+    can_access_match_history: boolean;
+    can_view_all_match_history_groups: boolean;
     users_count: number;
     created_at: string | null;
 };

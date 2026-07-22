@@ -29,6 +29,8 @@ class GroupController extends Controller
             color: GroupColor::from((string) $validated['color']),
             canAccessRanking: (bool) $validated['can_access_ranking'],
             canViewAllRankingGroups: (bool) $validated['can_view_all_ranking_groups'],
+            canAccessMatchHistory: (bool) $validated['can_access_match_history'],
+            canViewAllMatchHistoryGroups: (bool) $validated['can_view_all_match_history_groups'],
         ));
 
         return GroupResource::make($group);
@@ -46,6 +48,8 @@ class GroupController extends Controller
             color: GroupColor::from((string) $validated['color']),
             canAccessRanking: (bool) $validated['can_access_ranking'],
             canViewAllRankingGroups: (bool) $validated['can_view_all_ranking_groups'],
+            canAccessMatchHistory: (bool) $validated['can_access_match_history'],
+            canViewAllMatchHistoryGroups: (bool) $validated['can_view_all_match_history_groups'],
         ));
 
         return GroupResource::make($updated);

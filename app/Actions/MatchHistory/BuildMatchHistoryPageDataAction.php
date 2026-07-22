@@ -7,21 +7,50 @@ namespace App\Actions\MatchHistory;
 use App\Models\LeagueMatch;
 use App\Models\PlayedMatch;
 use App\Models\User;
+use App\Services\Groups\UserGroupPermissionResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 
 class BuildMatchHistoryPageDataAction
 {
+    public function __construct(
+        protected UserGroupPermissionResolver $permissionResolver,
+    ) {}
+
     /**
      * @return list<array<string, mixed>>
      */
     public function execute(User $user): array
     {
+        $canViewAllGroups = $this->permissionResolver->canViewAllMatchHistoryGroups($user);
+        $visibleUserIds = $canViewAllGroups
+            ? []
+            : $this->permissionResolver->visibleMatchHistoryUserIds($user);
+
         $casualMatches = PlayedMatch::query()
-            ->where(function (Builder $query) use ($user): void {
-                $query->where('is_public', true)
-                    ->orWhere('player_one_user_id', $user->id)
-                    ->orWhere('player_two_user_id', $user->id);
+            ->where(function (Builder $query) use ($user, $canViewAllGroups, $visibleUserIds): void {
+                $query->where(function (Builder $visibility) use ($user): void {
+                    $visibility->where('player_one_user_id', $user->id)
+                        ->orWhere('player_two_user_id', $user->id);
+                });
+
+                if ($canViewAllGroups) {
+                    $query->orWhere('is_public', true);
+
+                    return;
+                }
+
+                if ($visibleUserIds === []) {
+                    return;
+                }
+
+                $query->orWhere(function (Builder $groupScoped) use ($visibleUserIds): void {
+                    $groupScoped->where('is_public', true)
+                        ->where(function (Builder $players) use ($visibleUserIds): void {
+                            $players->whereIn('player_one_user_id', $visibleUserIds)
+                                ->orWhereIn('player_two_user_id', $visibleUserIds);
+                        });
+                });
             })
             ->with(['playerOne', 'playerTwo'])
             ->get()
@@ -30,6 +59,20 @@ class BuildMatchHistoryPageDataAction
 
         $leagueMatches = LeagueMatch::query()
             ->played()
+            ->when(
+                ! $canViewAllGroups,
+                function (Builder $query) use ($user, $visibleUserIds): void {
+                    $query->where(function (Builder $scoped) use ($user, $visibleUserIds): void {
+                        $scoped->where('player_one_id', $user->id)
+                            ->orWhere('player_two_id', $user->id);
+
+                        if ($visibleUserIds !== []) {
+                            $scoped->orWhereIn('player_one_id', $visibleUserIds)
+                                ->orWhereIn('player_two_id', $visibleUserIds);
+                        }
+                    });
+                },
+            )
             ->with(['league', 'playerOne', 'playerTwo'])
             ->get()
             ->map(fn (LeagueMatch $match): array => $this->formatLeagueMatch($match))

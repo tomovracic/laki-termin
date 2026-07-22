@@ -37,6 +37,8 @@ class UpdateGroupRequest extends FormRequest
             'color' => ['required', 'string', Rule::enum(GroupColor::class)],
             'can_access_ranking' => ['required', 'boolean'],
             'can_view_all_ranking_groups' => ['required', 'boolean'],
+            'can_access_match_history' => ['required', 'boolean'],
+            'can_view_all_match_history_groups' => ['required', 'boolean'],
         ];
     }
 }

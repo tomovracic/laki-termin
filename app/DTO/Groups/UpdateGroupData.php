@@ -13,5 +13,7 @@ readonly class UpdateGroupData
         public GroupColor $color,
         public bool $canAccessRanking,
         public bool $canViewAllRankingGroups,
+        public bool $canAccessMatchHistory,
+        public bool $canViewAllMatchHistoryGroups,
     ) {}
 }

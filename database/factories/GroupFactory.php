@@ -25,6 +25,8 @@ class GroupFactory extends Factory
             'color' => fake()->randomElement(GroupColor::cases())->value,
             'can_access_ranking' => false,
             'can_view_all_ranking_groups' => false,
+            'can_access_match_history' => false,
+            'can_view_all_match_history_groups' => false,
         ];
     }
 
@@ -40,6 +42,21 @@ class GroupFactory extends Factory
         return $this->state(fn (array $attributes): array => [
             'can_access_ranking' => true,
             'can_view_all_ranking_groups' => true,
+        ]);
+    }
+
+    public function withMatchHistoryAccess(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'can_access_match_history' => true,
+        ]);
+    }
+
+    public function withViewAllMatchHistoryGroups(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'can_access_match_history' => true,
+            'can_view_all_match_history_groups' => true,
         ]);
     }
 }

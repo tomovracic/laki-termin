@@ -161,7 +161,8 @@ test('shared auth exposes ranking permission flags', function () {
         ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('auth.canAccessMatchHistory', true)
+            ->where('auth.canAccessMatchHistory', false)
+            ->where('auth.canViewAllMatchHistoryGroups', false)
             ->where('auth.canAccessRanking', true)
             ->where('auth.canViewAllRankingGroups', true));
 });
@@ -172,6 +173,7 @@ test('admin without groups can access match history', function () {
 
     $resolver = app(UserGroupPermissionResolver::class);
     expect($resolver->canAccessMatchHistory($admin))->toBeTrue();
+    expect($resolver->canViewAllMatchHistoryGroups($admin))->toBeTrue();
 
     $this->actingAs($admin)
         ->get(route('dashboard.match-history'))
