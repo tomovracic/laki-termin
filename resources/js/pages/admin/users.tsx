@@ -6,11 +6,17 @@ import { LoginMessageForm } from '@/components/admin/login-message-form';
 import { PaginationControls } from '@/components/admin/pagination-controls';
 import { SearchInput } from '@/components/admin/search-input';
 import { StatusBanner } from '@/components/admin/status-banner';
-import type { AdminUserReservation, ApiErrorResponse, ManagedUser } from '@/components/admin/types';
+import type {
+    AdminUserReservation,
+    ApiErrorResponse,
+    ManagedUser,
+    ManagedUserGroup,
+} from '@/components/admin/types';
 import { UserTokenManager } from '@/components/admin/user-token-manager';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -26,6 +32,7 @@ import { useI18n } from '@/lib/i18n';
 
 type AdminUsersPageProps = {
     users: ManagedUser[];
+    available_groups: ManagedUserGroup[];
     login_message: string | null;
 };
 
@@ -63,6 +70,7 @@ function getInitialQueryState() {
 
 export default function AdminUsersPage({
     users: initialUsers,
+    available_groups: availableGroups,
     login_message: initialLoginMessage,
 }: AdminUsersPageProps) {
     const { t } = useI18n();
@@ -78,7 +86,11 @@ export default function AdminUsersPage({
     const [userErrors, setUserErrors] = useState<Record<string, string[]>>({});
     const [isCreatingUser, setIsCreatingUser] = useState(false);
     const [email, setEmail] = useState('');
+    const [selectedCreateGroupIds, setSelectedCreateGroupIds] = useState<number[]>([]);
     const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
+    const [editingGroupsUser, setEditingGroupsUser] = useState<ManagedUser | null>(null);
+    const [selectedEditGroupIds, setSelectedEditGroupIds] = useState<number[]>([]);
+    const [isSavingUserGroups, setIsSavingUserGroups] = useState(false);
     const [userSearch, setUserSearch] = useState(initialQueryState.userSearch);
     const [userPage, setUserPage] = useState(initialQueryState.userPage);
     const [userTab, setUserTab] = useState<UserTab>(initialQueryState.userTab);
@@ -353,6 +365,7 @@ export default function AdminUsersPage({
             },
             body: JSON.stringify({
                 email,
+                group_ids: selectedCreateGroupIds,
             }),
         });
 
@@ -366,6 +379,7 @@ export default function AdminUsersPage({
 
         const payload = (await response.json()) as { data: ManagedUser };
         setEmail('');
+        setSelectedCreateGroupIds([]);
         setUserPage(1);
         setUserTab('invited');
         setIsCreateUserModalOpen(false);
@@ -387,6 +401,116 @@ export default function AdminUsersPage({
         setReservationsTotalPages(1);
         setReservationsPage(1);
         setIsReservationsModalOpen(true);
+    }
+
+    function handleOpenEditGroups(user: ManagedUser): void {
+        setEditingGroupsUser(user);
+        setSelectedEditGroupIds((user.groups ?? []).map((group) => group.id));
+        setUserErrors({});
+    }
+
+    function toggleGroupId(
+        groupId: number,
+        selectedIds: number[],
+        setSelectedIds: (ids: number[]) => void,
+    ): void {
+        if (selectedIds.includes(groupId)) {
+            setSelectedIds(selectedIds.filter((id) => id !== groupId));
+            return;
+        }
+
+        setSelectedIds([...selectedIds, groupId]);
+    }
+
+    async function handleSaveUserGroups(event: FormEvent<HTMLFormElement>): Promise<void> {
+        event.preventDefault();
+        if (editingGroupsUser === null) {
+            return;
+        }
+
+        setIsSavingUserGroups(true);
+        setUserErrors({});
+        setMessage(null);
+        setErrorMessage(null);
+
+        const response = await fetch(`/users/${editingGroupsUser.id}/groups`, {
+            method: 'PATCH',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
+            },
+            body: JSON.stringify({
+                group_ids: selectedEditGroupIds,
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await parseError(response);
+            setUserErrors(error.errors ?? {});
+            setErrorMessage(error.message ?? t('unable_update_user_groups'));
+            setIsSavingUserGroups(false);
+            return;
+        }
+
+        const payload = (await response.json()) as { data: ManagedUser };
+        setUsers((current) =>
+            current.map((entry) =>
+                entry.id === payload.data.id
+                    ? { ...entry, groups: payload.data.groups ?? [] }
+                    : entry,
+            ),
+        );
+        setEditingGroupsUser(null);
+        setMessage(t('user_groups_updated'));
+        setIsSavingUserGroups(false);
+    }
+
+    function renderGroupSelector(
+        selectedIds: number[],
+        setSelectedIds: (ids: number[]) => void,
+        idPrefix: string,
+    ): React.ReactNode {
+        if (availableGroups.length === 0) {
+            return <p className="text-sm text-muted-foreground">{t('no_groups_yet')}</p>;
+        }
+
+        return (
+            <div className="space-y-2">
+                <Label>{t('select_user_groups')}</Label>
+                <p className="text-xs text-muted-foreground">{t('select_user_groups_help')}</p>
+                <div className="space-y-2 rounded-lg border p-3">
+                    {availableGroups.map((group) => {
+                        const checkboxId = `${idPrefix}-group-${group.id}`;
+                        const checked = selectedIds.includes(group.id);
+
+                        return (
+                            <div key={group.id} className="flex items-center gap-3">
+                                <Checkbox
+                                    id={checkboxId}
+                                    checked={checked}
+                                    onCheckedChange={() =>
+                                        toggleGroupId(group.id, selectedIds, setSelectedIds)
+                                    }
+                                />
+                                <Label
+                                    htmlFor={checkboxId}
+                                    className="flex items-center gap-2 font-normal"
+                                >
+                                    <span
+                                        className="inline-block h-2.5 w-2.5 rounded-full"
+                                        style={{ backgroundColor: group.color_hex }}
+                                    />
+                                    {group.name}
+                                </Label>
+                            </div>
+                        );
+                    })}
+                </div>
+                <InputError message={firstError('group_ids')} />
+            </div>
+        );
     }
 
     async function handleSaveLoginMessage(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -449,6 +573,7 @@ export default function AdminUsersPage({
                         setIsCreateUserModalOpen(isOpen);
                         if (!isOpen) {
                             setUserErrors({});
+                            setSelectedCreateGroupIds([]);
                         }
                     }}
                 >
@@ -476,9 +601,17 @@ export default function AdminUsersPage({
                                     />
                                     <InputError message={firstError('email')} />
                                 </div>
+                                {renderGroupSelector(
+                                    selectedCreateGroupIds,
+                                    setSelectedCreateGroupIds,
+                                    'create',
+                                )}
                             </div>
                             <div className="flex justify-end">
-                                <Button type="submit" disabled={isCreatingUser}>
+                                <Button
+                                    type="submit"
+                                    disabled={isCreatingUser || selectedCreateGroupIds.length === 0}
+                                >
                                     {isCreatingUser ? t('creating') : t('create_user')}
                                 </Button>
                             </div>
@@ -486,6 +619,45 @@ export default function AdminUsersPage({
                     </DialogContent>
                 </Dialog>
             </div>
+
+            <Dialog
+                open={editingGroupsUser !== null}
+                onOpenChange={(isOpen) => {
+                    if (!isOpen) {
+                        setEditingGroupsUser(null);
+                        setUserErrors({});
+                    }
+                }}
+            >
+                <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{t('edit_user_groups')}</DialogTitle>
+                        <DialogDescription>
+                            {editingGroupsUser === null
+                                ? t('select_user_groups_help')
+                                : `${editingGroupsUser.first_name} ${editingGroupsUser.last_name}`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form
+                        onSubmit={(event) => void handleSaveUserGroups(event)}
+                        className="space-y-4"
+                    >
+                        {renderGroupSelector(
+                            selectedEditGroupIds,
+                            setSelectedEditGroupIds,
+                            'edit',
+                        )}
+                        <div className="flex justify-end">
+                            <Button
+                                type="submit"
+                                disabled={isSavingUserGroups || selectedEditGroupIds.length === 0}
+                            >
+                                {isSavingUserGroups ? t('saving') : t('save')}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             <Dialog
                 open={isReservationsModalOpen}
@@ -598,6 +770,7 @@ export default function AdminUsersPage({
                 }
                 onSave={(user) => void handleTokenSave(user)}
                 onOpenReservations={handleOpenUserReservations}
+                onEditGroups={handleOpenEditGroups}
             />
 
             <PaginationControls

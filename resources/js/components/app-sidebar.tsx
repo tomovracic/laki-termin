@@ -1,5 +1,15 @@
 import { Link, usePage } from '@inertiajs/react';
-import { CalendarDays, ClipboardList, History, LayoutGrid, Map, Medal, Trophy, Users } from 'lucide-react';
+import {
+    CalendarDays,
+    ClipboardList,
+    History,
+    LayoutGrid,
+    Map,
+    Medal,
+    Tags,
+    Trophy,
+    Users,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { NavMain } from '@/components/nav-main';
@@ -38,17 +48,23 @@ export function AppSidebar() {
             href: '/dashboard/leagues',
             icon: Trophy,
         },
-        {
+    ];
+
+    if (auth.canAccessMatchHistory) {
+        mainNavItems.push({
             title: t('match_history'),
             href: '/dashboard/match-history',
             icon: History,
-        },
-        {
+        });
+    }
+
+    if (auth.canAccessRanking) {
+        mainNavItems.push({
             title: t('ranking'),
             href: '/dashboard/ranking',
             icon: Medal,
-        },
-    ];
+        });
+    }
 
     if (auth.isAdmin) {
         mainNavItems.push(
@@ -56,6 +72,11 @@ export function AppSidebar() {
                 title: t('users_overview'),
                 href: '/admin/users',
                 icon: Users,
+            },
+            {
+                title: t('groups_overview'),
+                href: '/admin/groups',
+                icon: Tags,
             },
             {
                 title: t('terrains_overview'),

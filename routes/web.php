@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminCancelledReservationsReportController;
+use App\Http\Controllers\Admin\AdminGroupOverviewController;
 use App\Http\Controllers\Admin\AdminLeagueOverviewController;
 use App\Http\Controllers\Admin\AdminLeagueShowController;
 use App\Http\Controllers\Admin\AdminLoginReportController;
@@ -38,6 +39,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::redirect('admin', 'admin/users')->name('admin.index');
     Route::get('admin/users', AdminUserOverviewController::class)->name('admin.users');
     Route::get('admin/users/{user}/reservations', AdminUserReservationsController::class)->name('admin.users.reservations');
+    Route::get('admin/groups', AdminGroupOverviewController::class)->name('admin.groups');
     Route::get('admin/terrains', AdminTerrainOverviewController::class)->name('admin.terrains');
     Route::get('admin/leagues', AdminLeagueOverviewController::class)->name('admin.leagues');
     Route::get('admin/leagues/{league}', AdminLeagueShowController::class)->name('admin.leagues.show');

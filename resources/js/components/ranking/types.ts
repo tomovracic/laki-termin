@@ -8,3 +8,11 @@ export type EloRankingEntry = {
     wins: number;
     losses: number;
 };
+
+export type EloRankingGroupSection = {
+    id: number;
+    name: string;
+    color: string;
+    color_hex: string;
+    rankings: EloRankingEntry[];
+};

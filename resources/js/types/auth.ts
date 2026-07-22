@@ -15,4 +15,7 @@ export type User = {
 export type Auth = {
     user: User;
     isAdmin: boolean;
+    canAccessMatchHistory: boolean;
+    canAccessRanking: boolean;
+    canViewAllRankingGroups: boolean;
 };

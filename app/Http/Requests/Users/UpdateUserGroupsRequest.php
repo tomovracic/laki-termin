@@ -7,11 +7,14 @@ namespace App\Http\Requests\Users;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreUserRequest extends FormRequest
+class UpdateUserGroupsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', User::class) ?? false;
+        /** @var User $user */
+        $user = $this->route('user');
+
+        return $this->user()?->can('update', $user) ?? false;
     }
 
     /**
@@ -20,12 +23,6 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => [
-                'required',
-                'string',
-                'email',
-                'max:255',
-            ],
             'group_ids' => ['required', 'array', 'min:1'],
             'group_ids.*' => ['integer', 'distinct', 'exists:groups,id'],
         ];

@@ -6,15 +6,26 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Actions\Ranking\BuildEloRankingPageDataAction;
 use App\Http\Controllers\Controller;
+use App\Services\Groups\UserGroupPermissionResolver;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class UserEloRankingController extends Controller
 {
-    public function __invoke(BuildEloRankingPageDataAction $action): Response
-    {
+    public function __invoke(
+        Request $request,
+        BuildEloRankingPageDataAction $action,
+        UserGroupPermissionResolver $permissionResolver,
+    ): Response {
+        $user = $request->user();
+        if ($user === null || ! $permissionResolver->canAccessRanking($user)) {
+            throw new HttpException(403);
+        }
+
         return Inertia::render('dashboard/ranking', [
-            'rankings' => $action->execute(),
+            'groups' => $action->execute($user),
         ]);
     }
 }

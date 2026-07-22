@@ -109,6 +109,12 @@
         "skipLibCheck": true /* Skip type checking all .d.ts files. */,
         "baseUrl": ".",
         "paths": {
+            "@/routes": ["./resources/js/wf/routes"],
+            "@/routes/*": ["./resources/js/wf/routes/*"],
+            "@/actions": ["./resources/js/wf/actions"],
+            "@/actions/*": ["./resources/js/wf/actions/*"],
+            "@/wayfinder": ["./resources/js/wf/wayfinder"],
+            "@/wayfinder/*": ["./resources/js/wf/wayfinder/*"],
             "@/*": ["./resources/js/*"]
         },
         "jsx": "react-jsx"

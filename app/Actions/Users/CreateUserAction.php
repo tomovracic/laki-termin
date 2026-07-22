@@ -53,11 +53,13 @@ class CreateUserAction
             ]);
         }
 
+        $user->groups()->sync($data->groupIds);
+
         $user->notify(new UserInvitationNotification(
             invitationUrl: route('invitation.accept', ['token' => $invitationToken]),
             expiresAt: $invitationExpiresAt,
         ));
 
-        return $user->refresh();
+        return $user->refresh()->load('groups');
     }
 }

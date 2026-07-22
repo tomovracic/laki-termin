@@ -1,9 +1,11 @@
 <?php
 
 use App\Enums\LeagueMatchStatus;
+use App\Models\Group;
 use App\Models\League;
 use App\Models\LeagueMatch;
 use App\Models\PlayedMatch;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\Ranking\EloRankingService;
 use Illuminate\Support\Facades\Date;
@@ -13,15 +15,30 @@ beforeEach(function () {
     $this->withoutVite();
 });
 
-test('authenticated user can view empty ranking page', function () {
+function attachRankingAccessGroup(User $user): Group
+{
+    $group = Group::factory()->withRankingAccess()->create();
+    $user->groups()->attach($group->id);
+
+    return $group;
+}
+
+function attachAdminRoleForEloRanking(User $user): void
+{
+    $role = Role::query()->firstOrCreate(['name' => 'admin']);
+    $user->roles()->syncWithoutDetaching([$role->id]);
+}
+
+test('authenticated user with ranking access can view empty ranking page', function () {
     $user = User::factory()->create();
+    attachRankingAccessGroup($user);
 
     $this->actingAs($user)
         ->get(route('dashboard.ranking'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('dashboard/ranking')
-            ->has('rankings', 0));
+            ->has('groups', 0));
 });
 
 test('guest cannot view ranking page', function () {
@@ -158,10 +175,13 @@ test('elo updates chronologically across multiple matches', function () {
     expect($byUserId[$playerC->id]->wins)->toBe(1);
 });
 
-test('ranking page returns computed elo entries', function () {
+test('ranking page returns computed elo entries grouped by group', function () {
     $viewer = User::factory()->create();
+    attachAdminRoleForEloRanking($viewer);
+    $group = Group::factory()->create(['name' => 'Open']);
     $winner = User::factory()->create(['first_name' => 'Ana']);
     $loser = User::factory()->create(['first_name' => 'Bruno']);
+    $group->users()->attach([$winner->id, $loser->id]);
 
     PlayedMatch::factory()->create([
         'player_one_user_id' => $winner->id,
@@ -175,9 +195,11 @@ test('ranking page returns computed elo entries', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('dashboard/ranking')
-            ->has('rankings', 2)
-            ->where('rankings.0.user_id', $winner->id)
-            ->where('rankings.0.elo', 1016)
-            ->where('rankings.1.user_id', $loser->id)
-            ->where('rankings.1.elo', 984));
+            ->has('groups', 1)
+            ->where('groups.0.id', $group->id)
+            ->has('groups.0.rankings', 2)
+            ->where('groups.0.rankings.0.user_id', $winner->id)
+            ->where('groups.0.rankings.0.elo', 1016)
+            ->where('groups.0.rankings.1.user_id', $loser->id)
+            ->where('groups.0.rankings.1.elo', 984));
 });

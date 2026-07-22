@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Group;
 use App\Models\User;
 use App\Services\AppSettingService;
 use Illuminate\Support\Facades\Gate;
@@ -18,6 +19,7 @@ class AdminUserOverviewController extends Controller
         Gate::authorize('viewAny', User::class);
 
         $users = User::query()
+            ->with('groups')
             ->withCount([
                 'reservations' => fn ($query) => $query->active(),
             ])
@@ -44,11 +46,29 @@ class AdminUserOverviewController extends Controller
                 'invitation_status' => $user->invitationStatus()->value,
                 'reservations_count' => $user->reservations_count,
                 'created_at' => $user->created_at?->toISOString(),
+                'groups' => $user->groups->map(fn (Group $group): array => [
+                    'id' => $group->id,
+                    'name' => $group->name,
+                    'color' => $group->color->value,
+                    'color_hex' => $group->color->hex(),
+                ])->values()->all(),
+            ])
+            ->all();
+
+        $availableGroups = Group::query()
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Group $group): array => [
+                'id' => $group->id,
+                'name' => $group->name,
+                'color' => $group->color->value,
+                'color_hex' => $group->color->hex(),
             ])
             ->all();
 
         return Inertia::render('admin/users', [
             'users' => $users,
+            'available_groups' => $availableGroups,
             'login_message' => $appSettingService->getLoginMessage(),
         ]);
     }

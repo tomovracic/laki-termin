@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\UserInvitationStatus;
+use App\Models\Group;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\UserInvitationNotification;
@@ -53,13 +54,16 @@ test('admin can update user token count', function () {
     expect($targetUser->fresh()->token_count)->toBe(42);
 });
 
-test('admin can create a new user', function () {
+test('admin can create a new user with groups', function () {
     $admin = User::factory()->create();
     attachAdminRoleToUser($admin);
     Notification::fake();
+    $groupA = Group::factory()->create();
+    $groupB = Group::factory()->create();
 
     $response = $this->actingAs($admin)->post(route('users.store'), [
         'email' => 'ana.admin@example.com',
+        'group_ids' => [$groupA->id, $groupB->id],
     ]);
 
     $response
@@ -76,6 +80,8 @@ test('admin can create a new user', function () {
     expect($createdUser?->invitation_expires_at)->not()->toBeNull();
     expect($createdUser?->invitation_expires_at?->greaterThan(now()->addDays(2)))->toBeTrue();
     expect($createdUser?->invitation_expires_at?->lessThan(now()->addDays(4)))->toBeTrue();
+    expect($createdUser?->groups()->pluck('groups.id')->sort()->values()->all())
+        ->toBe(collect([$groupA->id, $groupB->id])->sort()->values()->all());
 
     Notification::assertSentTo($createdUser, UserInvitationNotification::class);
 });
@@ -84,6 +90,7 @@ test('admin can resend invitation for existing pending user', function () {
     $admin = User::factory()->create();
     attachAdminRoleToUser($admin);
     Notification::fake();
+    $group = Group::factory()->create();
 
     $pendingUser = User::factory()->create([
         'email' => 'pending@example.com',
@@ -95,6 +102,7 @@ test('admin can resend invitation for existing pending user', function () {
 
     $response = $this->actingAs($admin)->post(route('users.store'), [
         'email' => 'pending@example.com',
+        'group_ids' => [$group->id],
     ]);
 
     $response
@@ -104,6 +112,7 @@ test('admin can resend invitation for existing pending user', function () {
     $pendingUser->refresh();
     expect($pendingUser->isPendingInvitation())->toBeTrue();
     expect($pendingUser->invitation_expires_at?->isFuture())->toBeTrue();
+    expect($pendingUser->groups()->pluck('groups.id')->all())->toBe([$group->id]);
 
     Notification::assertSentTo($pendingUser, UserInvitationNotification::class);
 });
@@ -112,6 +121,7 @@ test('admin cannot create invitation for existing active user email', function (
     $admin = User::factory()->create();
     attachAdminRoleToUser($admin);
     Notification::fake();
+    $group = Group::factory()->create();
 
     User::factory()->create([
         'email' => 'active@example.com',
@@ -120,6 +130,7 @@ test('admin cannot create invitation for existing active user email', function (
 
     $response = $this->actingAs($admin)->post(route('users.store'), [
         'email' => 'active@example.com',
+        'group_ids' => [$group->id],
     ]);
 
     $response
@@ -129,11 +140,44 @@ test('admin cannot create invitation for existing active user email', function (
     Notification::assertNothingSent();
 });
 
+test('admin can update user groups', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleToUser($admin);
+    $targetUser = User::factory()->create();
+    $groupA = Group::factory()->create();
+    $groupB = Group::factory()->create();
+    $targetUser->groups()->attach($groupA->id);
+
+    $response = $this->actingAs($admin)->patch(route('users.groups.update', $targetUser), [
+        'group_ids' => [$groupB->id],
+    ]);
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.id', $targetUser->id);
+
+    expect($targetUser->fresh()->groups()->pluck('groups.id')->all())->toBe([$groupB->id]);
+});
+
+test('creating a user requires at least one group', function () {
+    $admin = User::factory()->create();
+    attachAdminRoleToUser($admin);
+
+    $response = $this->actingAs($admin)->post(route('users.store'), [
+        'email' => 'nogroups@example.com',
+        'group_ids' => [],
+    ]);
+
+    $response->assertRedirect()->assertSessionHasErrors(['group_ids']);
+});
+
 test('non-admin cannot create a new user', function () {
     $user = User::factory()->create();
+    $group = Group::factory()->create();
 
     $response = $this->actingAs($user)->post(route('users.store'), [
         'email' => 'una.user@example.com',
+        'group_ids' => [$group->id],
     ]);
 
     $response->assertForbidden();

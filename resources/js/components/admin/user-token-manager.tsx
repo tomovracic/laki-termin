@@ -1,4 +1,4 @@
-import type { ManagedUser } from '@/components/admin/types';
+import type { ManagedUser, ManagedUserGroup } from '@/components/admin/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,31 @@ type UserTokenManagerProps = {
     onDraftChange: (userId: number, value: string) => void;
     onSave: (user: ManagedUser) => void;
     onOpenReservations?: (user: ManagedUser) => void;
+    onEditGroups?: (user: ManagedUser) => void;
 };
+
+function GroupBadges({ groups }: { groups: ManagedUserGroup[] }) {
+    if (groups.length === 0) {
+        return <span className="text-sm text-muted-foreground">—</span>;
+    }
+
+    return (
+        <div className="flex flex-wrap gap-1.5">
+            {groups.map((group) => (
+                <span
+                    key={group.id}
+                    className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs"
+                >
+                    <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ backgroundColor: group.color_hex }}
+                    />
+                    {group.name}
+                </span>
+            ))}
+        </div>
+    );
+}
 
 export function UserTokenManager({
     users,
@@ -22,6 +46,7 @@ export function UserTokenManager({
     onDraftChange,
     onSave,
     onOpenReservations,
+    onEditGroups,
 }: UserTokenManagerProps) {
     const { t } = useI18n();
 
@@ -56,6 +81,13 @@ export function UserTokenManager({
                                     <dd>{user.phone ?? '-'}</dd>
 
                                     <dt className="font-medium text-foreground/80">
+                                        {t('user_groups')}:
+                                    </dt>
+                                    <dd>
+                                        <GroupBadges groups={user.groups ?? []} />
+                                    </dd>
+
+                                    <dt className="font-medium text-foreground/80">
                                         {t('available_tokens')}:
                                     </dt>
                                     <dd>{tokenDrafts[user.id] ?? '0'}</dd>
@@ -72,43 +104,60 @@ export function UserTokenManager({
                                     </span>
                                     <span className="break-all">{user.email}</span>
                                 </div>
+                                <div className="space-y-1">
+                                    <span className="font-medium text-foreground/80">
+                                        {t('user_groups')}:
+                                    </span>
+                                    <GroupBadges groups={user.groups ?? []} />
+                                </div>
                             </div>
                         )}
                     </div>
-                    {showTokenControls && (
-                        <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/30 p-3 sm:grid-cols-[170px_auto] sm:items-end">
-                            <div className="space-y-1">
-                                <Label htmlFor={`token-count-${user.id}`}>
-                                    {t('available_tokens')}
-                                </Label>
-                                <Input
-                                    id={`token-count-${user.id}`}
-                                    min={0}
-                                    type="number"
-                                    value={tokenDrafts[user.id] ?? '0'}
-                                    onChange={(event) =>
-                                        onDraftChange(user.id, event.target.value)
-                                    }
-                                />
-                            </div>
-                            <Button
-                                className="w-full sm:w-auto"
-                                onClick={() => onSave(user)}
-                                disabled={savingUserId === user.id}
-                            >
-                                {savingUserId === user.id ? t('saving') : t('update')}
-                            </Button>
-                            {onOpenReservations !== undefined && (
+                    <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/30 p-3 sm:grid-cols-[170px_auto] sm:items-end">
+                        {showTokenControls && (
+                            <>
+                                <div className="space-y-1">
+                                    <Label htmlFor={`token-count-${user.id}`}>
+                                        {t('available_tokens')}
+                                    </Label>
+                                    <Input
+                                        id={`token-count-${user.id}`}
+                                        min={0}
+                                        type="number"
+                                        value={tokenDrafts[user.id] ?? '0'}
+                                        onChange={(event) =>
+                                            onDraftChange(user.id, event.target.value)
+                                        }
+                                    />
+                                </div>
                                 <Button
                                     className="w-full sm:w-auto"
-                                    variant="outline"
-                                    onClick={() => onOpenReservations(user)}
+                                    onClick={() => onSave(user)}
+                                    disabled={savingUserId === user.id}
                                 >
-                                    {`${t('view_reservations')} (${user.reservations_count})`}
+                                    {savingUserId === user.id ? t('saving') : t('update')}
                                 </Button>
-                            )}
-                        </div>
-                    )}
+                                {onOpenReservations !== undefined && (
+                                    <Button
+                                        className="w-full sm:w-auto"
+                                        variant="outline"
+                                        onClick={() => onOpenReservations(user)}
+                                    >
+                                        {`${t('view_reservations')} (${user.reservations_count})`}
+                                    </Button>
+                                )}
+                            </>
+                        )}
+                        {onEditGroups !== undefined && (
+                            <Button
+                                className="w-full sm:w-auto"
+                                variant="outline"
+                                onClick={() => onEditGroups(user)}
+                            >
+                                {t('edit_user_groups')}
+                            </Button>
+                        )}
+                    </div>
                 </div>
             ))}
         </div>

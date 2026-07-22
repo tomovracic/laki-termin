@@ -3,6 +3,7 @@
 use App\Http\Controllers\AppSettings\AppSettingController;
 use App\Http\Controllers\AppSettings\LoginMessageAcknowledgementController;
 use App\Http\Controllers\AppSettings\TerrainUsageRulesAcknowledgementController;
+use App\Http\Controllers\Groups\GroupController;
 use App\Http\Controllers\Reservations\ReservationController;
 use App\Http\Controllers\TerrainInactivePeriods\TerrainInactivePeriodController;
 use App\Http\Controllers\Terrains\TerrainController;
@@ -37,4 +38,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('users', [UserController::class, 'store'])->name('users.store');
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::patch('users/{user}/token-count', [UserController::class, 'updateTokenCount'])->name('users.token-count.update');
+    Route::patch('users/{user}/groups', [UserController::class, 'updateGroups'])->name('users.groups.update');
+
+    Route::post('groups', [GroupController::class, 'store'])->name('groups.store');
+    Route::patch('groups/{group}', [GroupController::class, 'update'])->name('groups.update');
+    Route::delete('groups/{group}', [GroupController::class, 'destroy'])->name('groups.destroy');
 });

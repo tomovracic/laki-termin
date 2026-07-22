@@ -9,6 +9,25 @@ export type ManagedUser = {
     invitation_status: 'pending' | 'active';
     reservations_count: number;
     created_at: string | null;
+    groups: ManagedUserGroup[];
+};
+
+export type ManagedUserGroup = {
+    id: number;
+    name: string;
+    color: string;
+    color_hex: string;
+};
+
+export type ManagedGroup = {
+    id: number;
+    name: string;
+    color: string;
+    color_hex: string;
+    can_access_ranking: boolean;
+    can_view_all_ranking_groups: boolean;
+    users_count: number;
+    created_at: string | null;
 };
 
 export type ManagedTerrain = {

@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Users;
 
+use App\Services\Groups\UserGroupPermissionResolver;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SearchUsersRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        $user = $this->user();
+
+        return $user !== null
+            && app(UserGroupPermissionResolver::class)->canAccessMatchHistory($user);
     }
 
     /**

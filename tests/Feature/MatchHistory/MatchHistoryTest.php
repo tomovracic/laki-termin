@@ -3,6 +3,7 @@
 use App\Actions\Leagues\CreateLeagueAction;
 use App\DTO\Leagues\CreateLeagueData;
 use App\Enums\LeagueMatchStatus;
+use App\Models\Group;
 use App\Models\LeagueMatch;
 use App\Models\PlayedMatch;
 use App\Models\Role;
@@ -12,12 +13,21 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     $this->withoutVite();
+    $this->matchHistoryGroup = Group::factory()->create();
 });
 
 function assignLeagueAdminRole(User $user): void
 {
     $role = Role::query()->firstOrCreate(['name' => 'admin']);
     $user->roles()->syncWithoutDetaching([$role->id]);
+}
+
+function createGroupedUser(array $attributes = []): User
+{
+    $user = User::factory()->create($attributes);
+    $user->groups()->attach(test()->matchHistoryGroup->id);
+
+    return $user;
 }
 
 function validPlayedMatchPayload(array $overrides = []): array
@@ -31,8 +41,8 @@ function validPlayedMatchPayload(array $overrides = []): array
     ], $overrides);
 }
 
-test('authenticated user can view empty match history page', function () {
-    $user = User::factory()->create();
+test('authenticated grouped user can view empty match history page', function () {
+    $user = createGroupedUser();
 
     $this->actingAs($user)
         ->get(route('dashboard.match-history'))
@@ -42,8 +52,47 @@ test('authenticated user can view empty match history page', function () {
             ->has('matches', 0));
 });
 
-test('user search returns matching users by name', function () {
+test('user without group cannot view match history page', function () {
     $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard.match-history'))
+        ->assertForbidden();
+});
+
+test('user without group cannot create casual match', function () {
+    $user = User::factory()->create();
+    $opponent = User::factory()->create();
+
+    $this->actingAs($user)->postJson(route('played-matches.store'), validPlayedMatchPayload([
+        'player_two' => [
+            'user_id' => $opponent->id,
+        ],
+    ]))->assertForbidden();
+});
+
+test('shared auth exposes match history access for grouped users', function () {
+    $user = createGroupedUser();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('auth.canAccessMatchHistory', true));
+});
+
+test('shared auth hides match history access for users without groups', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('auth.canAccessMatchHistory', false));
+});
+
+test('user search returns matching users by name', function () {
+    $user = createGroupedUser();
     $match = User::factory()->create([
         'first_name' => 'Ivan',
         'last_name' => 'Horvat',
@@ -62,7 +111,7 @@ test('user search returns matching users by name', function () {
 });
 
 test('user can create casual match with registered opponent', function () {
-    $user = User::factory()->create();
+    $user = createGroupedUser();
     $opponent = User::factory()->create();
 
     $response = $this->actingAs($user)->postJson(route('played-matches.store'), validPlayedMatchPayload([
@@ -84,7 +133,7 @@ test('user can create casual match with registered opponent', function () {
 });
 
 test('user can create casual match with visibility and ranked flags', function () {
-    $user = User::factory()->create();
+    $user = createGroupedUser();
     $opponent = User::factory()->create();
 
     $response = $this->actingAs($user)->postJson(route('played-matches.store'), validPlayedMatchPayload([
@@ -106,7 +155,7 @@ test('user can create casual match with visibility and ranked flags', function (
 });
 
 test('user can create casual match with guest opponent', function () {
-    $user = User::factory()->create();
+    $user = createGroupedUser();
 
     $response = $this->actingAs($user)->postJson(route('played-matches.store'), validPlayedMatchPayload([
         'player_two' => [
@@ -125,7 +174,7 @@ test('user can create casual match with guest opponent', function () {
 });
 
 test('creating match with self as opponent is rejected', function () {
-    $user = User::factory()->create();
+    $user = createGroupedUser();
 
     $this->actingAs($user)->postJson(route('played-matches.store'), validPlayedMatchPayload([
         'player_two' => [
@@ -136,7 +185,7 @@ test('creating match with self as opponent is rejected', function () {
 });
 
 test('invalid match result is rejected for casual matches', function () {
-    $user = User::factory()->create();
+    $user = createGroupedUser();
     $opponent = User::factory()->create();
 
     $this->actingAs($user)->postJson(route('played-matches.store'), validPlayedMatchPayload([
@@ -155,7 +204,7 @@ test('match history includes played league matches for participant', function ()
     $admin = User::factory()->create();
     assignLeagueAdminRole($admin);
 
-    $player = User::factory()->create();
+    $player = createGroupedUser();
     $opponent = User::factory()->create();
 
     $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
@@ -192,7 +241,7 @@ test('match history merges casual and league matches', function () {
     $admin = User::factory()->create();
     assignLeagueAdminRole($admin);
 
-    $player = User::factory()->create();
+    $player = createGroupedUser();
     $leagueOpponent = User::factory()->create();
     $casualOpponent = User::factory()->create();
 
@@ -236,7 +285,7 @@ test('guest user cannot access match history', function () {
 });
 
 test('user can update casual match scores', function () {
-    $user = User::factory()->create();
+    $user = createGroupedUser();
     $opponent = User::factory()->create();
 
     $playedMatch = PlayedMatch::factory()->create([
@@ -272,8 +321,8 @@ test('user can update casual match scores', function () {
 });
 
 test('registered opponent can update casual match scores', function () {
-    $user = User::factory()->create();
-    $opponent = User::factory()->create();
+    $user = createGroupedUser();
+    $opponent = createGroupedUser();
 
     $playedMatch = PlayedMatch::factory()->create([
         'player_one_user_id' => $user->id,
@@ -290,7 +339,7 @@ test('registered opponent can update casual match scores', function () {
 });
 
 test('user cannot update casual match they are not part of', function () {
-    $user = User::factory()->create();
+    $user = createGroupedUser();
     $otherUser = User::factory()->create();
     $opponent = User::factory()->create();
 
@@ -309,7 +358,7 @@ test('user cannot update casual match they are not part of', function () {
 });
 
 test('invalid score update is rejected for casual matches', function () {
-    $user = User::factory()->create();
+    $user = createGroupedUser();
     $opponent = User::factory()->create();
 
     $playedMatch = PlayedMatch::factory()->create([
@@ -328,7 +377,7 @@ test('invalid score update is rejected for casual matches', function () {
 });
 
 test('user can delete casual match', function () {
-    $user = User::factory()->create();
+    $user = createGroupedUser();
     $opponent = User::factory()->create();
 
     $playedMatch = PlayedMatch::factory()->create([
@@ -345,7 +394,7 @@ test('user can delete casual match', function () {
 });
 
 test('user cannot delete casual match they are not part of', function () {
-    $user = User::factory()->create();
+    $user = createGroupedUser();
     $otherUser = User::factory()->create();
     $opponent = User::factory()->create();
 
@@ -360,7 +409,7 @@ test('user cannot delete casual match they are not part of', function () {
 });
 
 test('match history exposes edit and delete flags for casual matches', function () {
-    $user = User::factory()->create();
+    $user = createGroupedUser();
     $opponent = User::factory()->create();
 
     PlayedMatch::factory()->create([
@@ -378,7 +427,7 @@ test('match history exposes edit and delete flags for casual matches', function 
 });
 
 test('match history includes other users casual matches', function () {
-    $viewer = User::factory()->create();
+    $viewer = createGroupedUser();
     $playerOne = User::factory()->create();
     $playerTwo = User::factory()->create();
 
@@ -399,7 +448,7 @@ test('match history includes other users casual matches', function () {
 });
 
 test('private casual match is hidden from users outside the match', function () {
-    $viewer = User::factory()->create();
+    $viewer = createGroupedUser();
     $playerOne = User::factory()->create();
     $playerTwo = User::factory()->create();
 
@@ -418,7 +467,7 @@ test('private casual match is hidden from users outside the match', function () 
 });
 
 test('private casual match is visible to participants', function () {
-    $viewer = User::factory()->create();
+    $viewer = createGroupedUser();
     $opponent = User::factory()->create();
 
     $privateMatch = PlayedMatch::factory()->create([
@@ -440,7 +489,7 @@ test('match history includes played league matches user is not part of', functio
     $admin = User::factory()->create();
     assignLeagueAdminRole($admin);
 
-    $viewer = User::factory()->create();
+    $viewer = createGroupedUser();
     $playerOne = User::factory()->create();
     $playerTwo = User::factory()->create();
 

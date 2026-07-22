@@ -25,6 +25,12 @@ class UserResource extends JsonResource
             'token_count' => $this->token_count ?? 0,
             'email_verified_at' => $this->email_verified_at,
             'created_at' => $this->created_at,
+            'groups' => $this->whenLoaded('groups', fn () => $this->groups->map(fn ($group) => [
+                'id' => $group->id,
+                'name' => $group->name,
+                'color' => $group->color->value,
+                'color_hex' => $group->color->hex(),
+            ])->values()->all()),
         ];
     }
 }

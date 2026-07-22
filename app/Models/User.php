@@ -89,6 +89,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Role::class)->withTimestamps();
     }
 
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(Group::class)->withTimestamps();
+    }
+
     public function reservations(): HasMany
     {
         return $this->hasMany(Reservation::class);

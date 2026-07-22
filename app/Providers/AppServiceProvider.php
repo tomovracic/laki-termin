@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Group;
 use App\Models\League;
 use App\Models\PlayedMatch;
 use App\Models\Reservation;
 use App\Models\Terrain;
 use App\Models\TerrainInactivePeriod;
 use App\Models\User;
+use App\Policies\GroupPolicy;
 use App\Policies\LeaguePolicy;
 use App\Policies\PlayedMatchPolicy;
 use App\Policies\ReservationPolicy;
@@ -43,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
 
     protected function registerPolicies(): void
     {
+        Gate::policy(Group::class, GroupPolicy::class);
         Gate::policy(League::class, LeaguePolicy::class);
         Gate::policy(PlayedMatch::class, PlayedMatchPolicy::class);
         Gate::policy(Terrain::class, TerrainPolicy::class);

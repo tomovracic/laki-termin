@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Enums\Locale;
 use App\Services\AppSettingService;
+use App\Services\Groups\UserGroupPermissionResolver;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -37,12 +38,24 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        $permissionResolver = app(UserGroupPermissionResolver::class);
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user(),
-                'isAdmin' => $request->user()?->hasRole('admin') ?? false,
+                'user' => $user,
+                'isAdmin' => $user?->hasRole('admin') ?? false,
+                'canAccessMatchHistory' => $user !== null
+                    ? $permissionResolver->canAccessMatchHistory($user)
+                    : false,
+                'canAccessRanking' => $user !== null
+                    ? $permissionResolver->canAccessRanking($user)
+                    : false,
+                'canViewAllRankingGroups' => $user !== null
+                    ? $permissionResolver->canViewAllRankingGroups($user)
+                    : false,
             ],
             'locale' => app()->getLocale(),
             'availableLocales' => Locale::options(),
