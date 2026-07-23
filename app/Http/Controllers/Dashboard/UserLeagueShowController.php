@@ -17,6 +17,11 @@ class UserLeagueShowController extends Controller
     {
         Gate::authorize('view', $league);
 
-        return Inertia::render('dashboard/leagues/show', $action->execute($league));
+        $canManage = Gate::allows('update', $league);
+
+        return Inertia::render('dashboard/leagues/show', [
+            ...$action->execute($league, includeAvailableUsers: $canManage),
+            'can_manage' => $canManage,
+        ]);
     }
 }

@@ -282,7 +282,9 @@ test('authenticated users can view league pages', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('dashboard/leagues')
-            ->has('leagues', 1),
+            ->has('leagues', 1)
+            ->where('can_manage', false)
+            ->has('users', 0),
         );
 
     $this->actingAs($user)
@@ -291,8 +293,10 @@ test('authenticated users can view league pages', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('dashboard/leagues/show')
             ->where('league.name', 'Javna liga')
+            ->where('can_manage', false)
             ->has('standings', 2)
-            ->has('matches', 1),
+            ->has('matches', 1)
+            ->has('available_users', 0),
         );
 });
 
@@ -300,7 +304,7 @@ test('guest cannot access league pages', function () {
     $this->get(route('dashboard.leagues'))->assertRedirect(route('login'));
 });
 
-test('admin can open league management pages', function () {
+test('admin can manage leagues from the shared leagues pages', function () {
     $admin = User::factory()->create();
     assignLeagueAdminRole($admin);
 
@@ -313,20 +317,43 @@ test('admin can open league management pages', function () {
     ));
 
     $this->actingAs($admin)
-        ->get(route('admin.leagues'))
+        ->get(route('dashboard.leagues'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('admin/leagues')
+            ->component('dashboard/leagues')
             ->has('leagues', 1)
+            ->where('can_manage', true)
             ->has('users'),
         );
 
     $this->actingAs($admin)
-        ->get(route('admin.leagues.show', $league))
+        ->get(route('dashboard.leagues.show', $league))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('admin/leagues/show')
+            ->component('dashboard/leagues/show')
             ->where('league.name', 'Admin liga')
+            ->where('can_manage', true)
             ->has('available_users'),
         );
+});
+
+test('legacy admin league routes redirect to the shared leagues pages', function () {
+    $admin = User::factory()->create();
+    assignLeagueAdminRole($admin);
+
+    $players = User::factory()->count(2)->create();
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Redirect liga',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: $players->pluck('id')->all(),
+    ));
+
+    $this->actingAs($admin)
+        ->get(route('admin.leagues'))
+        ->assertRedirect('/dashboard/leagues');
+
+    $this->actingAs($admin)
+        ->get(route('admin.leagues.show', $league))
+        ->assertRedirect("/dashboard/leagues/{$league->id}");
 });

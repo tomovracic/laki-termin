@@ -1,9 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminAppSettingsController;
 use App\Http\Controllers\Admin\AdminCancelledReservationsReportController;
 use App\Http\Controllers\Admin\AdminGroupOverviewController;
-use App\Http\Controllers\Admin\AdminLeagueOverviewController;
-use App\Http\Controllers\Admin\AdminLeagueShowController;
 use App\Http\Controllers\Admin\AdminLoginReportController;
 use App\Http\Controllers\Admin\AdminReportsOverviewController;
 use App\Http\Controllers\Admin\AdminReservedReservationsReportController;
@@ -41,8 +40,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/users/{user}/reservations', AdminUserReservationsController::class)->name('admin.users.reservations');
     Route::get('admin/groups', AdminGroupOverviewController::class)->name('admin.groups');
     Route::get('admin/terrains', AdminTerrainOverviewController::class)->name('admin.terrains');
-    Route::get('admin/leagues', AdminLeagueOverviewController::class)->name('admin.leagues');
-    Route::get('admin/leagues/{league}', AdminLeagueShowController::class)->name('admin.leagues.show');
+    Route::get('admin/app-settings', AdminAppSettingsController::class)->name('admin.app-settings');
+    Route::redirect('admin/leagues', '/dashboard/leagues')->name('admin.leagues');
+    Route::get('admin/leagues/{league}', function (string $league) {
+        return redirect("/dashboard/leagues/{$league}");
+    })->name('admin.leagues.show');
     Route::get('admin/reports', AdminReportsOverviewController::class)->name('admin.reports');
     Route::get('admin/reports/logins', AdminLoginReportController::class)->name('admin.reports.logins');
     Route::get('admin/reports/reserved', AdminReservedReservationsReportController::class)->name('admin.reports.reserved');

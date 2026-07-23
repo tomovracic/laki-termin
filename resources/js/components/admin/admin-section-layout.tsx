@@ -27,15 +27,15 @@ export function AdminSectionLayout({
     const isAdminUsersPage = isActivePath(currentUrl, '/admin/users');
     const isAdminGroupsPage = isActivePath(currentUrl, '/admin/groups');
     const isAdminTerrainsPage = isActivePath(currentUrl, '/admin/terrains');
-    const isAdminLeaguesPage = isActivePath(currentUrl, '/admin/leagues') || currentUrl.startsWith('/admin/leagues/');
+    const isAdminAppSettingsPage = isActivePath(currentUrl, '/admin/app-settings');
     const pageTitle = isAdminUsersPage
         ? t('users_overview')
         : isAdminGroupsPage
           ? t('groups_overview')
           : isAdminTerrainsPage
             ? t('terrains_overview')
-            : isAdminLeaguesPage
-              ? t('leagues_admin_overview')
+            : isAdminAppSettingsPage
+              ? t('app_settings_overview')
               : title;
     const breadcrumbs: BreadcrumbItem[] = [
         {

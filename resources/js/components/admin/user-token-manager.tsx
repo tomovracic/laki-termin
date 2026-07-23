@@ -1,8 +1,16 @@
+import { Check, Copy, Eye, Pencil } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import type { ManagedUser, ManagedUserGroup } from '@/components/admin/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useClipboard } from '@/hooks/use-clipboard';
 import { useI18n } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 
 type UserTokenManagerProps = {
     users: ManagedUser[];
@@ -17,7 +25,7 @@ type UserTokenManagerProps = {
 
 function GroupBadges({ groups }: { groups: ManagedUserGroup[] }) {
     if (groups.length === 0) {
-        return <span className="text-sm text-muted-foreground">—</span>;
+        return <span className="text-muted-foreground">—</span>;
     }
 
     return (
@@ -28,12 +36,64 @@ function GroupBadges({ groups }: { groups: ManagedUserGroup[] }) {
                     className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs"
                 >
                     <span
-                        className="inline-block h-2 w-2 rounded-full"
+                        className="inline-block size-2 rounded-full"
                         style={{ backgroundColor: group.color_hex }}
                     />
                     {group.name}
                 </span>
             ))}
+        </div>
+    );
+}
+
+function PhoneCopyControl({ phone }: { phone: string }) {
+    const { t } = useI18n();
+    const [copiedText, copy] = useClipboard();
+    const [justCopied, setJustCopied] = useState(false);
+    const isCopied = justCopied && copiedText === phone;
+
+    useEffect(() => {
+        if (!isCopied) {
+            return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            setJustCopied(false);
+        }, 2000);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [isCopied]);
+
+    async function handleCopy(): Promise<void> {
+        const success = await copy(phone);
+        if (success) {
+            setJustCopied(true);
+        }
+    }
+
+    return (
+        <div className="inline-flex items-center gap-1">
+            <span className="whitespace-nowrap">{phone}</span>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            'size-7 shrink-0 text-muted-foreground hover:text-foreground',
+                            isCopied && 'text-emerald-600 hover:text-emerald-600',
+                        )}
+                        aria-label={isCopied ? t('phone_number_copied') : t('copy_phone_number')}
+                        onClick={() => void handleCopy()}
+                    >
+                        {isCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    {isCopied ? t('phone_number_copied') : t('copy_phone_number')}
+                </TooltipContent>
+            </Tooltip>
         </div>
     );
 }
@@ -50,116 +110,140 @@ export function UserTokenManager({
 }: UserTokenManagerProps) {
     const { t } = useI18n();
 
+    if (users.length === 0) {
+        return (
+            <p className="text-sm text-muted-foreground">{t('no_users_match_filter')}</p>
+        );
+    }
+
     return (
-        <div className="space-y-4">
-            {users.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                    {t('no_users_match_filter')}
-                </p>
-            )}
-            {users.map((user) => (
-                <div
-                    key={user.id}
-                    className="grid gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm md:grid-cols-[1fr_auto]"
-                >
-                    <div className="space-y-3">
-                        {showTokenControls ? (
-                            <>
-                                <p className="text-base font-semibold tracking-tight">
-                                    {user.first_name} {user.last_name}
-                                </p>
-
-                                <dl className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-[140px_1fr]">
-                                    <dt className="font-medium text-foreground/80">
-                                        {t('email_address')}:
-                                    </dt>
-                                    <dd className="break-all">{user.email}</dd>
-
-                                    <dt className="font-medium text-foreground/80">
-                                        {t('phone_number')}:
-                                    </dt>
-                                    <dd>{user.phone ?? '-'}</dd>
-
-                                    <dt className="font-medium text-foreground/80">
-                                        {t('user_groups')}:
-                                    </dt>
-                                    <dd>
-                                        <GroupBadges groups={user.groups ?? []} />
-                                    </dd>
-
-                                    <dt className="font-medium text-foreground/80">
-                                        {t('available_tokens')}:
-                                    </dt>
-                                    <dd>{tokenDrafts[user.id] ?? '0'}</dd>
-                                </dl>
-                            </>
-                        ) : (
-                            <div className="space-y-2 text-sm">
-                                <p className="text-base font-semibold tracking-tight">
-                                    {user.first_name} {user.last_name}
-                                </p>
-                                <div className="flex flex-wrap items-center gap-1 text-muted-foreground">
-                                    <span className="font-medium text-foreground/80">
-                                        {t('email_address')}:
-                                    </span>
-                                    <span className="break-all">{user.email}</span>
-                                </div>
-                                <div className="space-y-1">
-                                    <span className="font-medium text-foreground/80">
-                                        {t('user_groups')}:
-                                    </span>
-                                    <GroupBadges groups={user.groups ?? []} />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/30 p-3 sm:grid-cols-[170px_auto] sm:items-end">
+        <div className="overflow-x-auto rounded-lg border">
+            <table
+                className={cn(
+                    'w-full text-sm',
+                    showTokenControls ? 'min-w-[980px]' : 'min-w-[560px]',
+                )}
+            >
+                <thead className="bg-muted/50">
+                    <tr>
+                        <th className="px-4 py-3 text-left font-medium">{t('full_name')}</th>
+                        <th className="px-4 py-3 text-left font-medium">{t('email_address')}</th>
                         {showTokenControls && (
-                            <>
-                                <div className="space-y-1">
-                                    <Label htmlFor={`token-count-${user.id}`}>
-                                        {t('available_tokens')}
-                                    </Label>
-                                    <Input
-                                        id={`token-count-${user.id}`}
-                                        min={0}
-                                        type="number"
-                                        value={tokenDrafts[user.id] ?? '0'}
-                                        onChange={(event) =>
-                                            onDraftChange(user.id, event.target.value)
-                                        }
-                                    />
+                            <th className="px-4 py-3 text-left font-medium">{t('phone_number')}</th>
+                        )}
+                        <th className="px-4 py-3 text-left font-medium">{t('user_groups')}</th>
+                        {showTokenControls && (
+                            <th className="px-4 py-3 text-left font-medium">{t('available_tokens')}</th>
+                        )}
+                        {showTokenControls && (
+                            <th className="px-4 py-3 text-left font-medium">{t('reservations')}</th>
+                        )}
+                    </tr>
+                </thead>
+                <tbody>
+                    {users.map((user) => (
+                        <tr key={user.id} className="border-t">
+                            <td className="px-4 py-3 font-medium whitespace-nowrap">
+                                {user.first_name} {user.last_name}
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">
+                                <span className="break-all">{user.email}</span>
+                            </td>
+                            {showTokenControls && (
+                                <td className="px-4 py-3">
+                                    {user.phone ? (
+                                        <PhoneCopyControl phone={user.phone} />
+                                    ) : (
+                                        <span className="text-muted-foreground">—</span>
+                                    )}
+                                </td>
+                            )}
+                            <td className="px-4 py-3">
+                                <div className="flex items-start gap-1">
+                                    <div className="min-w-0 flex-1">
+                                        <GroupBadges groups={user.groups ?? []} />
+                                    </div>
+                                    {onEditGroups !== undefined && (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+                                                    aria-label={t('edit_user_groups')}
+                                                    onClick={() => onEditGroups(user)}
+                                                >
+                                                    <Pencil className="size-3.5" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>{t('edit_user_groups')}</TooltipContent>
+                                        </Tooltip>
+                                    )}
                                 </div>
-                                <Button
-                                    className="w-full sm:w-auto"
-                                    onClick={() => onSave(user)}
-                                    disabled={savingUserId === user.id}
-                                >
-                                    {savingUserId === user.id ? t('saving') : t('update')}
-                                </Button>
-                                {onOpenReservations !== undefined && (
-                                    <Button
-                                        className="w-full sm:w-auto"
-                                        variant="outline"
-                                        onClick={() => onOpenReservations(user)}
-                                    >
-                                        {`${t('view_reservations')} (${user.reservations_count})`}
-                                    </Button>
-                                )}
-                            </>
-                        )}
-                        {onEditGroups !== undefined && (
-                            <Button
-                                className="w-full sm:w-auto"
-                                variant="outline"
-                                onClick={() => onEditGroups(user)}
-                            >
-                                {t('edit_user_groups')}
-                            </Button>
-                        )}
-                    </div>
-                </div>
-            ))}
+                            </td>
+                            {showTokenControls && (
+                                <td className="px-4 py-3">
+                                    <div className="flex min-w-[180px] items-center gap-2">
+                                        <Input
+                                            id={`token-count-${user.id}`}
+                                            min={0}
+                                            type="number"
+                                            className="h-8 w-24"
+                                            value={tokenDrafts[user.id] ?? '0'}
+                                            onChange={(event) =>
+                                                onDraftChange(user.id, event.target.value)
+                                            }
+                                            aria-label={t('available_tokens')}
+                                        />
+                                        <Button
+                                            size="sm"
+                                            onClick={() => onSave(user)}
+                                            disabled={savingUserId === user.id}
+                                        >
+                                            {savingUserId === user.id
+                                                ? t('saving')
+                                                : t('update')}
+                                        </Button>
+                                    </div>
+                                </td>
+                            )}
+                            {showTokenControls && (
+                                <td className="px-4 py-3">
+                                    {onOpenReservations !== undefined ? (
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="tabular-nums text-muted-foreground">
+                                                {user.reservations_count}
+                                            </span>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-7 text-muted-foreground hover:text-foreground"
+                                                        aria-label={t('view_reservations')}
+                                                        onClick={() => onOpenReservations(user)}
+                                                    >
+                                                        <Eye className="size-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    {t('view_reservations')}
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </div>
+                                    ) : (
+                                        <span className="tabular-nums text-muted-foreground">
+                                            {user.reservations_count}
+                                        </span>
+                                    )}
+                                </td>
+                            )}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 }

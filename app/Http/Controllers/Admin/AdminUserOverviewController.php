@@ -7,14 +7,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Group;
 use App\Models\User;
-use App\Services\AppSettingService;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AdminUserOverviewController extends Controller
 {
-    public function __invoke(AppSettingService $appSettingService): Response
+    public function __invoke(): Response
     {
         Gate::authorize('viewAny', User::class);
 
@@ -69,7 +68,6 @@ class AdminUserOverviewController extends Controller
         return Inertia::render('admin/users', [
             'users' => $users,
             'available_groups' => $availableGroups,
-            'login_message' => $appSettingService->getLoginMessage(),
         ]);
     }
 }

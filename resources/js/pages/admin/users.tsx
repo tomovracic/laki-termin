@@ -2,7 +2,6 @@ import { Head, router } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AdminSectionLayout } from '@/components/admin/admin-section-layout';
-import { LoginMessageForm } from '@/components/admin/login-message-form';
 import { PaginationControls } from '@/components/admin/pagination-controls';
 import { SearchInput } from '@/components/admin/search-input';
 import { StatusBanner } from '@/components/admin/status-banner';
@@ -33,7 +32,6 @@ import { useI18n } from '@/lib/i18n';
 type AdminUsersPageProps = {
     users: ManagedUser[];
     available_groups: ManagedUserGroup[];
-    login_message: string | null;
 };
 
 type UserTab = 'existing' | 'invited';
@@ -71,7 +69,6 @@ function getInitialQueryState() {
 export default function AdminUsersPage({
     users: initialUsers,
     available_groups: availableGroups,
-    login_message: initialLoginMessage,
 }: AdminUsersPageProps) {
     const { t } = useI18n();
     const initialQueryState = useMemo(() => getInitialQueryState(), []);
@@ -95,15 +92,12 @@ export default function AdminUsersPage({
     const [userPage, setUserPage] = useState(initialQueryState.userPage);
     const [userTab, setUserTab] = useState<UserTab>(initialQueryState.userTab);
     const [isReservationsModalOpen, setIsReservationsModalOpen] = useState(false);
-    const [loginMessage, setLoginMessage] = useState(initialLoginMessage ?? '');
-    const [loginMessageError, setLoginMessageError] = useState<string | undefined>();
-    const [isSavingLoginMessage, setIsSavingLoginMessage] = useState(false);
     const [selectedReservationUser, setSelectedReservationUser] = useState<ManagedUser | null>(null);
     const [selectedUserReservations, setSelectedUserReservations] = useState<AdminUserReservation[]>([]);
     const [reservationsPage, setReservationsPage] = useState(1);
     const [reservationsTotalPages, setReservationsTotalPages] = useState(1);
     const [isLoadingReservations, setIsLoadingReservations] = useState(false);
-    const usersPerPage = 8;
+    const usersPerPage = 10;
 
     const usersInActiveTab = useMemo(
         () =>
@@ -513,41 +507,6 @@ export default function AdminUsersPage({
         );
     }
 
-    async function handleSaveLoginMessage(event: FormEvent<HTMLFormElement>): Promise<void> {
-        event.preventDefault();
-        setIsSavingLoginMessage(true);
-        setLoginMessageError(undefined);
-        setMessage(null);
-        setErrorMessage(null);
-
-        const response = await fetch('/app-settings/login-message', {
-            method: 'PATCH',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                ...csrfHeaders(),
-            },
-            body: JSON.stringify({
-                login_message: loginMessage.trim() === '' ? null : loginMessage,
-            }),
-        });
-
-        if (!response.ok) {
-            const error = await parseError(response);
-            setLoginMessageError(
-                Object.values(error.errors ?? {})[0]?.[0] ?? error.message ?? t('unable_save_login_message'),
-            );
-            setIsSavingLoginMessage(false);
-            return;
-        }
-
-        const payload = (await response.json()) as { data: { login_message: string | null } };
-        setLoginMessage(payload.data.login_message ?? '');
-        setMessage(t('login_message_saved'));
-        setIsSavingLoginMessage(false);
-    }
-
     return (
         <AdminSectionLayout
             title={t('users_overview')}
@@ -556,14 +515,6 @@ export default function AdminUsersPage({
             <Head title={t('admin_users')} />
 
             <StatusBanner message={message} error={errorMessage} />
-
-            <LoginMessageForm
-                value={loginMessage}
-                isSaving={isSavingLoginMessage}
-                error={loginMessageError}
-                onChange={setLoginMessage}
-                onSubmit={(event) => void handleSaveLoginMessage(event)}
-            />
 
             <div className="flex justify-end"
             >
@@ -734,27 +685,32 @@ export default function AdminUsersPage({
                 }}
             />
 
-            <div className="flex items-center gap-2">
-                <Button
-                    type="button"
-                    variant={userTab === 'existing' ? 'default' : 'outline'}
-                    onClick={() => {
-                        setUserTab('existing');
-                        setUserPage(1);
-                    }}
-                >
-                    {t('existing_users_tab')}
-                </Button>
-                <Button
-                    type="button"
-                    variant={userTab === 'invited' ? 'default' : 'outline'}
-                    onClick={() => {
-                        setUserTab('invited');
-                        setUserPage(1);
-                    }}
-                >
-                    {t('invited_users_tab')}
-                </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    <Button
+                        type="button"
+                        variant={userTab === 'existing' ? 'default' : 'outline'}
+                        onClick={() => {
+                            setUserTab('existing');
+                            setUserPage(1);
+                        }}
+                    >
+                        {t('existing_users_tab')}
+                    </Button>
+                    <Button
+                        type="button"
+                        variant={userTab === 'invited' ? 'default' : 'outline'}
+                        onClick={() => {
+                            setUserTab('invited');
+                            setUserPage(1);
+                        }}
+                    >
+                        {t('invited_users_tab')}
+                    </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                    {t('total_users')}: {filteredUsers.length}
+                </p>
             </div>
 
             <UserTokenManager

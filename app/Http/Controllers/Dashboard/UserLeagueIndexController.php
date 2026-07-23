@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Dashboard;
 use App\Enums\LeagueMatchStatus;
 use App\Http\Controllers\Controller;
 use App\Models\League;
+use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,6 +17,8 @@ class UserLeagueIndexController extends Controller
     public function __invoke(): Response
     {
         Gate::authorize('viewAny', League::class);
+
+        $canManage = Gate::allows('create', League::class);
 
         $leagues = League::query()
             ->withCount([
@@ -38,8 +41,27 @@ class UserLeagueIndexController extends Controller
             ])
             ->all();
 
+        $users = [];
+
+        if ($canManage) {
+            $users = User::query()
+                ->orderBy('first_name')
+                ->orderBy('last_name')
+                ->get(['id', 'first_name', 'last_name', 'email'])
+                ->map(fn (User $user): array => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'first_name' => $user->first_name,
+                    'last_name' => $user->last_name,
+                    'email' => $user->email,
+                ])
+                ->all();
+        }
+
         return Inertia::render('dashboard/leagues', [
             'leagues' => $leagues,
+            'users' => $users,
+            'can_manage' => $canManage,
         ]);
     }
 }

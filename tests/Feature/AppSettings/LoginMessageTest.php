@@ -108,7 +108,7 @@ test('empty login message is not shared after login', function () {
         ->assertInertia(fn (Assert $page) => $page->where('loginMessage', null));
 });
 
-test('admin users page includes current login message', function () {
+test('admin app settings page includes current login message', function () {
     $admin = User::factory()->create();
     attachAdminRoleForLoginMessage($admin);
 
@@ -117,9 +117,19 @@ test('admin users page includes current login message', function () {
     ]);
 
     $this->actingAs($admin)
-        ->get(route('admin.users'))
+        ->get(route('admin.app-settings'))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where('login_message', 'Poruka za korisnike'));
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/app-settings')
+            ->where('login_message', 'Poruka za korisnike'));
+});
+
+test('non-admin cannot view app settings page', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('admin.app-settings'))
+        ->assertForbidden();
 });
 
 test('user can acknowledge login message', function () {

@@ -6,6 +6,7 @@ import {
     LayoutGrid,
     Map,
     Medal,
+    Settings,
     Tags,
     Trophy,
     Users,
@@ -84,9 +85,9 @@ export function AppSidebar() {
                 icon: Map,
             },
             {
-                title: t('leagues_admin_overview'),
-                href: '/admin/leagues',
-                icon: Trophy,
+                title: t('app_settings_overview'),
+                href: '/admin/app-settings',
+                icon: Settings,
             },
             {
                 title: t('reports_overview'),
