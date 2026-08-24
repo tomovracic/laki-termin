@@ -173,7 +173,12 @@ type MatchCardProps = {
 };
 
 function matchInvolvesUser(match: LeagueMatch, userId: number): boolean {
-    return match.player_one?.id === userId || match.player_two?.id === userId;
+    return (
+        match.player_one?.id === userId ||
+        match.player_two?.id === userId ||
+        match.player_one?.partner_id === userId ||
+        match.player_two?.partner_id === userId
+    );
 }
 
 function BracketMatchMetadata({

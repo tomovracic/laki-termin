@@ -2,10 +2,13 @@ export type LeagueFormat = 'round_robin' | 'knockout';
 
 export type KnockoutDrawMode = 'random' | 'seeded';
 
+export type LeagueParticipantMode = 'singles' | 'doubles';
+
 export type LeagueSummary = {
     id: number;
     name: string;
     format?: LeagueFormat;
+    participant_mode?: LeagueParticipantMode;
     rounds: number;
     sets_best_of?: number;
     knockout_draw_mode?: KnockoutDrawMode | null;
@@ -26,6 +29,7 @@ export type LeagueUserOption = {
 export type LeagueParticipant = {
     id: number;
     user_id: number | null;
+    partner_user_id?: number | null;
     name: string;
     first_name: string;
     last_name: string;
@@ -48,6 +52,7 @@ export type LeagueStandingsEntry = {
 
 export type LeagueMatchPlayer = {
     id: number | null;
+    partner_id?: number | null;
     name: string;
     first_name: string;
     last_name: string;
@@ -83,6 +88,7 @@ export type LeagueDetail = {
     id: number;
     name: string;
     format?: LeagueFormat;
+    participant_mode?: LeagueParticipantMode;
     rounds: number;
     sets_best_of?: number;
     knockout_draw_mode?: KnockoutDrawMode | null;

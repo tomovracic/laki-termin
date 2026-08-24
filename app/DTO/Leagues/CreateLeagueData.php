@@ -6,11 +6,13 @@ namespace App\DTO\Leagues;
 
 use App\Enums\KnockoutDrawMode;
 use App\Enums\LeagueFormat;
+use App\Enums\LeagueParticipantMode;
 
 readonly class CreateLeagueData
 {
     /**
      * @param  list<int>  $participantIds
+     * @param  list<array{0: int, 1: int}>  $pairs
      * @param  list<LeagueParticipantInputData>  $participants
      */
     public function __construct(
@@ -19,8 +21,10 @@ readonly class CreateLeagueData
         public int $createdBy,
         public array $participantIds,
         public LeagueFormat $format = LeagueFormat::RoundRobin,
+        public LeagueParticipantMode $participantMode = LeagueParticipantMode::Singles,
         public int $setsBestOf = 3,
         public KnockoutDrawMode $knockoutDrawMode = KnockoutDrawMode::Seeded,
+        public array $pairs = [],
         public array $participants = [],
     ) {}
 }

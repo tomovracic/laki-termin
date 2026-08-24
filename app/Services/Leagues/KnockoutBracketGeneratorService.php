@@ -114,7 +114,14 @@ class KnockoutBracketGeneratorService
      */
     public function resolveChampion(League $league): ?array
     {
-        $league->loadMissing(['matches.playerOne', 'matches.playerTwo', 'participants.user']);
+        $league->loadMissing([
+            'matches.playerOne',
+            'matches.playerTwo',
+            'matches.playerOnePartner',
+            'matches.playerTwoPartner',
+            'participants.user',
+            'participants.partner',
+        ]);
 
         $currentRound = (int) $league->matches->max('bracket_round');
 
@@ -332,6 +339,7 @@ class KnockoutBracketGeneratorService
             $match->player_one_id = $participant->user_id;
             $match->player_one_first_name = $participant->user_id === null ? $participant->first_name : null;
             $match->player_one_last_name = $participant->user_id === null ? $participant->last_name : null;
+            $match->player_one_partner_id = $participant->partner_user_id;
 
             return;
         }
@@ -339,6 +347,7 @@ class KnockoutBracketGeneratorService
         $match->player_two_id = $participant->user_id;
         $match->player_two_first_name = $participant->user_id === null ? $participant->first_name : null;
         $match->player_two_last_name = $participant->user_id === null ? $participant->last_name : null;
+        $match->player_two_partner_id = $participant->partner_user_id;
     }
 
     /**

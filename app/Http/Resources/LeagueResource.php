@@ -19,6 +19,7 @@ class LeagueResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'format' => $this->format?->value ?? 'round_robin',
+            'participant_mode' => $this->participant_mode?->value ?? 'singles',
             'rounds' => $this->rounds,
             'sets_best_of' => $this->sets_best_of,
             'knockout_draw_mode' => $this->knockout_draw_mode?->value,

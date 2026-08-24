@@ -84,11 +84,18 @@ export default function LeagueShowPage({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const isKnockout = league.format === 'knockout';
+    const isDoubles = league.participant_mode === 'doubles';
     const bestOf = (league.sets_best_of === 1 || league.sets_best_of === 5 ? league.sets_best_of : 3) as
         | 1
         | 3
         | 5;
-    const isParticipant = standings.some((entry) => entry.user_id === currentUserId);
+    const isParticipant =
+        standings.some((entry) => entry.user_id === currentUserId) ||
+        participants.some(
+            (participant) =>
+                participant.user_id === currentUserId ||
+                participant.partner_user_id === currentUserId,
+        );
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: t('dashboard'), href: dashboard() },
@@ -290,6 +297,11 @@ export default function LeagueShowPage({
                             {isKnockout && (
                                 <Badge variant="outline">
                                     {t('tournament_best_of').replace('{count}', `${bestOf}`)}
+                                </Badge>
+                            )}
+                            {isDoubles && (
+                                <Badge variant="outline">
+                                    {t('tournament_participant_mode_doubles')}
                                 </Badge>
                             )}
                             {canManage && isKnockout && league.knockout_draw_mode === 'random' && (

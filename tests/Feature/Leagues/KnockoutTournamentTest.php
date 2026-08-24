@@ -5,6 +5,7 @@ use App\DTO\Leagues\CreateLeagueData;
 use App\Enums\KnockoutDrawMode;
 use App\Enums\LeagueFormat;
 use App\Enums\LeagueMatchStatus;
+use App\Enums\LeagueParticipantMode;
 use App\Models\League;
 use App\Models\LeagueMatch;
 use App\Models\LeagueParticipant;
@@ -628,4 +629,183 @@ test('random draw mode creates at most one bye for odd player counts', function 
     expect($league->matches()->where('bracket_round', 1)->count())->toBe(4);
     expect($league->matches()->where('is_bye', true)->count())->toBe(1);
     expect(LeagueParticipant::query()->where('league_id', $league->id)->where('received_bye', true)->count())->toBe(1);
+});
+
+test('admin can create a doubles knockout tournament with two pairs', function () {
+    $admin = User::factory()->create();
+    assignTournamentAdminRole($admin);
+    $players = User::factory()->count(4)->create();
+
+    $response = $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Turnir parova',
+        'format' => 'knockout',
+        'participant_mode' => 'doubles',
+        'sets_best_of' => 3,
+        'knockout_draw_mode' => 'seeded',
+        'pairs' => [
+            [$players[0]->id, $players[1]->id],
+            [$players[2]->id, $players[3]->id],
+        ],
+    ]);
+
+    $response->assertSuccessful();
+
+    $league = League::query()->first();
+
+    expect($league)->not->toBeNull();
+    expect($league->format)->toBe(LeagueFormat::Knockout);
+    expect($league->participant_mode)->toBe(LeagueParticipantMode::Doubles);
+    expect($league->participants()->count())->toBe(2);
+
+    $firstPair = $league->participants()->where('seed', 1)->first();
+    expect($firstPair->user_id)->toBe($players[0]->id);
+    expect($firstPair->partner_user_id)->toBe($players[1]->id);
+
+    $match = $league->matches()->where('is_bye', false)->first();
+    expect($match)->not->toBeNull();
+    expect($match->player_one_id)->toBe($players[0]->id);
+    expect($match->player_one_partner_id)->toBe($players[1]->id);
+    expect($match->player_two_id)->toBe($players[2]->id);
+    expect($match->player_two_partner_id)->toBe($players[3]->id);
+    expect($match->playerOneDisplayName())->toContain(' / ');
+});
+
+test('doubles knockout with five pairs has one bye', function () {
+    $admin = User::factory()->create();
+    assignTournamentAdminRole($admin);
+    $players = User::factory()->count(10)->create();
+
+    $pairs = [];
+    for ($i = 0; $i < 10; $i += 2) {
+        $pairs[] = [$players[$i]->id, $players[$i + 1]->id];
+    }
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Parovi bye',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: [],
+        format: LeagueFormat::Knockout,
+        participantMode: LeagueParticipantMode::Doubles,
+        setsBestOf: 1,
+        knockoutDrawMode: KnockoutDrawMode::Seeded,
+        pairs: $pairs,
+    ));
+
+    expect($league->participants()->count())->toBe(5);
+    expect($league->matches()->where('bracket_round', 1)->count())->toBe(3);
+    expect($league->matches()->where('is_bye', true)->count())->toBe(1);
+
+    $byeMatch = $league->matches()->where('is_bye', true)->first();
+    $seedOne = $league->participants()->where('seed', 1)->first();
+
+    expect($byeMatch->player_one_id)->toBe($seedOne->user_id);
+    expect($byeMatch->player_one_partner_id)->toBe($seedOne->partner_user_id);
+});
+
+test('doubles knockout rejects a user in two pairs', function () {
+    $admin = User::factory()->create();
+    assignTournamentAdminRole($admin);
+    $players = User::factory()->count(3)->create();
+
+    $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Dupli igrac',
+        'format' => 'knockout',
+        'participant_mode' => 'doubles',
+        'sets_best_of' => 3,
+        'pairs' => [
+            [$players[0]->id, $players[1]->id],
+            [$players[0]->id, $players[2]->id],
+        ],
+    ])->assertUnprocessable();
+});
+
+test('doubles knockout rejects a pair that does not have two players', function () {
+    $admin = User::factory()->create();
+    assignTournamentAdminRole($admin);
+    $players = User::factory()->count(3)->create();
+
+    $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Neispravan par',
+        'format' => 'knockout',
+        'participant_mode' => 'doubles',
+        'sets_best_of' => 3,
+        'pairs' => [
+            [$players[0]->id],
+            [$players[1]->id, $players[2]->id],
+        ],
+    ])->assertUnprocessable();
+});
+
+test('round robin league cannot be created as doubles', function () {
+    $admin = User::factory()->create();
+    assignTournamentAdminRole($admin);
+    $players = User::factory()->count(4)->create();
+
+    $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Liga parova',
+        'format' => 'round_robin',
+        'participant_mode' => 'doubles',
+        'rounds' => 1,
+        'pairs' => [
+            [$players[0]->id, $players[1]->id],
+            [$players[2]->id, $players[3]->id],
+        ],
+    ])->assertUnprocessable();
+});
+
+test('finishing a doubles knockout round copies both players into the next match', function () {
+    $admin = User::factory()->create();
+    assignTournamentAdminRole($admin);
+    $players = User::factory()->count(8)->create();
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Parovi napredovanje',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: [],
+        format: LeagueFormat::Knockout,
+        participantMode: LeagueParticipantMode::Doubles,
+        setsBestOf: 1,
+        knockoutDrawMode: KnockoutDrawMode::Seeded,
+        pairs: [
+            [$players[0]->id, $players[1]->id],
+            [$players[2]->id, $players[3]->id],
+            [$players[4]->id, $players[5]->id],
+            [$players[6]->id, $players[7]->id],
+        ],
+    ));
+
+    $roundOne = $league->matches()
+        ->where('bracket_round', 1)
+        ->where('is_bye', false)
+        ->orderBy('bracket_position')
+        ->get();
+
+    expect($roundOne)->toHaveCount(2);
+
+    foreach ($roundOne as $match) {
+        recordBestOfOneWin($match, $admin);
+    }
+
+    $this->actingAs($admin)
+        ->postJson(route('leagues.rounds.finish', $league))
+        ->assertOk();
+
+    $final = LeagueMatch::query()
+        ->where('league_id', $league->id)
+        ->where('bracket_round', 2)
+        ->where('is_bye', false)
+        ->first();
+
+    expect($final)->not->toBeNull();
+    expect($final->player_one_partner_id)->not->toBeNull();
+    expect($final->player_two_partner_id)->not->toBeNull();
+
+    recordBestOfOneWin($final, $admin);
+
+    $champion = app(KnockoutBracketGeneratorService::class)->resolveChampion($final->league->fresh());
+
+    expect($champion)->not->toBeNull();
+    expect($champion['name'])->toContain(' / ');
 });

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { StatusBanner } from '@/components/admin/status-banner';
 import InputError from '@/components/input-error';
 import { KnockoutCreateWizard } from '@/components/league/knockout-create-wizard';
-import type { KnockoutDrawMode, LeagueFormat, LeagueSummary, LeagueUserOption } from '@/components/league/types';
+import type { KnockoutDrawMode, LeagueFormat, LeagueParticipantMode, LeagueSummary, LeagueUserOption } from '@/components/league/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,8 +70,10 @@ export default function LeaguesPage({
     const [rounds, setRounds] = useState('1');
     const [setsBestOf, setSetsBestOf] = useState('3');
     const [knockoutDrawMode, setKnockoutDrawMode] = useState<KnockoutDrawMode>('seeded');
+    const [participantMode, setParticipantMode] = useState<LeagueParticipantMode>('singles');
     const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
     const [knockoutParticipantIds, setKnockoutParticipantIds] = useState<number[]>([]);
+    const [knockoutPairs, setKnockoutPairs] = useState<number[][]>([]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<LeagueSummary | null>(null);
@@ -104,8 +106,10 @@ export default function LeaguesPage({
         setRounds('1');
         setSetsBestOf('3');
         setKnockoutDrawMode('seeded');
+        setParticipantMode('singles');
         setSelectedParticipantIds([]);
         setKnockoutParticipantIds([]);
+        setKnockoutPairs([]);
         setErrors({});
     }
 
@@ -118,13 +122,23 @@ export default function LeaguesPage({
 
         const body =
             format === 'knockout'
-                ? {
-                      name,
-                      format: 'knockout',
-                      sets_best_of: Number.parseInt(setsBestOf, 10),
-                      knockout_draw_mode: knockoutDrawMode,
-                      participant_ids: knockoutParticipantIds,
-                  }
+                ? participantMode === 'doubles'
+                    ? {
+                          name,
+                          format: 'knockout',
+                          participant_mode: 'doubles',
+                          sets_best_of: Number.parseInt(setsBestOf, 10),
+                          knockout_draw_mode: knockoutDrawMode,
+                          pairs: knockoutPairs,
+                      }
+                    : {
+                          name,
+                          format: 'knockout',
+                          participant_mode: 'singles',
+                          sets_best_of: Number.parseInt(setsBestOf, 10),
+                          knockout_draw_mode: knockoutDrawMode,
+                          participant_ids: knockoutParticipantIds,
+                      }
                 : {
                       name,
                       format: 'round_robin',
@@ -265,9 +279,13 @@ export default function LeaguesPage({
                                             onSetsBestOfChange={setSetsBestOf}
                                             drawMode={knockoutDrawMode}
                                             onDrawModeChange={setKnockoutDrawMode}
+                                            participantMode={participantMode}
+                                            onParticipantModeChange={setParticipantMode}
                                             users={users}
                                             participantIds={knockoutParticipantIds}
                                             onParticipantIdsChange={setKnockoutParticipantIds}
+                                            pairs={knockoutPairs}
+                                            onPairsChange={setKnockoutPairs}
                                             errors={errors}
                                         />
                                     ) : (
@@ -340,7 +358,9 @@ export default function LeaguesPage({
                                             disabled={
                                                 isCreating ||
                                                 (format === 'knockout' &&
-                                                    knockoutParticipantIds.length < 2)
+                                                    (participantMode === 'doubles'
+                                                        ? knockoutPairs.length < 2
+                                                        : knockoutParticipantIds.length < 2))
                                             }
                                         >
                                             {isCreating ? t('creating') : t('league_create')}
@@ -371,6 +391,11 @@ export default function LeaguesPage({
                                                 '{count}',
                                                 `${league.sets_best_of}`,
                                             )}
+                                        </Badge>
+                                    ) : null}
+                                    {league.participant_mode === 'doubles' ? (
+                                        <Badge variant="outline">
+                                            {t('tournament_participant_mode_doubles')}
                                         </Badge>
                                     ) : null}
                                     <Badge variant="secondary">

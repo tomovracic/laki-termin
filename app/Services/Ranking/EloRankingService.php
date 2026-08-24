@@ -129,6 +129,8 @@ class EloRankingService
             ->played()
             ->whereNotNull('player_one_id')
             ->whereNotNull('player_two_id')
+            ->whereNull('player_one_partner_id')
+            ->whereNull('player_two_partner_id')
             ->with(['playerOne', 'playerTwo'])
             ->get()
             ->map(function (LeagueMatch $match): ?array {

@@ -32,8 +32,11 @@ class BuildLeaguePageDataAction
     {
         $league->load([
             'participants.user',
+            'participants.partner',
             'matches.playerOne',
             'matches.playerTwo',
+            'matches.playerOnePartner',
+            'matches.playerTwoPartner',
         ]);
 
         $standings = [];
@@ -57,7 +60,7 @@ class BuildLeaguePageDataAction
         }
 
         $participantIds = $league->participants
-            ->pluck('user_id')
+            ->flatMap(fn ($participant) => [$participant->user_id, $participant->partner_user_id])
             ->filter()
             ->all();
 
@@ -66,6 +69,7 @@ class BuildLeaguePageDataAction
             ->map(fn ($participant) => [
                 'id' => $participant->id,
                 'user_id' => $participant->user_id,
+                'partner_user_id' => $participant->partner_user_id,
                 'name' => $participant->displayName(),
                 'first_name' => $participant->user?->first_name ?? $participant->first_name ?? '',
                 'last_name' => $participant->user?->last_name ?? $participant->last_name ?? '',
@@ -107,6 +111,7 @@ class BuildLeaguePageDataAction
                 'id' => $league->id,
                 'name' => $league->name,
                 'format' => $league->format->value,
+                'participant_mode' => $league->participant_mode->value,
                 'rounds' => $league->rounds,
                 'sets_best_of' => $league->sets_best_of,
                 'knockout_draw_mode' => $league->knockout_draw_mode?->value,
@@ -167,6 +172,7 @@ class BuildLeaguePageDataAction
                 $match->playerOne,
                 $match->player_one_first_name,
                 $match->player_one_last_name,
+                $match->player_one_partner_id,
             ),
             'player_two' => $this->formatMatchPlayer(
                 $match->player_two_id,
@@ -174,6 +180,7 @@ class BuildLeaguePageDataAction
                 $match->playerTwo,
                 $match->player_two_first_name,
                 $match->player_two_last_name,
+                $match->player_two_partner_id,
             ),
             'set1_player_one_games' => $match->set1_player_one_games,
             'set1_player_two_games' => $match->set1_player_two_games,
@@ -190,7 +197,7 @@ class BuildLeaguePageDataAction
     }
 
     /**
-     * @return array{id: int|null, name: string, first_name: string, last_name: string}|null
+     * @return array{id: int|null, partner_id: int|null, name: string, first_name: string, last_name: string}|null
      */
     private function formatMatchPlayer(
         ?int $userId,
@@ -198,6 +205,7 @@ class BuildLeaguePageDataAction
         mixed $user,
         ?string $firstName,
         ?string $lastName,
+        ?int $partnerId = null,
     ): ?array {
         if ($userId === null && $firstName === null && $lastName === null && $displayName === '') {
             return null;
@@ -205,6 +213,7 @@ class BuildLeaguePageDataAction
 
         return [
             'id' => $userId,
+            'partner_id' => $partnerId,
             'name' => $displayName !== '' ? $displayName : trim(($firstName ?? '').' '.($lastName ?? '')),
             'first_name' => $user?->first_name ?? $firstName ?? '',
             'last_name' => $user?->last_name ?? $lastName ?? '',

@@ -32,6 +32,7 @@ class UserLeagueIndexController extends Controller
                 'id' => $league->id,
                 'name' => $league->name,
                 'format' => $league->format->value,
+                'participant_mode' => $league->participant_mode->value,
                 'rounds' => $league->rounds,
                 'sets_best_of' => $league->sets_best_of,
                 'participants_count' => $league->participants_count,

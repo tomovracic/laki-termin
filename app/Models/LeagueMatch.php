@@ -23,9 +23,11 @@ class LeagueMatch extends Model
         'player_one_id',
         'player_one_first_name',
         'player_one_last_name',
+        'player_one_partner_id',
         'player_two_id',
         'player_two_first_name',
         'player_two_last_name',
+        'player_two_partner_id',
         'round',
         'bracket_round',
         'bracket_position',
@@ -77,6 +79,16 @@ class LeagueMatch extends Model
         return $this->belongsTo(User::class, 'player_two_id');
     }
 
+    public function playerOnePartner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'player_one_partner_id');
+    }
+
+    public function playerTwoPartner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'player_two_partner_id');
+    }
+
     public function nextMatch(): BelongsTo
     {
         return $this->belongsTo(self::class, 'next_match_id');
@@ -89,20 +101,20 @@ class LeagueMatch extends Model
 
     public function playerOneDisplayName(): string
     {
-        if ($this->playerOne !== null) {
-            return $this->playerOne->name;
-        }
+        $name = $this->playerOne !== null
+            ? $this->playerOne->name
+            : trim(($this->player_one_first_name ?? '').' '.($this->player_one_last_name ?? ''));
 
-        return trim(($this->player_one_first_name ?? '').' '.($this->player_one_last_name ?? ''));
+        return $this->appendPartnerName($name, $this->playerOnePartner?->name);
     }
 
     public function playerTwoDisplayName(): string
     {
-        if ($this->playerTwo !== null) {
-            return $this->playerTwo->name;
-        }
+        $name = $this->playerTwo !== null
+            ? $this->playerTwo->name
+            : trim(($this->player_two_first_name ?? '').' '.($this->player_two_last_name ?? ''));
 
-        return trim(($this->player_two_first_name ?? '').' '.($this->player_two_last_name ?? ''));
+        return $this->appendPartnerName($name, $this->playerTwoPartner?->name);
     }
 
     public function hasPlayerOne(): bool
@@ -166,7 +178,18 @@ class LeagueMatch extends Model
     {
         return $query->where(function (Builder $inner) use ($userId): void {
             $inner->where('player_one_id', $userId)
-                ->orWhere('player_two_id', $userId);
+                ->orWhere('player_two_id', $userId)
+                ->orWhere('player_one_partner_id', $userId)
+                ->orWhere('player_two_partner_id', $userId);
         });
+    }
+
+    private function appendPartnerName(string $name, ?string $partnerName): string
+    {
+        if ($partnerName === null || $partnerName === '') {
+            return $name;
+        }
+
+        return $name === '' ? $partnerName : $name.' / '.$partnerName;
     }
 }

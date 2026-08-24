@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\KnockoutDrawMode;
 use App\Enums\LeagueFormat;
+use App\Enums\LeagueParticipantMode;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,7 @@ class League extends Model
     protected $fillable = [
         'name',
         'format',
+        'participant_mode',
         'rounds',
         'sets_best_of',
         'knockout_draw_mode',
@@ -35,6 +37,7 @@ class League extends Model
     {
         return [
             'format' => LeagueFormat::class,
+            'participant_mode' => LeagueParticipantMode::class,
             'sets_best_of' => 'integer',
             'rounds' => 'integer',
             'knockout_draw_mode' => KnockoutDrawMode::class,
@@ -44,6 +47,11 @@ class League extends Model
     public function isKnockout(): bool
     {
         return $this->format === LeagueFormat::Knockout;
+    }
+
+    public function isDoubles(): bool
+    {
+        return $this->participant_mode === LeagueParticipantMode::Doubles;
     }
 
     public function creator(): BelongsTo

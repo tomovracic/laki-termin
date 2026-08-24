@@ -4,6 +4,7 @@ import { TournamentBracket } from '@/components/league/tournament-bracket';
 import type {
     KnockoutDrawMode,
     KnockoutParticipantDraft,
+    LeagueParticipantMode,
     LeagueUserOption,
 } from '@/components/league/types';
 import { SearchInput } from '@/components/admin/search-input';
@@ -28,9 +29,13 @@ type KnockoutCreateWizardProps = {
     onSetsBestOfChange: (value: string) => void;
     drawMode: KnockoutDrawMode;
     onDrawModeChange: (value: KnockoutDrawMode) => void;
+    participantMode: LeagueParticipantMode;
+    onParticipantModeChange: (value: LeagueParticipantMode) => void;
     users: LeagueUserOption[];
     participantIds: number[];
     onParticipantIdsChange: (participantIds: number[]) => void;
+    pairs: number[][];
+    onPairsChange: (pairs: number[][]) => void;
     errors: Record<string, string[]>;
 };
 
@@ -42,6 +47,16 @@ function userToDraft(user: LeagueUserOption): KnockoutParticipantDraft {
         last_name: user.last_name,
         display_name: user.name,
     };
+}
+
+function pairDisplayName(
+    pair: number[],
+    usersById: Map<number, LeagueUserOption>,
+): string {
+    const first = usersById.get(pair[0] ?? 0);
+    const second = usersById.get(pair[1] ?? 0);
+
+    return `${first?.name ?? ''} / ${second?.name ?? ''}`.trim();
 }
 
 function draftsFromParticipantIds(
@@ -56,6 +71,25 @@ function draftsFromParticipantIds(
         .map(userToDraft);
 }
 
+function draftsFromPairs(
+    pairs: number[][],
+    users: LeagueUserOption[],
+): KnockoutParticipantDraft[] {
+    const usersById = new Map(users.map((user) => [user.id, user]));
+
+    return pairs.map((pair, index) => {
+        const first = usersById.get(pair[0] ?? 0);
+
+        return {
+            key: `p-${pair[0]}-${pair[1]}-${index}`,
+            user_id: pair[0] ?? null,
+            first_name: first?.first_name ?? '',
+            last_name: first?.last_name ?? '',
+            display_name: pairDisplayName(pair, usersById),
+        };
+    });
+}
+
 export function KnockoutCreateWizard({
     name,
     onNameChange,
@@ -63,22 +97,40 @@ export function KnockoutCreateWizard({
     onSetsBestOfChange,
     drawMode,
     onDrawModeChange,
+    participantMode,
+    onParticipantModeChange,
     users,
     participantIds,
     onParticipantIdsChange,
+    pairs,
+    onPairsChange,
     errors,
 }: KnockoutCreateWizardProps) {
     const { t } = useI18n();
     const [userSearch, setUserSearch] = useState('');
+    const [firstPlayerId, setFirstPlayerId] = useState('');
+    const [secondPlayerId, setSecondPlayerId] = useState('');
+
+    const isDoubles = participantMode === 'doubles';
 
     const participants = useMemo(
-        () => draftsFromParticipantIds(participantIds, users),
-        [participantIds, users],
+        () =>
+            isDoubles
+                ? draftsFromPairs(pairs, users)
+                : draftsFromParticipantIds(participantIds, users),
+        [isDoubles, pairs, participantIds, users],
     );
 
     const previewMatches = useMemo(
         () => buildBracketPreview(participants, drawMode),
         [participants, drawMode],
+    );
+
+    const takenUserIds = useMemo(() => new Set(pairs.flat()), [pairs]);
+
+    const availablePairUsers = useMemo(
+        () => users.filter((user) => !takenUserIds.has(user.id)),
+        [users, takenUserIds],
     );
 
     const filteredUsers = useMemo(() => {
@@ -108,6 +160,18 @@ export function KnockoutCreateWizard({
     function moveParticipant(index: number, direction: -1 | 1) {
         const target = index + direction;
 
+        if (isDoubles) {
+            if (target < 0 || target >= pairs.length) {
+                return;
+            }
+
+            const next = [...pairs];
+            [next[index], next[target]] = [next[target], next[index]];
+            onPairsChange(next);
+
+            return;
+        }
+
         if (target < 0 || target >= participantIds.length) {
             return;
         }
@@ -115,6 +179,37 @@ export function KnockoutCreateWizard({
         const next = [...participantIds];
         [next[index], next[target]] = [next[target], next[index]];
         onParticipantIdsChange(next);
+    }
+
+    function handleParticipantModeChange(value: LeagueParticipantMode) {
+        onParticipantModeChange(value);
+        onParticipantIdsChange([]);
+        onPairsChange([]);
+        setFirstPlayerId('');
+        setSecondPlayerId('');
+    }
+
+    function addPair() {
+        const firstId = Number.parseInt(firstPlayerId, 10);
+        const secondId = Number.parseInt(secondPlayerId, 10);
+
+        if (
+            Number.isNaN(firstId) ||
+            Number.isNaN(secondId) ||
+            firstId === secondId ||
+            takenUserIds.has(firstId) ||
+            takenUserIds.has(secondId)
+        ) {
+            return;
+        }
+
+        onPairsChange([...pairs, [firstId, secondId]]);
+        setFirstPlayerId('');
+        setSecondPlayerId('');
+    }
+
+    function removePair(index: number) {
+        onPairsChange(pairs.filter((_, pairIndex) => pairIndex !== index));
     }
 
     return (
@@ -148,6 +243,28 @@ export function KnockoutCreateWizard({
             </div>
 
             <div className="space-y-2">
+                <Label>{t('tournament_participant_mode')}</Label>
+                <Select
+                    value={participantMode}
+                    onValueChange={(value) =>
+                        handleParticipantModeChange(value as LeagueParticipantMode)
+                    }
+                >
+                    <SelectTrigger>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="singles">
+                            {t('tournament_participant_mode_singles')}
+                        </SelectItem>
+                        <SelectItem value="doubles">
+                            {t('tournament_participant_mode_doubles')}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <div className="space-y-2">
                 <Label>{t('tournament_draw_mode')}</Label>
                 <Select
                     value={drawMode}
@@ -165,33 +282,84 @@ export function KnockoutCreateWizard({
                 <InputError message={errors.knockout_draw_mode?.[0]} />
             </div>
 
-            <div className="space-y-2">
-                <Label>{t('league_participants')}</Label>
-                <SearchInput
-                    value={userSearch}
-                    placeholder={t('search_users_placeholder')}
-                    onChange={setUserSearch}
-                />
-                <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
-                    {filteredUsers.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">{t('no_users_match_filter')}</p>
-                    ) : (
-                        filteredUsers.map((user) => (
-                            <label key={user.id} className="flex items-center gap-2 text-sm">
-                                <input
-                                    type="checkbox"
-                                    checked={participantIds.includes(user.id)}
-                                    onChange={() => toggleParticipant(user.id)}
-                                />
-                                <span>
-                                    {user.name} ({user.email})
-                                </span>
-                            </label>
-                        ))
-                    )}
+            {isDoubles ? (
+                <div className="space-y-3">
+                    <Label>{t('tournament_pairs')}</Label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-2">
+                            <Label>{t('tournament_pair_player_one')}</Label>
+                            <Select value={firstPlayerId} onValueChange={setFirstPlayerId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder={t('tournament_select_player')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availablePairUsers
+                                        .filter((user) => `${user.id}` !== secondPlayerId)
+                                        .map((user) => (
+                                            <SelectItem key={user.id} value={`${user.id}`}>
+                                                {user.name}
+                                            </SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>{t('tournament_pair_player_two')}</Label>
+                            <Select value={secondPlayerId} onValueChange={setSecondPlayerId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder={t('tournament_select_player')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availablePairUsers
+                                        .filter((user) => `${user.id}` !== firstPlayerId)
+                                        .map((user) => (
+                                            <SelectItem key={user.id} value={`${user.id}`}>
+                                                {user.name}
+                                            </SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addPair}
+                        disabled={firstPlayerId === '' || secondPlayerId === '' || firstPlayerId === secondPlayerId}
+                    >
+                        {t('tournament_add_pair')}
+                    </Button>
+                    <InputError message={errors.pairs?.[0]} />
                 </div>
-                <InputError message={errors.participant_ids?.[0]} />
-            </div>
+            ) : (
+                <div className="space-y-2">
+                    <Label>{t('league_participants')}</Label>
+                    <SearchInput
+                        value={userSearch}
+                        placeholder={t('search_users_placeholder')}
+                        onChange={setUserSearch}
+                    />
+                    <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
+                        {filteredUsers.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">{t('no_users_match_filter')}</p>
+                        ) : (
+                            filteredUsers.map((user) => (
+                                <label key={user.id} className="flex items-center gap-2 text-sm">
+                                    <input
+                                        type="checkbox"
+                                        checked={participantIds.includes(user.id)}
+                                        onChange={() => toggleParticipant(user.id)}
+                                    />
+                                    <span>
+                                        {user.name} ({user.email})
+                                    </span>
+                                </label>
+                            ))
+                        )}
+                    </div>
+                    <InputError message={errors.participant_ids?.[0]} />
+                </div>
+            )}
 
             {participants.length > 0 && (
                 <div className="space-y-2">
@@ -202,9 +370,9 @@ export function KnockoutCreateWizard({
                             variant="outline"
                             size="sm"
                             onClick={() =>
-                                onParticipantIdsChange(
-                                    shuffleParticipants(participantIds),
-                                )
+                                isDoubles
+                                    ? onPairsChange(shuffleParticipants(pairs))
+                                    : onParticipantIdsChange(shuffleParticipants(participantIds))
                             }
                         >
                             <Shuffle className="mr-1 size-4" />
@@ -221,6 +389,16 @@ export function KnockoutCreateWizard({
                                 <span className="min-w-0 flex-1 truncate font-medium">
                                     {participant.display_name}
                                 </span>
+                                {isDoubles && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => removePair(index)}
+                                    >
+                                        {t('tournament_remove_pair')}
+                                    </Button>
+                                )}
                                 <Button
                                     type="button"
                                     variant="ghost"

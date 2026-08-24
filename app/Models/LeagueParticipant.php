@@ -19,6 +19,7 @@ class LeagueParticipant extends Model
     protected $fillable = [
         'league_id',
         'user_id',
+        'partner_user_id',
         'first_name',
         'last_name',
         'seed',
@@ -46,13 +47,24 @@ class LeagueParticipant extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function partner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'partner_user_id');
+    }
+
     public function displayName(): string
     {
-        if ($this->user !== null) {
-            return $this->user->name;
+        $primary = $this->user !== null
+            ? $this->user->name
+            : trim(($this->first_name ?? '').' '.($this->last_name ?? ''));
+
+        $partnerName = $this->partner?->name;
+
+        if ($partnerName !== null && $partnerName !== '') {
+            return $primary === '' ? $partnerName : $primary.' / '.$partnerName;
         }
 
-        return trim(($this->first_name ?? '').' '.($this->last_name ?? ''));
+        return $primary;
     }
 
     public function isGuest(): bool

@@ -32,6 +32,7 @@ class LeagueMatchResource extends JsonResource
                 $this->relationLoaded('playerOne') ? $this->playerOne : null,
                 $this->player_one_first_name,
                 $this->player_one_last_name,
+                $this->player_one_partner_id,
             ),
             'player_two' => $this->formatPlayer(
                 $this->player_two_id,
@@ -39,6 +40,7 @@ class LeagueMatchResource extends JsonResource
                 $this->relationLoaded('playerTwo') ? $this->playerTwo : null,
                 $this->player_two_first_name,
                 $this->player_two_last_name,
+                $this->player_two_partner_id,
             ),
             'set1_player_one_games' => $this->set1_player_one_games,
             'set1_player_two_games' => $this->set1_player_two_games,
@@ -55,7 +57,7 @@ class LeagueMatchResource extends JsonResource
     }
 
     /**
-     * @return array{id: int|null, name: string, first_name: string, last_name: string, avatar?: string|null}|null
+     * @return array{id: int|null, partner_id: int|null, name: string, first_name: string, last_name: string, avatar?: string|null}|null
      */
     private function formatPlayer(
         ?int $userId,
@@ -63,6 +65,7 @@ class LeagueMatchResource extends JsonResource
         mixed $user,
         ?string $firstName,
         ?string $lastName,
+        ?int $partnerId = null,
     ): ?array {
         if ($userId === null && ($firstName === null || $lastName === null) && $displayName === '') {
             return null;
@@ -70,6 +73,7 @@ class LeagueMatchResource extends JsonResource
 
         return [
             'id' => $userId,
+            'partner_id' => $partnerId,
             'name' => $displayName !== '' ? $displayName : trim(($firstName ?? '').' '.($lastName ?? '')),
             'first_name' => $user?->first_name ?? $firstName ?? '',
             'last_name' => $user?->last_name ?? $lastName ?? '',

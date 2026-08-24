@@ -64,16 +64,20 @@ class BuildMatchHistoryPageDataAction
                 function (Builder $query) use ($user, $visibleUserIds): void {
                     $query->where(function (Builder $scoped) use ($user, $visibleUserIds): void {
                         $scoped->where('player_one_id', $user->id)
-                            ->orWhere('player_two_id', $user->id);
+                            ->orWhere('player_two_id', $user->id)
+                            ->orWhere('player_one_partner_id', $user->id)
+                            ->orWhere('player_two_partner_id', $user->id);
 
                         if ($visibleUserIds !== []) {
                             $scoped->orWhereIn('player_one_id', $visibleUserIds)
-                                ->orWhereIn('player_two_id', $visibleUserIds);
+                                ->orWhereIn('player_two_id', $visibleUserIds)
+                                ->orWhereIn('player_one_partner_id', $visibleUserIds)
+                                ->orWhereIn('player_two_partner_id', $visibleUserIds);
                         }
                     });
                 },
             )
-            ->with(['league', 'playerOne', 'playerTwo'])
+            ->with(['league', 'playerOne', 'playerTwo', 'playerOnePartner', 'playerTwoPartner'])
             ->get()
             ->map(fn (LeagueMatch $match): array => $this->formatLeagueMatch($match))
             ->all();
@@ -129,11 +133,11 @@ class BuildMatchHistoryPageDataAction
             'played_at' => $match->played_at?->toIso8601String(),
             'player_one' => [
                 'user_id' => $match->player_one_id,
-                'name' => $match->playerOne?->name ?? '',
+                'name' => $match->playerOneDisplayName(),
             ],
             'player_two' => [
                 'user_id' => $match->player_two_id,
-                'name' => $match->playerTwo?->name ?? '',
+                'name' => $match->playerTwoDisplayName(),
             ],
             'set1_player_one_games' => $match->set1_player_one_games,
             'set1_player_two_games' => $match->set1_player_two_games,

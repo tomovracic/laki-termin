@@ -14,6 +14,7 @@ use App\DTO\Leagues\CreateLeagueData;
 use App\DTO\Leagues\RecordLeagueMatchResultData;
 use App\Enums\KnockoutDrawMode;
 use App\Enums\LeagueFormat;
+use App\Enums\LeagueParticipantMode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Leagues\FinishKnockoutRoundRequest;
 use App\Http\Requests\Leagues\RecordLeagueMatchResultRequest;
@@ -36,15 +37,19 @@ class LeagueController extends Controller
         if ($format === LeagueFormat::Knockout) {
             $drawMode = KnockoutDrawMode::tryFrom((string) ($validated['knockout_draw_mode'] ?? KnockoutDrawMode::Seeded->value))
                 ?? KnockoutDrawMode::Seeded;
+            $participantMode = LeagueParticipantMode::tryFrom((string) ($validated['participant_mode'] ?? LeagueParticipantMode::Singles->value))
+                ?? LeagueParticipantMode::Singles;
 
             $league = $action->execute(new CreateLeagueData(
                 name: (string) $validated['name'],
                 rounds: 1,
                 createdBy: $request->user()->id,
-                participantIds: array_map('intval', $validated['participant_ids']),
+                participantIds: array_map('intval', $validated['participant_ids'] ?? []),
                 format: LeagueFormat::Knockout,
+                participantMode: $participantMode,
                 setsBestOf: (int) $validated['sets_best_of'],
                 knockoutDrawMode: $drawMode,
+                pairs: $this->parsePairs($validated['pairs'] ?? []),
             ));
         } else {
             $league = $action->execute(new CreateLeagueData(
@@ -124,5 +129,30 @@ class LeagueController extends Controller
                 'deleted' => true,
             ],
         ]);
+    }
+
+    /**
+     * @param  list<mixed>  $pairs
+     * @return list<array{0: int, 1: int}>
+     */
+    private function parsePairs(array $pairs): array
+    {
+        $parsed = [];
+
+        foreach ($pairs as $pair) {
+            if (! is_array($pair)) {
+                continue;
+            }
+
+            $values = array_values($pair);
+
+            if (count($values) !== 2) {
+                continue;
+            }
+
+            $parsed[] = [(int) $values[0], (int) $values[1]];
+        }
+
+        return $parsed;
     }
 }

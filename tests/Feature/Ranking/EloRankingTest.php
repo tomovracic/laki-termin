@@ -135,6 +135,41 @@ test('elo ranking includes played league matches between registered users', func
     expect($rankings[0]->elo)->toBeGreaterThan($rankings[1]->elo);
 });
 
+test('elo ranking excludes doubles knockout matches', function () {
+    $playerA = User::factory()->create(['first_name' => 'Ana']);
+    $playerB = User::factory()->create(['first_name' => 'Bruno']);
+    $playerC = User::factory()->create(['first_name' => 'Ceco']);
+    $playerD = User::factory()->create(['first_name' => 'Dora']);
+    $creator = User::factory()->create();
+
+    $league = League::query()->create([
+        'name' => 'Parovi kup',
+        'format' => 'knockout',
+        'participant_mode' => 'doubles',
+        'rounds' => 1,
+        'created_by' => $creator->id,
+    ]);
+
+    LeagueMatch::query()->create([
+        'league_id' => $league->id,
+        'round' => 1,
+        'player_one_id' => $playerA->id,
+        'player_one_partner_id' => $playerB->id,
+        'player_two_id' => $playerC->id,
+        'player_two_partner_id' => $playerD->id,
+        'status' => LeagueMatchStatus::Played,
+        'set1_player_one_games' => 6,
+        'set1_player_two_games' => 2,
+        'set2_player_one_games' => 6,
+        'set2_player_two_games' => 1,
+        'played_at' => Date::parse('2026-02-01 12:00:00'),
+    ]);
+
+    $rankings = app(EloRankingService::class)->build();
+
+    expect($rankings)->toBeEmpty();
+});
+
 test('elo updates chronologically across multiple matches', function () {
     $playerA = User::factory()->create(['first_name' => 'Ana']);
     $playerB = User::factory()->create(['first_name' => 'Bruno']);
