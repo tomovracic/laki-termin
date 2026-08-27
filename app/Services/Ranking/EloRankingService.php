@@ -6,6 +6,7 @@ namespace App\Services\Ranking;
 
 use App\DTO\Ranking\EloRankingEntryData;
 use App\Enums\LeagueMatchStatus;
+use App\Enums\LeagueParticipantMode;
 use App\Models\LeagueMatch;
 use App\Models\PlayedMatch;
 use App\Models\User;
@@ -129,8 +130,10 @@ class EloRankingService
             ->played()
             ->whereNotNull('player_one_id')
             ->whereNotNull('player_two_id')
-            ->whereNull('player_one_partner_id')
-            ->whereNull('player_two_partner_id')
+            ->whereDoesntHave(
+                'league',
+                fn ($query) => $query->where('participant_mode', LeagueParticipantMode::Doubles->value),
+            )
             ->with(['playerOne', 'playerTwo'])
             ->get()
             ->map(function (LeagueMatch $match): ?array {

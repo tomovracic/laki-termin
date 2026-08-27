@@ -86,6 +86,8 @@ class BuildLeaguePageDataAction
                 'id' => $participant->id,
                 'user_id' => $participant->user_id,
                 'partner_user_id' => $participant->partner_user_id,
+                'partner_first_name' => $participant->partner?->first_name ?? $participant->partner_first_name,
+                'partner_last_name' => $participant->partner?->last_name ?? $participant->partner_last_name,
                 'league_group_id' => $participant->league_group_id,
                 'name' => $participant->displayName(),
                 'first_name' => $participant->user?->first_name ?? $participant->first_name ?? '',

@@ -12,7 +12,7 @@ readonly class CreateLeagueData
 {
     /**
      * @param  list<int>  $participantIds
-     * @param  list<array{0: int, 1: int}>  $pairs
+     * @param  list<LeaguePairInputData|array{0: int, 1: int}>  $pairs
      * @param  list<LeagueParticipantInputData>  $participants
      * @param  list<LeagueGroupInputData>  $groups
      */

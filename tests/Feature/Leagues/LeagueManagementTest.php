@@ -337,6 +337,122 @@ test('admin can manage leagues from the shared leagues pages', function () {
         );
 });
 
+test('admin can create round robin league with guests', function () {
+    $admin = User::factory()->create();
+    assignLeagueAdminRole($admin);
+    $player = User::factory()->create();
+
+    $response = $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Liga s gostom',
+        'format' => 'round_robin',
+        'rounds' => 1,
+        'participants' => [
+            ['user_id' => $player->id],
+            ['first_name' => 'Gost', 'last_name' => 'Igrac'],
+        ],
+    ]);
+
+    $response->assertCreated();
+
+    $league = League::query()->where('name', 'Liga s gostom')->first();
+
+    expect($league)->not->toBeNull();
+    expect($league->participants()->count())->toBe(2);
+    expect($league->participants()->whereNull('user_id')->count())->toBe(1);
+    expect($league->matches()->count())->toBe(1);
+
+    $match = $league->matches()->first();
+    expect($match->player_one_participant_id)->not->toBeNull();
+    expect($match->player_two_participant_id)->not->toBeNull();
+    expect($match->playerOneDisplayName().' '.$match->playerTwoDisplayName())->toContain('Gost Igrac');
+});
+
+test('admin can create round robin doubles league', function () {
+    $admin = User::factory()->create();
+    assignLeagueAdminRole($admin);
+    $players = User::factory()->count(3)->create();
+
+    $response = $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Liga parova',
+        'format' => 'round_robin',
+        'participant_mode' => 'doubles',
+        'rounds' => 1,
+        'pairs' => [
+            [$players[0]->id, $players[1]->id],
+            [
+                'player_one' => ['user_id' => $players[2]->id],
+                'player_two' => ['first_name' => 'Ana', 'last_name' => 'Gost'],
+            ],
+        ],
+    ]);
+
+    $response->assertCreated();
+
+    $league = League::query()->where('name', 'Liga parova')->first();
+
+    expect($league->participant_mode->value)->toBe('doubles');
+    expect($league->participants()->count())->toBe(2);
+    expect($league->matches()->count())->toBe(1);
+
+    $match = $league->matches()->first();
+    expect($match->playerOneDisplayName())->toContain(' / ');
+    expect($match->playerTwoDisplayName())->toContain('Ana Gost');
+});
+
+test('admin can add a guest to a round robin league later', function () {
+    $admin = User::factory()->create();
+    assignLeagueAdminRole($admin);
+    $players = User::factory()->count(2)->create();
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Gost kasnije',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: $players->pluck('id')->all(),
+    ));
+
+    expect($league->matches()->count())->toBe(1);
+
+    $this->actingAs($admin)->postJson(route('leagues.participants.store', $league), [
+        'first_name' => 'Novi',
+        'last_name' => 'Gost',
+    ])->assertOk();
+
+    expect($league->participants()->count())->toBe(3);
+    expect($league->matches()->count())->toBe(3);
+});
+
+test('admin can add a pair to a doubles round robin league later', function () {
+    $admin = User::factory()->create();
+    assignLeagueAdminRole($admin);
+    $players = User::factory()->count(5)->create();
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Par kasnije',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: [],
+        participantMode: \App\Enums\LeagueParticipantMode::Doubles,
+        pairs: [
+            [$players[0]->id, $players[1]->id],
+            [$players[2]->id, $players[3]->id],
+        ],
+    ));
+
+    expect($league->matches()->count())->toBe(1);
+
+    $this->actingAs($admin)->postJson(route('leagues.participants.store', $league), [
+        'user_id' => $players[4]->id,
+        'partner' => [
+            'first_name' => 'Nova',
+            'last_name' => 'Partnerica',
+        ],
+    ])->assertOk();
+
+    expect($league->participants()->count())->toBe(3);
+    expect($league->matches()->count())->toBe(3);
+});
+
 test('legacy admin league routes redirect to the shared leagues pages', function () {
     $admin = User::factory()->create();
     assignLeagueAdminRole($admin);

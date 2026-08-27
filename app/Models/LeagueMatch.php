@@ -25,11 +25,15 @@ class LeagueMatch extends Model
         'player_one_first_name',
         'player_one_last_name',
         'player_one_partner_id',
+        'player_one_partner_first_name',
+        'player_one_partner_last_name',
         'player_one_participant_id',
         'player_two_id',
         'player_two_first_name',
         'player_two_last_name',
         'player_two_partner_id',
+        'player_two_partner_first_name',
+        'player_two_partner_last_name',
         'player_two_participant_id',
         'round',
         'bracket_round',
@@ -123,7 +127,11 @@ class LeagueMatch extends Model
             ? $this->playerOne->name
             : trim(($this->player_one_first_name ?? '').' '.($this->player_one_last_name ?? ''));
 
-        return $this->appendPartnerName($name, $this->playerOnePartner?->name);
+        return $this->appendPartnerName($name, $this->partnerName(
+            $this->playerOnePartner?->name,
+            $this->player_one_partner_first_name,
+            $this->player_one_partner_last_name,
+        ));
     }
 
     public function playerTwoDisplayName(): string
@@ -132,7 +140,11 @@ class LeagueMatch extends Model
             ? $this->playerTwo->name
             : trim(($this->player_two_first_name ?? '').' '.($this->player_two_last_name ?? ''));
 
-        return $this->appendPartnerName($name, $this->playerTwoPartner?->name);
+        return $this->appendPartnerName($name, $this->partnerName(
+            $this->playerTwoPartner?->name,
+            $this->player_two_partner_first_name,
+            $this->player_two_partner_last_name,
+        ));
     }
 
     public function hasPlayerOne(): bool
@@ -267,6 +279,17 @@ class LeagueMatch extends Model
         }
 
         return ['player_one' => $playerOne, 'player_two' => $playerTwo];
+    }
+
+    private function partnerName(?string $registeredName, ?string $firstName, ?string $lastName): ?string
+    {
+        if ($registeredName !== null && $registeredName !== '') {
+            return $registeredName;
+        }
+
+        $guestName = trim(($firstName ?? '').' '.($lastName ?? ''));
+
+        return $guestName === '' ? null : $guestName;
     }
 
     private function appendPartnerName(string $name, ?string $partnerName): string

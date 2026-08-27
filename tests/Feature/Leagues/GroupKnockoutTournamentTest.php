@@ -155,6 +155,66 @@ test('admin can create 3x3 group knockout with guests', function () {
     expect($league->matches()->whereNotNull('bracket_round')->count())->toBe(0);
 });
 
+test('admin can create group knockout with two groups of four', function () {
+    $admin = User::factory()->create();
+    assignGroupKnockoutAdmin($admin);
+    $users = User::factory()->count(8)->create();
+
+    $response = $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Dvije skupine',
+        'format' => 'group_knockout',
+        'sets_best_of' => 3,
+        'qualify_per_group' => 1,
+        'best_runners_up' => 0,
+        'participants' => $users->map(fn (User $user) => ['user_id' => $user->id])->all(),
+        'groups' => [
+            ['name' => 'A', 'participant_indexes' => [0, 1, 2, 3]],
+            ['name' => 'B', 'participant_indexes' => [4, 5, 6, 7]],
+        ],
+    ]);
+
+    $response->assertSuccessful();
+
+    $league = League::query()->where('name', 'Dvije skupine')->first();
+
+    expect($league)->not->toBeNull();
+    expect($league->groups()->count())->toBe(2);
+    expect($league->participants()->count())->toBe(8);
+    expect($league->matches()->whereNotNull('league_group_id')->count())->toBe(12);
+    expect($league->matches()->whereNotNull('bracket_round')->count())->toBe(0);
+});
+
+test('admin can create group knockout with four groups of two', function () {
+    $admin = User::factory()->create();
+    assignGroupKnockoutAdmin($admin);
+    $users = User::factory()->count(8)->create();
+
+    $response = $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Cetiri skupine',
+        'format' => 'group_knockout',
+        'sets_best_of' => 3,
+        'qualify_per_group' => 1,
+        'best_runners_up' => 0,
+        'participants' => $users->map(fn (User $user) => ['user_id' => $user->id])->all(),
+        'groups' => [
+            ['name' => 'A', 'participant_indexes' => [0, 1]],
+            ['name' => 'B', 'participant_indexes' => [2, 3]],
+            ['name' => 'C', 'participant_indexes' => [4, 5]],
+            ['name' => 'D', 'participant_indexes' => [6, 7]],
+        ],
+    ]);
+
+    $response->assertSuccessful();
+
+    $league = League::query()->where('name', 'Cetiri skupine')->first();
+
+    expect($league)->not->toBeNull();
+    expect($league->groups()->count())->toBe(4);
+    expect($league->participants()->count())->toBe(8);
+    expect($league->matches()->whereNotNull('league_group_id')->count())->toBe(4);
+    expect($league->matches()->whereNotNull('bracket_round')->count())->toBe(0);
+});
+
 test('cannot start knockout before group matches are finished', function () {
     $admin = User::factory()->create();
     assignGroupKnockoutAdmin($admin);
@@ -348,4 +408,48 @@ test('guest can win a knockout tournament', function () {
     expect($champion['user_id'])->toBeNull();
     expect($champion['name'])->toBe('Gost Prvak');
     expect($league->matches()->where('status', LeagueMatchStatus::Played->value)->count())->toBe(1);
+});
+
+test('admin can create group knockout doubles with mixed guest pairs', function () {
+    $admin = User::factory()->create();
+    assignGroupKnockoutAdmin($admin);
+    $users = User::factory()->count(6)->create();
+
+    $response = $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Grupni parovi',
+        'format' => 'group_knockout',
+        'participant_mode' => 'doubles',
+        'sets_best_of' => 1,
+        'qualify_per_group' => 1,
+        'best_runners_up' => 0,
+        'pairs' => [
+            [$users[0]->id, $users[1]->id],
+            [$users[2]->id, $users[3]->id],
+            [
+                'player_one' => ['user_id' => $users[4]->id],
+                'player_two' => ['first_name' => 'Gost', 'last_name' => 'A'],
+            ],
+            [
+                'player_one' => ['first_name' => 'Gost', 'last_name' => 'B'],
+                'player_two' => ['user_id' => $users[5]->id],
+            ],
+        ],
+        'groups' => [
+            ['name' => 'A', 'participant_indexes' => [0, 1]],
+            ['name' => 'B', 'participant_indexes' => [2, 3]],
+        ],
+    ]);
+
+    $response->assertSuccessful();
+
+    $league = League::query()->where('name', 'Grupni parovi')->first();
+
+    expect($league)->not->toBeNull();
+    expect($league->participant_mode->value)->toBe('doubles');
+    expect($league->participants()->count())->toBe(4);
+    expect($league->groups()->count())->toBe(2);
+    expect($league->matches()->whereNotNull('league_group_id')->count())->toBe(2);
+
+    $match = $league->matches()->first();
+    expect($match->playerOneDisplayName())->toContain(' / ');
 });

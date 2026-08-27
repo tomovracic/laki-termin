@@ -10,7 +10,6 @@ use App\Actions\Leagues\DeleteLeagueAction;
 use App\Actions\Leagues\FinishKnockoutRoundAction;
 use App\Actions\Leagues\RecordLeagueMatchResultAction;
 use App\Actions\Leagues\StartKnockoutFromGroupsAction;
-use App\DTO\Leagues\AddLeagueParticipantData;
 use App\DTO\Leagues\RecordLeagueMatchResultData;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Leagues\FinishKnockoutRoundRequest;
@@ -38,12 +37,7 @@ class LeagueController extends Controller
         League $league,
         AddLeagueParticipantAction $action,
     ): JsonResponse {
-        $validated = $request->validated();
-
-        $action->execute(new AddLeagueParticipantData(
-            leagueId: $league->id,
-            userId: (int) $validated['user_id'],
-        ));
+        $action->execute($request->toAddLeagueParticipantData($league));
 
         return response()->json([
             'message' => 'Sudionik je dodan u ligu.',

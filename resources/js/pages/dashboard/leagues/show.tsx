@@ -4,6 +4,7 @@ import { LeagueMatchResultForm } from '@/components/admin/league-match-result-fo
 import { StatusBanner } from '@/components/admin/status-banner';
 import { GroupStageSection } from '@/components/league/group-stage-section';
 import { LeagueMatchesSection } from '@/components/league/league-matches-section';
+import { PlayerSlotInput } from '@/components/league/league-participant-picker';
 import { LeagueStandingsTable } from '@/components/league/league-standings-table';
 import { TournamentBracket } from '@/components/league/tournament-bracket';
 import type {
@@ -27,19 +28,48 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { csrfHeaders } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 import type { Auth } from '@/types/auth';
+
+type AddPlayerSlot = {
+    mode: 'user' | 'guest';
+    userId: string;
+    firstName: string;
+    lastName: string;
+};
+
+function emptyAddSlot(): AddPlayerSlot {
+    return { mode: 'user', userId: '', firstName: '', lastName: '' };
+}
+
+function slotToPayload(slot: AddPlayerSlot): {
+    user_id?: number;
+    first_name?: string;
+    last_name?: string;
+} | null {
+    if (slot.mode === 'user') {
+        const userId = Number.parseInt(slot.userId, 10);
+
+        if (Number.isNaN(userId)) {
+            return null;
+        }
+
+        return { user_id: userId };
+    }
+
+    const firstName = slot.firstName.trim();
+    const lastName = slot.lastName.trim();
+
+    if (firstName === '' || lastName === '') {
+        return null;
+    }
+
+    return { first_name: firstName, last_name: lastName };
+}
 
 type LeagueShowPageProps = {
     league: LeagueDetail;
@@ -80,7 +110,8 @@ export default function LeagueShowPage({
     const [groups, setGroups] = useState(initialGroups);
     const [qualifiers, setQualifiers] = useState(initialQualifiers);
     const [knockoutChampion, setKnockoutChampion] = useState(initialChampion);
-    const [selectedUserId, setSelectedUserId] = useState<string>('');
+    const [addSlot, setAddSlot] = useState<AddPlayerSlot>(emptyAddSlot);
+    const [partnerSlot, setPartnerSlot] = useState<AddPlayerSlot>(emptyAddSlot);
     const [isAddingParticipant, setIsAddingParticipant] = useState(false);
     const [selectedMatch, setSelectedMatch] = useState<LeagueMatch | null>(
         null,
@@ -153,7 +184,15 @@ export default function LeagueShowPage({
     }
 
     async function handleAddParticipant() {
-        if (selectedUserId === '') {
+        const primary = slotToPayload(addSlot);
+
+        if (primary === null) {
+            return;
+        }
+
+        const partner = isDoubles ? slotToPayload(partnerSlot) : null;
+
+        if (isDoubles && partner === null) {
             return;
         }
 
@@ -170,9 +209,9 @@ export default function LeagueShowPage({
                     'X-Requested-With': 'XMLHttpRequest',
                     ...csrfHeaders(),
                 },
-                body: JSON.stringify({
-                    user_id: Number.parseInt(selectedUserId, 10),
-                }),
+                body: JSON.stringify(
+                    isDoubles ? { ...primary, partner } : primary,
+                ),
             });
 
             const payload = (await response.json()) as ApiErrorResponse;
@@ -180,6 +219,7 @@ export default function LeagueShowPage({
             if (!response.ok) {
                 setErrorMessage(
                     payload.errors?.user_id?.[0] ??
+                        payload.errors?.partner?.[0] ??
                         payload.message ??
                         t('league_unable_add_participant'),
                 );
@@ -187,7 +227,8 @@ export default function LeagueShowPage({
             }
 
             setMessage(t('league_participant_added'));
-            setSelectedUserId('');
+            setAddSlot(emptyAddSlot());
+            setPartnerSlot(emptyAddSlot());
             await reloadLeagueData();
         } catch {
             setErrorMessage(t('league_unable_add_participant'));
@@ -559,43 +600,81 @@ export default function LeagueShowPage({
                                 ))}
                             </div>
 
-                            {!isTournament && availableUsers.length > 0 && (
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                                    <div className="flex-1 space-y-2">
-                                        <Select
-                                            value={selectedUserId}
-                                            onValueChange={setSelectedUserId}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue
-                                                    placeholder={t(
-                                                        'league_add_participant',
-                                                    )}
-                                                />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {availableUsers.map((user) => (
-                                                    <SelectItem
-                                                        key={user.id}
-                                                        value={`${user.id}`}
-                                                    >
-                                                        {user.name} (
-                                                        {user.email})
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                            {!isTournament && (
+                                <div className="space-y-3">
+                                    {isDoubles ? (
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            <PlayerSlotInput
+                                                label={t(
+                                                    'tournament_pair_player_one',
+                                                )}
+                                                slot={addSlot}
+                                                onChange={setAddSlot}
+                                                users={availableUsers}
+                                                excludedUserIds={
+                                                    new Set(
+                                                        [
+                                                            Number.parseInt(
+                                                                partnerSlot.userId,
+                                                                10,
+                                                            ),
+                                                        ].filter(
+                                                            (id) =>
+                                                                !Number.isNaN(
+                                                                    id,
+                                                                ),
+                                                        ),
+                                                    )
+                                                }
+                                            />
+                                            <PlayerSlotInput
+                                                label={t(
+                                                    'tournament_pair_player_two',
+                                                )}
+                                                slot={partnerSlot}
+                                                onChange={setPartnerSlot}
+                                                users={availableUsers}
+                                                excludedUserIds={
+                                                    new Set(
+                                                        [
+                                                            Number.parseInt(
+                                                                addSlot.userId,
+                                                                10,
+                                                            ),
+                                                        ].filter(
+                                                            (id) =>
+                                                                !Number.isNaN(
+                                                                    id,
+                                                                ),
+                                                        ),
+                                                    )
+                                                }
+                                            />
+                                        </div>
+                                    ) : (
+                                        <PlayerSlotInput
+                                            label={t('league_add_participant')}
+                                            slot={addSlot}
+                                            onChange={setAddSlot}
+                                            users={availableUsers}
+                                            excludedUserIds={new Set()}
+                                        />
+                                    )}
                                     <Button
                                         onClick={handleAddParticipant}
                                         disabled={
                                             isAddingParticipant ||
-                                            selectedUserId === ''
+                                            slotToPayload(addSlot) === null ||
+                                            (isDoubles &&
+                                                slotToPayload(partnerSlot) ===
+                                                    null)
                                         }
                                     >
                                         {isAddingParticipant
                                             ? t('saving')
-                                            : t('league_add_participant')}
+                                            : isDoubles
+                                              ? t('tournament_add_pair')
+                                              : t('league_add_participant')}
                                     </Button>
                                 </div>
                             )}

@@ -9,6 +9,87 @@ export type QualificationSummary = {
     errorKey: string | null;
 };
 
+export const MIN_GROUP_COUNT = 2;
+export const MAX_GROUP_COUNT = 16;
+
+export function minPlayersPerGroup(
+    qualifyPerGroup: 1 | 2,
+    bestRunnersUp: number,
+): number {
+    return Math.max(2, qualifyPerGroup + (bestRunnersUp > 0 ? 1 : 0));
+}
+
+export function availableGroupCounts(
+    playerCount: number,
+    playersPerGroupMinimum: number,
+): number[] {
+    const max = Math.min(
+        MAX_GROUP_COUNT,
+        Math.floor(playerCount / playersPerGroupMinimum),
+    );
+
+    if (max < MIN_GROUP_COUNT) {
+        return [];
+    }
+
+    return Array.from(
+        { length: max - MIN_GROUP_COUNT + 1 },
+        (_, index) => index + MIN_GROUP_COUNT,
+    );
+}
+
+export function suggestedGroupCount(
+    playerCount: number,
+    playersPerGroupMinimum: number,
+): number {
+    const available = availableGroupCounts(playerCount, playersPerGroupMinimum);
+
+    if (available.length === 0) {
+        return MIN_GROUP_COUNT;
+    }
+
+    return clampToAvailable(Math.round(playerCount / 4), available);
+}
+
+export function clampGroupCount(
+    current: number,
+    playerCount: number,
+    playersPerGroupMinimum: number,
+): number {
+    const available = availableGroupCounts(playerCount, playersPerGroupMinimum);
+
+    if (available.length === 0) {
+        return MIN_GROUP_COUNT;
+    }
+
+    if (available.includes(current)) {
+        return current;
+    }
+
+    return clampToAvailable(current, available);
+}
+
+function clampToAvailable(value: number, available: number[]): number {
+    const first = available[0];
+    const last = available[available.length - 1];
+
+    if (first === undefined || last === undefined) {
+        return MIN_GROUP_COUNT;
+    }
+
+    if (value <= first) {
+        return first;
+    }
+
+    if (value >= last) {
+        return last;
+    }
+
+    return available.reduce((best, candidate) =>
+        Math.abs(candidate - value) < Math.abs(best - value) ? candidate : best,
+    );
+}
+
 export function groupLetters(count: number): string[] {
     return Array.from({ length: count }, (_, index) =>
         String.fromCharCode(65 + index),
@@ -50,12 +131,12 @@ export function summarizeQualification(
 ): QualificationSummary {
     const groupCount = groupSizes.length;
     const knockoutSlots = groupCount * qualifyPerGroup + bestRunnersUp;
-    const minPlayersPerGroup = Math.max(
-        2,
-        qualifyPerGroup + (bestRunnersUp > 0 ? 1 : 0),
+    const playersPerGroupMinimum = minPlayersPerGroup(
+        qualifyPerGroup,
+        bestRunnersUp,
     );
     const isUneven = groupSizes.some((size) => size !== groupSizes[0]);
-    const tooSmall = groupSizes.some((size) => size < minPlayersPerGroup);
+    const tooSmall = groupSizes.some((size) => size < playersPerGroupMinimum);
     const leftoverRank = qualifyPerGroup + 1;
     const leftoverAvailable = groupSizes.filter(
         (size) => size >= leftoverRank,
@@ -80,7 +161,7 @@ export function summarizeQualification(
         qualifyPerGroup,
         bestRunnersUp,
         knockoutSlots,
-        minPlayersPerGroup,
+        minPlayersPerGroup: playersPerGroupMinimum,
         isUneven,
         isValid: errorKey === null,
         errorKey,

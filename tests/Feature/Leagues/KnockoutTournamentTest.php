@@ -747,19 +747,51 @@ test('doubles knockout rejects a pair that does not have two players', function 
     ])->assertUnprocessable();
 });
 
-test('round robin league cannot be created as doubles', function () {
+test('knockout doubles tournament accepts a guest in a pair', function () {
     $admin = User::factory()->create();
     assignTournamentAdminRole($admin);
-    $players = User::factory()->count(4)->create();
+    $players = User::factory()->count(3)->create();
 
-    $this->actingAs($admin)->postJson(route('leagues.store'), [
-        'name' => 'Liga parova',
-        'format' => 'round_robin',
+    $response = $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Parovi s gostom',
+        'format' => 'knockout',
         'participant_mode' => 'doubles',
-        'rounds' => 1,
+        'sets_best_of' => 1,
         'pairs' => [
             [$players[0]->id, $players[1]->id],
-            [$players[2]->id, $players[3]->id],
+            [
+                'player_one' => ['user_id' => $players[2]->id],
+                'player_two' => ['first_name' => 'Gost', 'last_name' => 'Partner'],
+            ],
+        ],
+    ]);
+
+    $response->assertSuccessful();
+
+    $league = League::query()->where('name', 'Parovi s gostom')->first();
+    $match = $league->matches()->where('is_bye', false)->first();
+
+    expect($league->participants()->count())->toBe(2);
+    expect($match->player_two_partner_first_name)->toBe('Gost');
+    expect($match->playerTwoDisplayName())->toContain('Gost Partner');
+});
+
+test('doubles knockout rejects a guest pair without a last name', function () {
+    $admin = User::factory()->create();
+    assignTournamentAdminRole($admin);
+    $players = User::factory()->count(2)->create();
+
+    $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Neispravan gost',
+        'format' => 'knockout',
+        'participant_mode' => 'doubles',
+        'sets_best_of' => 3,
+        'pairs' => [
+            [$players[0]->id, $players[1]->id],
+            [
+                'player_one' => ['first_name' => 'Gost', 'last_name' => ''],
+                'player_two' => ['first_name' => 'Drugi', 'last_name' => 'Gost'],
+            ],
         ],
     ])->assertUnprocessable();
 });

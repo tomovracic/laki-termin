@@ -1,16 +1,23 @@
 import { Head, router } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { StatusBanner } from '@/components/admin/status-banner';
 import InputError from '@/components/input-error';
 import type { TournamentWizardPayload } from '@/components/league/knockout-create-wizard';
 import { KnockoutCreateWizard } from '@/components/league/knockout-create-wizard';
+import {
+    LeagueParticipantPicker,
+    pairToPayload,
+    singlesToParticipants,
+} from '@/components/league/league-participant-picker';
 import type {
     KnockoutDrawMode,
+    KnockoutParticipantDraft,
     LeagueFormat,
     LeagueParticipantMode,
     LeagueSummary,
     LeagueUserOption,
+    PairDraft,
 } from '@/components/league/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,10 +87,9 @@ export default function LeaguesPage({
         useState<KnockoutDrawMode>('seeded');
     const [participantMode, setParticipantMode] =
         useState<LeagueParticipantMode>('singles');
-    const [selectedParticipantIds, setSelectedParticipantIds] = useState<
-        number[]
-    >([]);
-    const [knockoutPairs, setKnockoutPairs] = useState<number[][]>([]);
+    const [rrPlayers, setRrPlayers] = useState<KnockoutParticipantDraft[]>([]);
+    const [rrPairs, setRrPairs] = useState<PairDraft[]>([]);
+    const [tournamentPairs, setTournamentPairs] = useState<PairDraft[]>([]);
     const [wizardReady, setWizardReady] = useState({
         canSubmit: false,
         isLastStep: false,
@@ -104,19 +110,6 @@ export default function LeaguesPage({
         { title: t('leagues'), href: '/dashboard/leagues' },
     ];
 
-    const participantToggleLabel = useMemo(
-        () => (user: LeagueUserOption) => `${user.name} (${user.email})`,
-        [],
-    );
-
-    function toggleParticipant(userId: number) {
-        setSelectedParticipantIds((current) =>
-            current.includes(userId)
-                ? current.filter((id) => id !== userId)
-                : [...current, userId],
-        );
-    }
-
     function resetForm() {
         setFormat('round_robin');
         setName('');
@@ -124,8 +117,9 @@ export default function LeaguesPage({
         setSetsBestOf('3');
         setKnockoutDrawMode('seeded');
         setParticipantMode('singles');
-        setSelectedParticipantIds([]);
-        setKnockoutPairs([]);
+        setRrPlayers([]);
+        setRrPairs([]);
+        setTournamentPairs([]);
         setWizardReady({ canSubmit: false, isLastStep: false });
         wizardPayloadRef.current = null;
         setErrors({});
@@ -166,13 +160,16 @@ export default function LeaguesPage({
                   participant_mode: participantMode,
                   sets_best_of: Number.parseInt(setsBestOf, 10),
                   knockout_draw_mode: knockoutDrawMode,
-                  pairs: knockoutPairs,
+                  pairs: tournamentPairs.map(pairToPayload),
               })
             : {
                   name,
                   format: 'round_robin',
+                  participant_mode: participantMode,
                   rounds: Number.parseInt(rounds, 10),
-                  participant_ids: selectedParticipantIds,
+                  ...(participantMode === 'doubles'
+                      ? { pairs: rrPairs.map(pairToPayload) }
+                      : { participants: singlesToParticipants(rrPlayers) }),
               };
 
         try {
@@ -340,8 +337,8 @@ export default function LeaguesPage({
                                                 setParticipantMode
                                             }
                                             users={users}
-                                            pairs={knockoutPairs}
-                                            onPairsChange={setKnockoutPairs}
+                                            pairs={tournamentPairs}
+                                            onPairsChange={setTournamentPairs}
                                             errors={errors}
                                             onReadyChange={
                                                 handleWizardReadyChange
@@ -405,40 +402,47 @@ export default function LeaguesPage({
 
                                             <div className="space-y-2">
                                                 <Label>
-                                                    {t('league_participants')}
+                                                    {t(
+                                                        'tournament_participant_mode',
+                                                    )}
                                                 </Label>
-                                                <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
-                                                    {users.map((user) => (
-                                                        <label
-                                                            key={user.id}
-                                                            className="flex items-center gap-2 text-sm"
-                                                        >
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedParticipantIds.includes(
-                                                                    user.id,
-                                                                )}
-                                                                onChange={() =>
-                                                                    toggleParticipant(
-                                                                        user.id,
-                                                                    )
-                                                                }
-                                                            />
-                                                            <span>
-                                                                {participantToggleLabel(
-                                                                    user,
-                                                                )}
-                                                            </span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                                <InputError
-                                                    message={
-                                                        errors
-                                                            .participant_ids?.[0]
-                                                    }
-                                                />
+                                                <Select
+                                                    value={participantMode}
+                                                    onValueChange={(value) => {
+                                                        setParticipantMode(
+                                                            value as LeagueParticipantMode,
+                                                        );
+                                                        setRrPlayers([]);
+                                                        setRrPairs([]);
+                                                    }}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="singles">
+                                                            {t(
+                                                                'tournament_participant_mode_singles',
+                                                            )}
+                                                        </SelectItem>
+                                                        <SelectItem value="doubles">
+                                                            {t(
+                                                                'tournament_participant_mode_doubles',
+                                                            )}
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
+
+                                            <LeagueParticipantPicker
+                                                mode={participantMode}
+                                                users={users}
+                                                players={rrPlayers}
+                                                onPlayersChange={setRrPlayers}
+                                                pairs={rrPairs}
+                                                onPairsChange={setRrPairs}
+                                                errors={errors}
+                                            />
                                         </>
                                     )}
 
@@ -457,6 +461,12 @@ export default function LeaguesPage({
                                             type="submit"
                                             disabled={
                                                 isCreating ||
+                                                (format === 'round_robin' &&
+                                                    (participantMode ===
+                                                    'doubles'
+                                                        ? rrPairs.length < 2
+                                                        : rrPlayers.length <
+                                                          2)) ||
                                                 ((format === 'knockout' ||
                                                     format ===
                                                         'group_knockout') &&

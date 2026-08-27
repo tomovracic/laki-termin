@@ -34,6 +34,8 @@ export type LeagueParticipant = {
     id: number;
     user_id: number | null;
     partner_user_id?: number | null;
+    partner_first_name?: string | null;
+    partner_last_name?: string | null;
     league_group_id?: number | null;
     name: string;
     first_name: string;
@@ -158,6 +160,24 @@ export type TournamentCreateParticipant = {
     user_id?: number | null;
     first_name?: string | null;
     last_name?: string | null;
+};
+
+export type TournamentCreatePair = {
+    player_one: TournamentCreateParticipant;
+    player_two: TournamentCreateParticipant;
+};
+
+export type PairPlayerDraft = {
+    user_id: number | null;
+    first_name: string;
+    last_name: string;
+    display_name: string;
+};
+
+export type PairDraft = {
+    key: string;
+    player_one: PairPlayerDraft;
+    player_two: PairPlayerDraft;
 };
 
 export type TournamentCreateGroup = {

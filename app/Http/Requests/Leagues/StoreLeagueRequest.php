@@ -6,6 +6,7 @@ namespace App\Http\Requests\Leagues;
 
 use App\DTO\Leagues\CreateLeagueData;
 use App\DTO\Leagues\LeagueGroupInputData;
+use App\DTO\Leagues\LeaguePairInputData;
 use App\DTO\Leagues\LeagueParticipantInputData;
 use App\Enums\KnockoutDrawMode;
 use App\Enums\LeagueFormat;
@@ -30,60 +31,63 @@ class StoreLeagueRequest extends FormRequest
     {
         $format = $this->input('format', LeagueFormat::RoundRobin->value);
         $participantMode = $this->input('participant_mode', LeagueParticipantMode::Singles->value);
+        $isDoubles = $participantMode === LeagueParticipantMode::Doubles->value;
+        $isGroupKnockout = $format === LeagueFormat::GroupKnockout->value;
+        $isKnockout = $format === LeagueFormat::Knockout->value;
+        $isTournament = $isKnockout || $isGroupKnockout;
 
-        if ($format === LeagueFormat::Knockout->value && $participantMode === LeagueParticipantMode::Doubles->value) {
+        $rules = [
+            'name' => ['required', 'string', 'max:255'],
+            'format' => [$isTournament ? 'required' : 'nullable', Rule::enum(LeagueFormat::class)],
+            'participant_mode' => ['nullable', Rule::enum(LeagueParticipantMode::class)],
+            'sets_best_of' => [$isTournament ? 'required' : 'nullable', 'integer', Rule::in([1, 3, 5])],
+            'knockout_draw_mode' => ['nullable', Rule::enum(KnockoutDrawMode::class)],
+        ];
+
+        if (! $isTournament) {
+            $rules['rounds'] = ['required', 'integer', 'min:1', 'max:5'];
+        }
+
+        if ($isGroupKnockout) {
+            $rules['qualify_per_group'] = ['required', 'integer', Rule::in([1, 2])];
+            $rules['best_runners_up'] = ['required', 'integer', 'min:0'];
+            $rules['groups'] = ['required', 'array', 'min:2'];
+            $rules['groups.*.name'] = ['required', 'string', 'max:32'];
+            $rules['groups.*.participant_indexes'] = ['required', 'array', 'min:2'];
+            $rules['groups.*.participant_indexes.*'] = ['required', 'integer', 'min:0'];
+        }
+
+        if ($isDoubles) {
+            $minPairs = $isGroupKnockout ? 4 : 2;
+
             return [
-                'name' => ['required', 'string', 'max:255'],
-                'format' => ['required', Rule::enum(LeagueFormat::class)],
-                'participant_mode' => ['required', Rule::enum(LeagueParticipantMode::class)],
-                'sets_best_of' => ['required', 'integer', Rule::in([1, 3, 5])],
-                'knockout_draw_mode' => ['nullable', Rule::enum(KnockoutDrawMode::class)],
-                'pairs' => ['required', 'array', 'min:2'],
-                'pairs.*' => ['required', 'array', 'size:2'],
-                'pairs.*.*' => ['required', 'integer', 'exists:users,id'],
+                ...$rules,
+                'pairs' => ['required', 'array', 'min:'.$minPairs],
+                'pairs.*' => ['required', 'array'],
+                'pairs.*.player_one' => ['nullable', 'array'],
+                'pairs.*.player_one.user_id' => ['nullable', 'integer', 'exists:users,id'],
+                'pairs.*.player_one.first_name' => ['nullable', 'string', 'max:255'],
+                'pairs.*.player_one.last_name' => ['nullable', 'string', 'max:255'],
+                'pairs.*.player_two' => ['nullable', 'array'],
+                'pairs.*.player_two.user_id' => ['nullable', 'integer', 'exists:users,id'],
+                'pairs.*.player_two.first_name' => ['nullable', 'string', 'max:255'],
+                'pairs.*.player_two.last_name' => ['nullable', 'string', 'max:255'],
+                'pairs.*.0' => ['nullable', 'integer', 'exists:users,id'],
+                'pairs.*.1' => ['nullable', 'integer', 'exists:users,id'],
             ];
         }
 
-        if ($format === LeagueFormat::Knockout->value) {
+        if ($isGroupKnockout) {
             return [
-                'name' => ['required', 'string', 'max:255'],
-                'format' => ['required', Rule::enum(LeagueFormat::class)],
-                'participant_mode' => ['nullable', Rule::enum(LeagueParticipantMode::class)],
-                'sets_best_of' => ['required', 'integer', Rule::in([1, 3, 5])],
-                'knockout_draw_mode' => ['nullable', Rule::enum(KnockoutDrawMode::class)],
-                ...$this->singlesParticipantRules(),
-            ];
-        }
-
-        if ($format === LeagueFormat::GroupKnockout->value) {
-            return [
-                'name' => ['required', 'string', 'max:255'],
-                'format' => ['required', Rule::enum(LeagueFormat::class)],
-                'participant_mode' => ['nullable', Rule::enum(LeagueParticipantMode::class)],
-                'sets_best_of' => ['required', 'integer', Rule::in([1, 3, 5])],
-                'knockout_draw_mode' => ['nullable', Rule::enum(KnockoutDrawMode::class)],
-                'qualify_per_group' => ['required', 'integer', Rule::in([1, 2])],
-                'best_runners_up' => ['required', 'integer', 'min:0'],
+                ...$rules,
                 'participants' => ['required', 'array', 'min:4'],
                 'participants.*.user_id' => ['nullable', 'integer', 'exists:users,id'],
                 'participants.*.first_name' => ['nullable', 'string', 'max:255'],
                 'participants.*.last_name' => ['nullable', 'string', 'max:255'],
-                'groups' => ['required', 'array', 'min:2'],
-                'groups.*.name' => ['required', 'string', 'max:32'],
-                'groups.*.participant_indexes' => ['required', 'array', 'min:2'],
-                'groups.*.participant_indexes.*' => ['required', 'integer', 'min:0'],
             ];
         }
 
-        return [
-            'name' => ['required', 'string', 'max:255'],
-            'format' => ['nullable', Rule::enum(LeagueFormat::class)],
-            'participant_mode' => ['nullable', Rule::enum(LeagueParticipantMode::class)],
-            'rounds' => ['required', 'integer', 'min:1', 'max:5'],
-            'sets_best_of' => ['nullable', 'integer', Rule::in([1, 3, 5])],
-            'participant_ids' => ['required', 'array', 'min:2'],
-            'participant_ids.*' => ['required', 'integer', 'distinct', 'exists:users,id'],
-        ];
+        return [...$rules, ...$this->singlesParticipantRules()];
     }
 
     public function withValidator(Validator $validator): void
@@ -92,31 +96,15 @@ class StoreLeagueRequest extends FormRequest
             $format = $this->input('format', LeagueFormat::RoundRobin->value);
             $participantMode = $this->input('participant_mode', LeagueParticipantMode::Singles->value);
 
-            if ($participantMode === LeagueParticipantMode::Doubles->value
-                && $format !== LeagueFormat::Knockout->value) {
-                $validator->errors()->add(
-                    'participant_mode',
-                    'Parovi su dozvoljeni samo za knockout turnir.',
-                );
-
-                return;
-            }
-
-            if ($format === LeagueFormat::Knockout->value
-                && $participantMode !== LeagueParticipantMode::Doubles->value) {
+            if ($participantMode === LeagueParticipantMode::Doubles->value) {
+                $this->validatePairs($validator);
+            } else {
                 $this->validateSinglesParticipants($validator);
             }
 
             if ($format === LeagueFormat::GroupKnockout->value) {
-                $this->validateSinglesParticipants($validator);
                 $this->validateGroupStage($validator);
             }
-
-            if ($participantMode !== LeagueParticipantMode::Doubles->value) {
-                return;
-            }
-
-            $this->validatePairs($validator);
         });
     }
 
@@ -139,7 +127,7 @@ class StoreLeagueRequest extends FormRequest
             participantMode: $participantMode,
             setsBestOf: (int) ($validated['sets_best_of'] ?? 3),
             knockoutDrawMode: $drawMode,
-            pairs: $this->parsePairs($validated['pairs'] ?? []),
+            pairs: $this->parsePairs($this->input('pairs', [])),
             participants: $this->parseParticipants($validated['participants'] ?? []),
             qualifyPerGroup: (int) ($validated['qualify_per_group'] ?? 1),
             bestRunnersUp: (int) ($validated['best_runners_up'] ?? 0),
@@ -182,12 +170,10 @@ class StoreLeagueRequest extends FormRequest
                 continue;
             }
 
-            $userId = isset($participant['user_id']) ? (int) $participant['user_id'] : 0;
-            $firstName = trim((string) ($participant['first_name'] ?? ''));
-            $lastName = trim((string) ($participant['last_name'] ?? ''));
+            $input = $this->playerInputFromArray($participant);
 
-            if ($userId > 0) {
-                if (in_array($userId, $seenUserIds, true)) {
+            if ($input->userId !== null) {
+                if (in_array($input->userId, $seenUserIds, true)) {
                     $validator->errors()->add(
                         'participants',
                         'Isti korisnik ne moze biti dodan vise puta.',
@@ -196,12 +182,12 @@ class StoreLeagueRequest extends FormRequest
                     return;
                 }
 
-                $seenUserIds[] = $userId;
+                $seenUserIds[] = $input->userId;
 
                 continue;
             }
 
-            if ($firstName === '' || $lastName === '') {
+            if (! $this->isValidGuest($input)) {
                 $validator->errors()->add(
                     "participants.{$index}",
                     'Gost mora imati ime i prezime.',
@@ -212,10 +198,13 @@ class StoreLeagueRequest extends FormRequest
 
     private function validateGroupStage(Validator $validator): void
     {
-        $participants = $this->input('participants', []);
+        $participantMode = $this->input('participant_mode', LeagueParticipantMode::Singles->value);
+        $entries = $participantMode === LeagueParticipantMode::Doubles->value
+            ? $this->input('pairs', [])
+            : $this->input('participants', []);
         $groups = $this->input('groups', []);
 
-        if (! is_array($participants) || ! is_array($groups)) {
+        if (! is_array($entries) || ! is_array($groups)) {
             return;
         }
 
@@ -236,7 +225,7 @@ class StoreLeagueRequest extends FormRequest
 
         try {
             app(GroupStageValidator::class)->validate(
-                count($participants),
+                count($entries),
                 $normalizedGroups,
                 (int) $this->input('qualify_per_group', 1),
                 (int) $this->input('best_runners_up', 0),
@@ -261,22 +250,43 @@ class StoreLeagueRequest extends FormRequest
         $seenUserIds = [];
 
         foreach ($pairs as $index => $pair) {
-            if (! is_array($pair) || count($pair) !== 2) {
+            $parsed = $this->pairFromInput($pair);
+
+            if ($parsed === null) {
+                $validator->errors()->add(
+                    "pairs.{$index}",
+                    'Svaki par mora imati tocno dva igraca.',
+                );
+
                 continue;
             }
 
-            $firstId = (int) ($pair[0] ?? 0);
-            $secondId = (int) ($pair[1] ?? 0);
+            if (! $this->isValidPlayer($parsed->playerOne)) {
+                $validator->errors()->add(
+                    "pairs.{$index}.player_one",
+                    'Gost mora imati ime i prezime.',
+                );
+            }
 
-            if ($firstId === $secondId) {
+            if (! $this->isValidPlayer($parsed->playerTwo)) {
+                $validator->errors()->add(
+                    "pairs.{$index}.player_two",
+                    'Gost mora imati ime i prezime.',
+                );
+            }
+
+            if (
+                $parsed->playerOne->userId !== null
+                && $parsed->playerOne->userId === $parsed->playerTwo->userId
+            ) {
                 $validator->errors()->add(
                     "pairs.{$index}",
                     'Par mora imati dva razlicita igraca.',
                 );
             }
 
-            foreach ([$firstId, $secondId] as $userId) {
-                if ($userId < 1) {
+            foreach ([$parsed->playerOne->userId, $parsed->playerTwo->userId] as $userId) {
+                if ($userId === null) {
                     continue;
                 }
 
@@ -296,24 +306,20 @@ class StoreLeagueRequest extends FormRequest
 
     /**
      * @param  list<mixed>  $pairs
-     * @return list<array{0: int, 1: int}>
+     * @return list<LeaguePairInputData>
      */
     private function parsePairs(array $pairs): array
     {
         $parsed = [];
 
         foreach ($pairs as $pair) {
-            if (! is_array($pair)) {
+            $normalized = $this->pairFromInput($pair);
+
+            if ($normalized === null) {
                 continue;
             }
 
-            $values = array_values($pair);
-
-            if (count($values) !== 2) {
-                continue;
-            }
-
-            $parsed[] = [(int) $values[0], (int) $values[1]];
+            $parsed[] = $normalized;
         }
 
         return $parsed;
@@ -332,13 +338,7 @@ class StoreLeagueRequest extends FormRequest
                 continue;
             }
 
-            $userId = isset($participant['user_id']) ? (int) $participant['user_id'] : 0;
-
-            $parsed[] = new LeagueParticipantInputData(
-                userId: $userId > 0 ? $userId : null,
-                firstName: isset($participant['first_name']) ? trim((string) $participant['first_name']) : null,
-                lastName: isset($participant['last_name']) ? trim((string) $participant['last_name']) : null,
-            );
+            $parsed[] = $this->playerInputFromArray($participant);
         }
 
         return $parsed;
@@ -366,5 +366,68 @@ class StoreLeagueRequest extends FormRequest
         }
 
         return $parsed;
+    }
+
+    private function pairFromInput(mixed $pair): ?LeaguePairInputData
+    {
+        if (! is_array($pair)) {
+            return null;
+        }
+
+        if (isset($pair['player_one'], $pair['player_two']) && is_array($pair['player_one']) && is_array($pair['player_two'])) {
+            return new LeaguePairInputData(
+                $this->playerInputFromArray($pair['player_one']),
+                $this->playerInputFromArray($pair['player_two']),
+            );
+        }
+
+        $values = array_values($pair);
+
+        if (count($values) !== 2) {
+            return null;
+        }
+
+        if (is_array($values[0]) && is_array($values[1])) {
+            return new LeaguePairInputData(
+                $this->playerInputFromArray($values[0]),
+                $this->playerInputFromArray($values[1]),
+            );
+        }
+
+        $firstId = (int) $values[0];
+        $secondId = (int) $values[1];
+
+        if ($firstId < 1 || $secondId < 1) {
+            return null;
+        }
+
+        return new LeaguePairInputData(
+            new LeagueParticipantInputData($firstId, null, null),
+            new LeagueParticipantInputData($secondId, null, null),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $player
+     */
+    private function playerInputFromArray(array $player): LeagueParticipantInputData
+    {
+        $userId = isset($player['user_id']) ? (int) $player['user_id'] : 0;
+
+        return new LeagueParticipantInputData(
+            userId: $userId > 0 ? $userId : null,
+            firstName: isset($player['first_name']) ? trim((string) $player['first_name']) : null,
+            lastName: isset($player['last_name']) ? trim((string) $player['last_name']) : null,
+        );
+    }
+
+    private function isValidPlayer(LeagueParticipantInputData $input): bool
+    {
+        return $input->userId !== null || $this->isValidGuest($input);
+    }
+
+    private function isValidGuest(LeagueParticipantInputData $input): bool
+    {
+        return trim((string) $input->firstName) !== '' && trim((string) $input->lastName) !== '';
     }
 }

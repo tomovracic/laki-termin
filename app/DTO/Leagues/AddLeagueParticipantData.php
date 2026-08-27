@@ -8,6 +8,9 @@ readonly class AddLeagueParticipantData
 {
     public function __construct(
         public int $leagueId,
-        public int $userId,
+        public ?int $userId = null,
+        public ?string $firstName = null,
+        public ?string $lastName = null,
+        public ?LeagueParticipantInputData $partner = null,
     ) {}
 }
