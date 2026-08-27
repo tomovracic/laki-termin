@@ -1,10 +1,17 @@
 import { Head, router } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { StatusBanner } from '@/components/admin/status-banner';
 import InputError from '@/components/input-error';
+import type { TournamentWizardPayload } from '@/components/league/knockout-create-wizard';
 import { KnockoutCreateWizard } from '@/components/league/knockout-create-wizard';
-import type { KnockoutDrawMode, LeagueFormat, LeagueParticipantMode, LeagueSummary, LeagueUserOption } from '@/components/league/types';
+import type {
+    KnockoutDrawMode,
+    LeagueFormat,
+    LeagueParticipantMode,
+    LeagueSummary,
+    LeagueUserOption,
+} from '@/components/league/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,14 +76,24 @@ export default function LeaguesPage({
     const [name, setName] = useState('');
     const [rounds, setRounds] = useState('1');
     const [setsBestOf, setSetsBestOf] = useState('3');
-    const [knockoutDrawMode, setKnockoutDrawMode] = useState<KnockoutDrawMode>('seeded');
-    const [participantMode, setParticipantMode] = useState<LeagueParticipantMode>('singles');
-    const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
-    const [knockoutParticipantIds, setKnockoutParticipantIds] = useState<number[]>([]);
+    const [knockoutDrawMode, setKnockoutDrawMode] =
+        useState<KnockoutDrawMode>('seeded');
+    const [participantMode, setParticipantMode] =
+        useState<LeagueParticipantMode>('singles');
+    const [selectedParticipantIds, setSelectedParticipantIds] = useState<
+        number[]
+    >([]);
     const [knockoutPairs, setKnockoutPairs] = useState<number[][]>([]);
+    const [wizardReady, setWizardReady] = useState({
+        canSubmit: false,
+        isLastStep: false,
+    });
+    const wizardPayloadRef = useRef<TournamentWizardPayload | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState<LeagueSummary | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<LeagueSummary | null>(
+        null,
+    );
     const [isDeleting, setIsDeleting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string[]>>({});
     const [message, setMessage] = useState<string | null>(null);
@@ -108,10 +125,30 @@ export default function LeaguesPage({
         setKnockoutDrawMode('seeded');
         setParticipantMode('singles');
         setSelectedParticipantIds([]);
-        setKnockoutParticipantIds([]);
         setKnockoutPairs([]);
+        setWizardReady({ canSubmit: false, isLastStep: false });
+        wizardPayloadRef.current = null;
         setErrors({});
     }
+
+    const handleWizardReadyChange = useCallback(
+        (state: { canSubmit: boolean; isLastStep: boolean }) => {
+            setWizardReady((current) =>
+                current.canSubmit === state.canSubmit &&
+                current.isLastStep === state.isLastStep
+                    ? current
+                    : state,
+            );
+        },
+        [],
+    );
+
+    const handleWizardPayloadChange = useCallback(
+        (payload: TournamentWizardPayload) => {
+            wizardPayloadRef.current = payload;
+        },
+        [],
+    );
 
     async function handleCreateLeague(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -120,31 +157,23 @@ export default function LeaguesPage({
         setErrorMessage(null);
         setMessage(null);
 
-        const body =
-            format === 'knockout'
-                ? participantMode === 'doubles'
-                    ? {
-                          name,
-                          format: 'knockout',
-                          participant_mode: 'doubles',
-                          sets_best_of: Number.parseInt(setsBestOf, 10),
-                          knockout_draw_mode: knockoutDrawMode,
-                          pairs: knockoutPairs,
-                      }
-                    : {
-                          name,
-                          format: 'knockout',
-                          participant_mode: 'singles',
-                          sets_best_of: Number.parseInt(setsBestOf, 10),
-                          knockout_draw_mode: knockoutDrawMode,
-                          participant_ids: knockoutParticipantIds,
-                      }
-                : {
-                      name,
-                      format: 'round_robin',
-                      rounds: Number.parseInt(rounds, 10),
-                      participant_ids: selectedParticipantIds,
-                  };
+        const isTournament =
+            format === 'knockout' || format === 'group_knockout';
+        const body = isTournament
+            ? (wizardPayloadRef.current ?? {
+                  name,
+                  format,
+                  participant_mode: participantMode,
+                  sets_best_of: Number.parseInt(setsBestOf, 10),
+                  knockout_draw_mode: knockoutDrawMode,
+                  pairs: knockoutPairs,
+              })
+            : {
+                  name,
+                  format: 'round_robin',
+                  rounds: Number.parseInt(rounds, 10),
+                  participant_ids: selectedParticipantIds,
+              };
 
         try {
             const response = await fetch('/leagues', {
@@ -158,7 +187,9 @@ export default function LeaguesPage({
                 body: JSON.stringify(body),
             });
 
-            const payload = (await response.json()) as ApiErrorResponse & { data?: LeagueSummary };
+            const payload = (await response.json()) as ApiErrorResponse & {
+                data?: LeagueSummary;
+            };
 
             if (!response.ok) {
                 if (payload.errors) {
@@ -169,7 +200,11 @@ export default function LeaguesPage({
                 return;
             }
 
-            setMessage(format === 'knockout' ? t('tournament_created') : t('league_created'));
+            setMessage(
+                format === 'round_robin'
+                    ? t('league_created')
+                    : t('tournament_created'),
+            );
             setIsCreateModalOpen(false);
             resetForm();
             router.reload({ only: ['leagues'] });
@@ -220,7 +255,9 @@ export default function LeaguesPage({
 
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">{t('leagues')}</h1>
+                        <h1 className="text-2xl font-semibold tracking-tight">
+                            {t('leagues')}
+                        </h1>
                         <p className="mt-1 text-sm text-muted-foreground">
                             {canManage
                                 ? t('leagues_admin_overview_description')
@@ -241,14 +278,19 @@ export default function LeaguesPage({
                             <DialogTrigger asChild>
                                 <Button>{t('league_create')}</Button>
                             </DialogTrigger>
-                            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
                                 <DialogHeader>
-                                    <DialogTitle>{t('league_create')}</DialogTitle>
+                                    <DialogTitle>
+                                        {t('league_create')}
+                                    </DialogTitle>
                                     <DialogDescription>
                                         {t('league_create_description')}
                                     </DialogDescription>
                                 </DialogHeader>
-                                <form onSubmit={handleCreateLeague} className="space-y-4">
+                                <form
+                                    onSubmit={handleCreateLeague}
+                                    className="space-y-4"
+                                >
                                     <div className="space-y-2">
                                         <Label>{t('tournament_format')}</Label>
                                         <Select
@@ -262,64 +304,109 @@ export default function LeaguesPage({
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="round_robin">
-                                                    {t('tournament_format_round_robin')}
+                                                    {t(
+                                                        'tournament_format_round_robin',
+                                                    )}
                                                 </SelectItem>
                                                 <SelectItem value="knockout">
-                                                    {t('tournament_format_knockout')}
+                                                    {t(
+                                                        'tournament_format_knockout',
+                                                    )}
+                                                </SelectItem>
+                                                <SelectItem value="group_knockout">
+                                                    {t(
+                                                        'tournament_format_group_knockout',
+                                                    )}
                                                 </SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
 
-                                    {format === 'knockout' ? (
+                                    {format === 'knockout' ||
+                                    format === 'group_knockout' ? (
                                         <KnockoutCreateWizard
+                                            key={format}
+                                            format={format}
                                             name={name}
                                             onNameChange={setName}
                                             setsBestOf={setsBestOf}
                                             onSetsBestOfChange={setSetsBestOf}
                                             drawMode={knockoutDrawMode}
-                                            onDrawModeChange={setKnockoutDrawMode}
+                                            onDrawModeChange={
+                                                setKnockoutDrawMode
+                                            }
                                             participantMode={participantMode}
-                                            onParticipantModeChange={setParticipantMode}
+                                            onParticipantModeChange={
+                                                setParticipantMode
+                                            }
                                             users={users}
-                                            participantIds={knockoutParticipantIds}
-                                            onParticipantIdsChange={setKnockoutParticipantIds}
                                             pairs={knockoutPairs}
                                             onPairsChange={setKnockoutPairs}
                                             errors={errors}
+                                            onReadyChange={
+                                                handleWizardReadyChange
+                                            }
+                                            onPayloadChange={
+                                                handleWizardPayloadChange
+                                            }
                                         />
                                     ) : (
                                         <>
                                             <div className="space-y-2">
-                                                <Label htmlFor="league-name">{t('name')}</Label>
+                                                <Label htmlFor="league-name">
+                                                    {t('name')}
+                                                </Label>
                                                 <Input
                                                     id="league-name"
                                                     value={name}
-                                                    onChange={(event) => setName(event.target.value)}
+                                                    onChange={(event) =>
+                                                        setName(
+                                                            event.target.value,
+                                                        )
+                                                    }
                                                     required
                                                 />
-                                                <InputError message={errors.name?.[0]} />
+                                                <InputError
+                                                    message={errors.name?.[0]}
+                                                />
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label>{t('league_rounds')}</Label>
-                                                <Select value={rounds} onValueChange={setRounds}>
+                                                <Label>
+                                                    {t('league_rounds')}
+                                                </Label>
+                                                <Select
+                                                    value={rounds}
+                                                    onValueChange={setRounds}
+                                                >
                                                     <SelectTrigger>
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {[1, 2, 3, 4, 5].map((value) => (
-                                                            <SelectItem key={value} value={`${value}`}>
-                                                                {roundsLabel(value, t)}
-                                                            </SelectItem>
-                                                        ))}
+                                                        {[1, 2, 3, 4, 5].map(
+                                                            (value) => (
+                                                                <SelectItem
+                                                                    key={value}
+                                                                    value={`${value}`}
+                                                                >
+                                                                    {roundsLabel(
+                                                                        value,
+                                                                        t,
+                                                                    )}
+                                                                </SelectItem>
+                                                            ),
+                                                        )}
                                                     </SelectContent>
                                                 </Select>
-                                                <InputError message={errors.rounds?.[0]} />
+                                                <InputError
+                                                    message={errors.rounds?.[0]}
+                                                />
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label>{t('league_participants')}</Label>
+                                                <Label>
+                                                    {t('league_participants')}
+                                                </Label>
                                                 <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
                                                     {users.map((user) => (
                                                         <label
@@ -332,14 +419,25 @@ export default function LeaguesPage({
                                                                     user.id,
                                                                 )}
                                                                 onChange={() =>
-                                                                    toggleParticipant(user.id)
+                                                                    toggleParticipant(
+                                                                        user.id,
+                                                                    )
                                                                 }
                                                             />
-                                                            <span>{participantToggleLabel(user)}</span>
+                                                            <span>
+                                                                {participantToggleLabel(
+                                                                    user,
+                                                                )}
+                                                            </span>
                                                         </label>
                                                     ))}
                                                 </div>
-                                                <InputError message={errors.participant_ids?.[0]} />
+                                                <InputError
+                                                    message={
+                                                        errors
+                                                            .participant_ids?.[0]
+                                                    }
+                                                />
                                             </div>
                                         </>
                                     )}
@@ -348,7 +446,9 @@ export default function LeaguesPage({
                                         <Button
                                             type="button"
                                             variant="outline"
-                                            onClick={() => setIsCreateModalOpen(false)}
+                                            onClick={() =>
+                                                setIsCreateModalOpen(false)
+                                            }
                                             disabled={isCreating}
                                         >
                                             {t('cancel')}
@@ -357,13 +457,16 @@ export default function LeaguesPage({
                                             type="submit"
                                             disabled={
                                                 isCreating ||
-                                                (format === 'knockout' &&
-                                                    (participantMode === 'doubles'
-                                                        ? knockoutPairs.length < 2
-                                                        : knockoutParticipantIds.length < 2))
+                                                ((format === 'knockout' ||
+                                                    format ===
+                                                        'group_knockout') &&
+                                                    (!wizardReady.isLastStep ||
+                                                        !wizardReady.canSubmit))
                                             }
                                         >
-                                            {isCreating ? t('creating') : t('league_create')}
+                                            {isCreating
+                                                ? t('creating')
+                                                : t('league_create')}
                                         </Button>
                                     </div>
                                 </form>
@@ -376,16 +479,24 @@ export default function LeaguesPage({
                     {leagues.map((league) => (
                         <Card key={league.id}>
                             <CardHeader>
-                                <CardTitle className="text-lg">{league.name}</CardTitle>
+                                <CardTitle className="text-lg">
+                                    {league.name}
+                                </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 <div className="flex flex-wrap gap-2">
                                     <Badge variant="outline">
                                         {league.format === 'knockout'
                                             ? t('tournament_format_knockout')
-                                            : roundsLabel(league.rounds, t)}
+                                            : league.format === 'group_knockout'
+                                              ? t(
+                                                    'tournament_format_group_knockout',
+                                                )
+                                              : roundsLabel(league.rounds, t)}
                                     </Badge>
-                                    {league.format === 'knockout' && league.sets_best_of ? (
+                                    {(league.format === 'knockout' ||
+                                        league.format === 'group_knockout') &&
+                                    league.sets_best_of ? (
                                         <Badge variant="outline">
                                             {t('tournament_best_of').replace(
                                                 '{count}',
@@ -395,7 +506,9 @@ export default function LeaguesPage({
                                     ) : null}
                                     {league.participant_mode === 'doubles' ? (
                                         <Badge variant="outline">
-                                            {t('tournament_participant_mode_doubles')}
+                                            {t(
+                                                'tournament_participant_mode_doubles',
+                                            )}
                                         </Badge>
                                     ) : null}
                                     <Badge variant="secondary">
@@ -404,7 +517,8 @@ export default function LeaguesPage({
                                     </Badge>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    {league.played_matches_count}/{league.matches_count}{' '}
+                                    {league.played_matches_count}/
+                                    {league.matches_count}{' '}
                                     {t('league_matches_played').toLowerCase()}
                                 </p>
                                 <div className="flex gap-2">
@@ -412,15 +526,21 @@ export default function LeaguesPage({
                                         variant="outline"
                                         className="flex-1"
                                         onClick={() =>
-                                            router.visit(`/dashboard/leagues/${league.id}`)
+                                            router.visit(
+                                                `/dashboard/leagues/${league.id}`,
+                                            )
                                         }
                                     >
-                                        {canManage ? t('league_manage') : t('league_view')}
+                                        {canManage
+                                            ? t('league_manage')
+                                            : t('league_view')}
                                     </Button>
                                     {canManage && (
                                         <Button
                                             variant="destructive"
-                                            onClick={() => setDeleteTarget(league)}
+                                            onClick={() =>
+                                                setDeleteTarget(league)
+                                            }
                                         >
                                             {t('league_delete')}
                                         </Button>
@@ -432,7 +552,9 @@ export default function LeaguesPage({
                 </div>
 
                 {leagues.length === 0 && (
-                    <p className="text-sm text-muted-foreground">{t('league_no_leagues')}</p>
+                    <p className="text-sm text-muted-foreground">
+                        {t('league_no_leagues')}
+                    </p>
                 )}
 
                 {canManage && (
@@ -447,7 +569,9 @@ export default function LeaguesPage({
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>{t('league_delete')}</DialogTitle>
-                                <DialogDescription>{t('league_confirm_delete')}</DialogDescription>
+                                <DialogDescription>
+                                    {t('league_confirm_delete')}
+                                </DialogDescription>
                             </DialogHeader>
                             <DialogFooter>
                                 <Button
@@ -461,7 +585,9 @@ export default function LeaguesPage({
                                 <Button
                                     type="button"
                                     variant="destructive"
-                                    disabled={deleteTarget === null || isDeleting}
+                                    disabled={
+                                        deleteTarget === null || isDeleting
+                                    }
                                     onClick={() => {
                                         if (deleteTarget === null) {
                                             return;
@@ -470,7 +596,9 @@ export default function LeaguesPage({
                                         void handleDeleteLeague(deleteTarget);
                                     }}
                                 >
-                                    {isDeleting ? t('saving') : t('league_delete')}
+                                    {isDeleting
+                                        ? t('saving')
+                                        : t('league_delete')}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>

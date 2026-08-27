@@ -591,23 +591,33 @@ test('round robin league creation still works', function () {
     expect($league->matches()->count())->toBe(3);
 });
 
-test('knockout tournament rejects guest participants', function () {
+test('knockout tournament accepts guest participants', function () {
     $admin = User::factory()->create();
     assignTournamentAdminRole($admin);
-    $players = User::factory()->count(2)->create();
+    $player = User::factory()->create();
 
     $response = $this->actingAs($admin)->postJson(route('leagues.store'), [
-        'name' => 'Neispravan kup',
+        'name' => 'Kup s gostom',
         'format' => 'knockout',
-        'sets_best_of' => 3,
+        'sets_best_of' => 1,
         'participants' => [
-            ['user_id' => $players[0]->id],
+            ['user_id' => $player->id],
             ['first_name' => 'Gost', 'last_name' => 'Igrac'],
         ],
     ]);
 
-    $response->assertUnprocessable();
-    expect(League::query()->count())->toBe(0);
+    $response->assertSuccessful();
+
+    $league = League::query()->where('name', 'Kup s gostom')->first();
+
+    expect($league)->not->toBeNull();
+    expect($league->participants()->count())->toBe(2);
+    expect($league->participants()->whereNull('user_id')->count())->toBe(1);
+    expect($league->matches()->count())->toBe(1);
+
+    $match = $league->matches()->first();
+    expect($match->player_one_participant_id)->not->toBeNull();
+    expect($match->player_two_participant_id)->not->toBeNull();
 });
 
 test('random draw mode creates at most one bye for odd player counts', function () {

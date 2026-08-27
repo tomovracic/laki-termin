@@ -9,15 +9,13 @@ use App\Actions\Leagues\CreateLeagueAction;
 use App\Actions\Leagues\DeleteLeagueAction;
 use App\Actions\Leagues\FinishKnockoutRoundAction;
 use App\Actions\Leagues\RecordLeagueMatchResultAction;
+use App\Actions\Leagues\StartKnockoutFromGroupsAction;
 use App\DTO\Leagues\AddLeagueParticipantData;
-use App\DTO\Leagues\CreateLeagueData;
 use App\DTO\Leagues\RecordLeagueMatchResultData;
-use App\Enums\KnockoutDrawMode;
-use App\Enums\LeagueFormat;
-use App\Enums\LeagueParticipantMode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Leagues\FinishKnockoutRoundRequest;
 use App\Http\Requests\Leagues\RecordLeagueMatchResultRequest;
+use App\Http\Requests\Leagues\StartKnockoutFromGroupsRequest;
 use App\Http\Requests\Leagues\StoreLeagueParticipantRequest;
 use App\Http\Requests\Leagues\StoreLeagueRequest;
 use App\Http\Resources\LeagueMatchResource;
@@ -30,37 +28,7 @@ class LeagueController extends Controller
 {
     public function store(StoreLeagueRequest $request, CreateLeagueAction $action): LeagueResource
     {
-        $validated = $request->validated();
-        $format = LeagueFormat::tryFrom((string) ($validated['format'] ?? LeagueFormat::RoundRobin->value))
-            ?? LeagueFormat::RoundRobin;
-
-        if ($format === LeagueFormat::Knockout) {
-            $drawMode = KnockoutDrawMode::tryFrom((string) ($validated['knockout_draw_mode'] ?? KnockoutDrawMode::Seeded->value))
-                ?? KnockoutDrawMode::Seeded;
-            $participantMode = LeagueParticipantMode::tryFrom((string) ($validated['participant_mode'] ?? LeagueParticipantMode::Singles->value))
-                ?? LeagueParticipantMode::Singles;
-
-            $league = $action->execute(new CreateLeagueData(
-                name: (string) $validated['name'],
-                rounds: 1,
-                createdBy: $request->user()->id,
-                participantIds: array_map('intval', $validated['participant_ids'] ?? []),
-                format: LeagueFormat::Knockout,
-                participantMode: $participantMode,
-                setsBestOf: (int) $validated['sets_best_of'],
-                knockoutDrawMode: $drawMode,
-                pairs: $this->parsePairs($validated['pairs'] ?? []),
-            ));
-        } else {
-            $league = $action->execute(new CreateLeagueData(
-                name: (string) $validated['name'],
-                rounds: (int) $validated['rounds'],
-                createdBy: $request->user()->id,
-                participantIds: array_map('intval', $validated['participant_ids']),
-                format: LeagueFormat::RoundRobin,
-                setsBestOf: (int) ($validated['sets_best_of'] ?? 3),
-            ));
-        }
+        $league = $action->execute($request->toCreateLeagueData());
 
         return LeagueResource::make($league->loadCount(['participants', 'matches']));
     }
@@ -118,6 +86,16 @@ class LeagueController extends Controller
         return LeagueResource::make($league->loadCount(['participants', 'matches']));
     }
 
+    public function startKnockout(
+        StartKnockoutFromGroupsRequest $request,
+        League $league,
+        StartKnockoutFromGroupsAction $action,
+    ): LeagueResource {
+        $league = $action->execute($league);
+
+        return LeagueResource::make($league->loadCount(['participants', 'matches']));
+    }
+
     public function destroy(League $league, DeleteLeagueAction $action): JsonResponse
     {
         $this->authorize('delete', $league);
@@ -129,30 +107,5 @@ class LeagueController extends Controller
                 'deleted' => true,
             ],
         ]);
-    }
-
-    /**
-     * @param  list<mixed>  $pairs
-     * @return list<array{0: int, 1: int}>
-     */
-    private function parsePairs(array $pairs): array
-    {
-        $parsed = [];
-
-        foreach ($pairs as $pair) {
-            if (! is_array($pair)) {
-                continue;
-            }
-
-            $values = array_values($pair);
-
-            if (count($values) !== 2) {
-                continue;
-            }
-
-            $parsed[] = [(int) $values[0], (int) $values[1]];
-        }
-
-        return $parsed;
     }
 }

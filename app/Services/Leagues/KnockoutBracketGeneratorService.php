@@ -110,7 +110,7 @@ class KnockoutBracketGeneratorService
     }
 
     /**
-     * @return array{id: int, name: string, user_id: int}|null
+     * @return array{id: int|null, name: string, user_id: int|null, participant_id: int|null}|null
      */
     public function resolveChampion(League $league): ?array
     {
@@ -146,19 +146,23 @@ class KnockoutBracketGeneratorService
         }
 
         $winnerSlot = $this->resultValidator->winnerSlot($final);
+        $participantId = $winnerSlot === 1
+            ? $final->player_one_participant_id
+            : $final->player_two_participant_id;
         $userId = $winnerSlot === 1 ? $final->player_one_id : $final->player_two_id;
-
-        if ($userId === null) {
-            return null;
-        }
 
         $name = $winnerSlot === 1
             ? $final->playerOneDisplayName()
             : $final->playerTwoDisplayName();
 
+        if ($participantId === null && $userId === null) {
+            return null;
+        }
+
         return [
-            'id' => $userId,
+            'id' => $participantId ?? $userId,
             'user_id' => $userId,
+            'participant_id' => $participantId,
             'name' => $name,
         ];
     }
@@ -340,6 +344,7 @@ class KnockoutBracketGeneratorService
             $match->player_one_first_name = $participant->user_id === null ? $participant->first_name : null;
             $match->player_one_last_name = $participant->user_id === null ? $participant->last_name : null;
             $match->player_one_partner_id = $participant->partner_user_id;
+            $match->player_one_participant_id = $participant->id;
 
             return;
         }
@@ -348,6 +353,7 @@ class KnockoutBracketGeneratorService
         $match->player_two_first_name = $participant->user_id === null ? $participant->first_name : null;
         $match->player_two_last_name = $participant->user_id === null ? $participant->last_name : null;
         $match->player_two_partner_id = $participant->partner_user_id;
+        $match->player_two_participant_id = $participant->id;
     }
 
     /**
@@ -357,29 +363,65 @@ class KnockoutBracketGeneratorService
      */
     private function collectAdvancers(Collection $roundMatches, Collection $allParticipants): array
     {
-        $byUserId = $allParticipants->keyBy('user_id');
         $advancers = [];
 
         foreach ($roundMatches as $match) {
             if ($match->is_bye) {
-                $userId = $match->player_one_id ?? $match->player_two_id;
+                $participant = $this->participantFromSlot(
+                    $match,
+                    $match->player_one_participant_id !== null || $match->hasPlayerOne() ? 1 : 2,
+                    $allParticipants,
+                );
 
-                if ($userId !== null && $byUserId->has($userId)) {
-                    $advancers[] = $byUserId->get($userId);
+                if ($participant !== null) {
+                    $advancers[] = $participant;
                 }
 
                 continue;
             }
 
             $winnerSlot = $this->resultValidator->winnerSlot($match);
-            $userId = $winnerSlot === 1 ? $match->player_one_id : $match->player_two_id;
+            $participant = $this->participantFromSlot($match, $winnerSlot, $allParticipants);
 
-            if ($userId !== null && $byUserId->has($userId)) {
-                $advancers[] = $byUserId->get($userId);
+            if ($participant !== null) {
+                $advancers[] = $participant;
             }
         }
 
         return $advancers;
+    }
+
+    /**
+     * @param  Collection<int, LeagueParticipant>  $allParticipants
+     */
+    private function participantFromSlot(LeagueMatch $match, int $slot, Collection $allParticipants): ?LeagueParticipant
+    {
+        $participantId = $slot === 1
+            ? $match->player_one_participant_id
+            : $match->player_two_participant_id;
+
+        if ($participantId !== null) {
+            return $allParticipants->first(
+                fn (LeagueParticipant $participant): bool => $participant->id === $participantId,
+            );
+        }
+
+        $userId = $slot === 1 ? $match->player_one_id : $match->player_two_id;
+
+        if ($userId === null) {
+            $firstName = $slot === 1 ? $match->player_one_first_name : $match->player_two_first_name;
+            $lastName = $slot === 1 ? $match->player_one_last_name : $match->player_two_last_name;
+
+            return $allParticipants->first(
+                fn (LeagueParticipant $participant): bool => $participant->user_id === null
+                    && $participant->first_name === $firstName
+                    && $participant->last_name === $lastName,
+            );
+        }
+
+        return $allParticipants->first(
+            fn (LeagueParticipant $participant): bool => $participant->user_id === $userId,
+        );
     }
 
     /**
@@ -390,21 +432,47 @@ class KnockoutBracketGeneratorService
         $ids = [];
 
         foreach ($roundMatches as $match) {
-            if ($match->player_one_id !== null) {
-                $ids[$match->player_one_id] = true;
-            }
+            foreach ([1, 2] as $slot) {
+                $key = $this->playerIdentityKey($match, $slot);
 
-            if ($match->player_two_id !== null) {
-                $ids[$match->player_two_id] = true;
+                if ($key !== null) {
+                    $ids[$key] = true;
+                }
             }
         }
 
         return count($ids);
     }
 
+    private function playerIdentityKey(LeagueMatch $match, int $slot): ?string
+    {
+        $participantId = $slot === 1
+            ? $match->player_one_participant_id
+            : $match->player_two_participant_id;
+
+        if ($participantId !== null) {
+            return 'p:'.$participantId;
+        }
+
+        $userId = $slot === 1 ? $match->player_one_id : $match->player_two_id;
+
+        if ($userId !== null) {
+            return 'u:'.$userId;
+        }
+
+        $firstName = $slot === 1 ? $match->player_one_first_name : $match->player_two_first_name;
+        $lastName = $slot === 1 ? $match->player_one_last_name : $match->player_two_last_name;
+
+        if ($firstName === null && $lastName === null) {
+            return null;
+        }
+
+        return 'g:'.($firstName ?? '').'|'.($lastName ?? '');
+    }
+
     /**
      * @param  Collection<int, LeagueMatch>  $roundMatches
-     * @return array{id: int, name: string, user_id: int}|null
+     * @return array{id: int|null, name: string, user_id: int|null, participant_id: int|null}|null
      */
     private function championFromRoundRobin(Collection $roundMatches): ?array
     {
@@ -415,44 +483,51 @@ class KnockoutBracketGeneratorService
                 continue;
             }
 
-            $playerOneId = $match->player_one_id;
-            $playerTwoId = $match->player_two_id;
+            $playerOneKey = $this->playerIdentityKey($match, 1);
+            $playerTwoKey = $this->playerIdentityKey($match, 2);
 
-            if ($playerOneId === null || $playerTwoId === null) {
+            if ($playerOneKey === null || $playerTwoKey === null) {
                 continue;
             }
 
-            foreach ([$playerOneId, $playerTwoId] as $userId) {
-                if (! isset($stats[$userId])) {
-                    $stats[$userId] = [
+            foreach ([$playerOneKey, $playerTwoKey] as $key) {
+                if (! isset($stats[$key])) {
+                    $stats[$key] = [
                         'wins' => 0,
                         'sets_won' => 0,
                         'sets_lost' => 0,
                         'games_won' => 0,
                         'games_lost' => 0,
                         'name' => '',
+                        'user_id' => null,
+                        'participant_id' => null,
                     ];
                 }
             }
 
+            $stats[$playerOneKey]['user_id'] = $match->player_one_id;
+            $stats[$playerOneKey]['participant_id'] = $match->player_one_participant_id;
+            $stats[$playerTwoKey]['user_id'] = $match->player_two_id;
+            $stats[$playerTwoKey]['participant_id'] = $match->player_two_participant_id;
+
             $winnerSlot = $this->resultValidator->winnerSlot($match);
-            $winnerId = $winnerSlot === 1 ? $playerOneId : $playerTwoId;
-            $stats[$winnerId]['wins']++;
+            $winnerKey = $winnerSlot === 1 ? $playerOneKey : $playerTwoKey;
+            $stats[$winnerKey]['wins']++;
 
-            $setDiff = $this->setCounts($match);
-            $stats[$playerOneId]['sets_won'] += $setDiff['player_one'];
-            $stats[$playerOneId]['sets_lost'] += $setDiff['player_two'];
-            $stats[$playerTwoId]['sets_won'] += $setDiff['player_two'];
-            $stats[$playerTwoId]['sets_lost'] += $setDiff['player_one'];
+            $setDiff = $match->setCounts();
+            $stats[$playerOneKey]['sets_won'] += $setDiff['player_one'];
+            $stats[$playerOneKey]['sets_lost'] += $setDiff['player_two'];
+            $stats[$playerTwoKey]['sets_won'] += $setDiff['player_two'];
+            $stats[$playerTwoKey]['sets_lost'] += $setDiff['player_one'];
 
-            $gameDiff = $this->gameCounts($match);
-            $stats[$playerOneId]['games_won'] += $gameDiff['player_one'];
-            $stats[$playerOneId]['games_lost'] += $gameDiff['player_two'];
-            $stats[$playerTwoId]['games_won'] += $gameDiff['player_two'];
-            $stats[$playerTwoId]['games_lost'] += $gameDiff['player_one'];
+            $gameDiff = $match->gameCounts();
+            $stats[$playerOneKey]['games_won'] += $gameDiff['player_one'];
+            $stats[$playerOneKey]['games_lost'] += $gameDiff['player_two'];
+            $stats[$playerTwoKey]['games_won'] += $gameDiff['player_two'];
+            $stats[$playerTwoKey]['games_lost'] += $gameDiff['player_one'];
 
-            $stats[$playerOneId]['name'] = $match->playerOneDisplayName();
-            $stats[$playerTwoId]['name'] = $match->playerTwoDisplayName();
+            $stats[$playerOneKey]['name'] = $match->playerOneDisplayName();
+            $stats[$playerTwoKey]['name'] = $match->playerTwoDisplayName();
         }
 
         if ($stats === []) {
@@ -486,71 +561,16 @@ class KnockoutBracketGeneratorService
             return $b['games_won'] <=> $a['games_won'];
         });
 
-        $winnerId = (int) array_key_first($stats);
+        $winnerKey = (string) array_key_first($stats);
+        $winner = $stats[$winnerKey];
+        $participantId = $winner['participant_id'] !== null ? (int) $winner['participant_id'] : null;
+        $userId = $winner['user_id'] !== null ? (int) $winner['user_id'] : null;
 
         return [
-            'id' => $winnerId,
-            'user_id' => $winnerId,
-            'name' => $stats[$winnerId]['name'],
+            'id' => $participantId ?? $userId,
+            'user_id' => $userId,
+            'participant_id' => $participantId,
+            'name' => $winner['name'],
         ];
-    }
-
-    /**
-     * @return array{player_one: int, player_two: int}
-     */
-    private function setCounts(LeagueMatch $match): array
-    {
-        $playerOne = 0;
-        $playerTwo = 0;
-
-        $sets = [
-            [$match->set1_player_one_games, $match->set1_player_two_games],
-            [$match->set2_player_one_games, $match->set2_player_two_games],
-            [$match->set3_player_one_games, $match->set3_player_two_games],
-            [$match->set4_player_one_games, $match->set4_player_two_games],
-            [$match->set5_player_one_games, $match->set5_player_two_games],
-        ];
-
-        foreach ($sets as [$one, $two]) {
-            if ($one === null || $two === null) {
-                continue;
-            }
-
-            if ($one > $two) {
-                $playerOne++;
-            } elseif ($two > $one) {
-                $playerTwo++;
-            }
-        }
-
-        return ['player_one' => $playerOne, 'player_two' => $playerTwo];
-    }
-
-    /**
-     * @return array{player_one: int, player_two: int}
-     */
-    private function gameCounts(LeagueMatch $match): array
-    {
-        $playerOne = 0;
-        $playerTwo = 0;
-
-        $sets = [
-            [$match->set1_player_one_games, $match->set1_player_two_games],
-            [$match->set2_player_one_games, $match->set2_player_two_games],
-            [$match->set3_player_one_games, $match->set3_player_two_games],
-            [$match->set4_player_one_games, $match->set4_player_two_games],
-            [$match->set5_player_one_games, $match->set5_player_two_games],
-        ];
-
-        foreach ($sets as [$one, $two]) {
-            if ($one === null || $two === null) {
-                continue;
-            }
-
-            $playerOne += $one;
-            $playerTwo += $two;
-        }
-
-        return ['player_one' => $playerOne, 'player_two' => $playerTwo];
     }
 }

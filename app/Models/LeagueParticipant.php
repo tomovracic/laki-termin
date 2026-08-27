@@ -18,6 +18,7 @@ class LeagueParticipant extends Model
      */
     protected $fillable = [
         'league_id',
+        'league_group_id',
         'user_id',
         'partner_user_id',
         'first_name',
@@ -40,6 +41,11 @@ class LeagueParticipant extends Model
     public function league(): BelongsTo
     {
         return $this->belongsTo(League::class);
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(LeagueGroup::class, 'league_group_id');
     }
 
     public function user(): BelongsTo

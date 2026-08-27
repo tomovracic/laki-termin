@@ -1,8 +1,12 @@
-export type LeagueFormat = 'round_robin' | 'knockout';
+export type LeagueFormat = 'round_robin' | 'knockout' | 'group_knockout';
 
 export type KnockoutDrawMode = 'random' | 'seeded';
 
 export type LeagueParticipantMode = 'singles' | 'doubles';
+
+export type LeagueStage = 'group' | 'knockout';
+
+export type TournamentKind = 'knockout' | 'group_knockout';
 
 export type LeagueSummary = {
     id: number;
@@ -30,6 +34,7 @@ export type LeagueParticipant = {
     id: number;
     user_id: number | null;
     partner_user_id?: number | null;
+    league_group_id?: number | null;
     name: string;
     first_name: string;
     last_name: string;
@@ -38,7 +43,8 @@ export type LeagueParticipant = {
 };
 
 export type LeagueStandingsEntry = {
-    user_id: number;
+    participant_id: number;
+    user_id: number | null;
     first_name: string;
     last_name: string;
     name: string;
@@ -48,10 +54,17 @@ export type LeagueStandingsEntry = {
     sets_won: number;
     sets_lost: number;
     set_difference: number;
+    games_won?: number;
+    games_lost?: number;
+    game_difference?: number;
+    group_id?: number | null;
+    group_name?: string | null;
+    rank_in_group?: number | null;
 };
 
 export type LeagueMatchPlayer = {
     id: number | null;
+    participant_id?: number | null;
     partner_id?: number | null;
     name: string;
     first_name: string;
@@ -62,6 +75,7 @@ export type LeagueMatchPlayer = {
 export type LeagueMatch = {
     id: number;
     round: number;
+    league_group_id?: number | null;
     bracket_round?: number | null;
     bracket_position?: number | null;
     next_match_id?: number | null;
@@ -92,17 +106,23 @@ export type LeagueDetail = {
     rounds: number;
     sets_best_of?: number;
     knockout_draw_mode?: KnockoutDrawMode | null;
+    qualify_per_group?: number | null;
+    best_runners_up?: number | null;
+    current_stage?: LeagueStage | null;
     participants_count: number;
     matches_count: number;
     played_matches_count: number;
     current_bracket_round?: number | null;
     next_round_pending?: boolean;
     can_finish_round?: boolean;
+    can_start_knockout?: boolean;
+    group_stage_complete?: boolean;
 };
 
 export type KnockoutChampion = {
-    id: number;
-    user_id: number;
+    id: number | null;
+    user_id: number | null;
+    participant_id?: number | null;
     name: string;
 };
 
@@ -125,6 +145,24 @@ export type KnockoutParticipantDraft = {
     first_name: string;
     last_name: string;
     display_name: string;
+};
+
+export type LeagueGroupSummary = {
+    id: number;
+    name: string;
+    sort_order: number;
+    standings: LeagueStandingsEntry[];
+};
+
+export type TournamentCreateParticipant = {
+    user_id?: number | null;
+    first_name?: string | null;
+    last_name?: string | null;
+};
+
+export type TournamentCreateGroup = {
+    name: string;
+    participant_indexes: number[];
 };
 
 export type BracketPreviewMatch = {

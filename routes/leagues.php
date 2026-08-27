@@ -9,4 +9,5 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('leagues/{league}/participants', [LeagueController::class, 'storeParticipant'])->name('leagues.participants.store');
     Route::patch('leagues/{league}/matches/{match}/result', [LeagueController::class, 'updateMatchResult'])->name('leagues.matches.result.update');
     Route::post('leagues/{league}/rounds/finish', [LeagueController::class, 'finishRound'])->name('leagues.rounds.finish');
+    Route::post('leagues/{league}/knockout/start', [LeagueController::class, 'startKnockout'])->name('leagues.knockout.start');
 });

@@ -21,7 +21,7 @@ class FinishKnockoutRoundAction
         return $this->database->transaction(function () use ($league): League {
             $league->load(['matches', 'participants.user']);
 
-            if (! $league->isKnockout()) {
+            if (! $league->isInKnockoutStage()) {
                 throw ValidationException::withMessages([
                     'round' => ['Završavanje kola dostupno je samo za knockout turnire.'],
                 ]);

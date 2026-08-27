@@ -2,12 +2,14 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { LeagueMatchResultForm } from '@/components/admin/league-match-result-form';
 import { StatusBanner } from '@/components/admin/status-banner';
+import { GroupStageSection } from '@/components/league/group-stage-section';
 import { LeagueMatchesSection } from '@/components/league/league-matches-section';
 import { LeagueStandingsTable } from '@/components/league/league-standings-table';
 import { TournamentBracket } from '@/components/league/tournament-bracket';
 import type {
     KnockoutChampion,
     LeagueDetail,
+    LeagueGroupSummary,
     LeagueMatch,
     LeagueMatchResultPayload,
     LeagueParticipant,
@@ -36,8 +38,8 @@ import AppLayout from '@/layouts/app-layout';
 import { csrfHeaders } from '@/lib/csrf';
 import { useI18n } from '@/lib/i18n';
 import { dashboard } from '@/routes';
-import type { Auth } from '@/types/auth';
 import type { BreadcrumbItem } from '@/types';
+import type { Auth } from '@/types/auth';
 
 type LeagueShowPageProps = {
     league: LeagueDetail;
@@ -45,6 +47,8 @@ type LeagueShowPageProps = {
     matches: LeagueMatch[];
     participants: LeagueParticipant[];
     available_users: LeagueUserOption[];
+    groups?: LeagueGroupSummary[];
+    qualifiers?: LeagueStandingsEntry[];
     knockout_champion?: KnockoutChampion | null;
     can_manage?: boolean;
 };
@@ -60,6 +64,8 @@ export default function LeagueShowPage({
     matches: initialMatches,
     participants: initialParticipants,
     available_users: initialAvailableUsers,
+    groups: initialGroups = [],
+    qualifiers: initialQualifiers = [],
     knockout_champion: initialChampion = null,
     can_manage: canManage = false,
 }: LeagueShowPageProps) {
@@ -71,24 +77,40 @@ export default function LeagueShowPage({
     const [matches, setMatches] = useState(initialMatches);
     const [participants, setParticipants] = useState(initialParticipants);
     const [availableUsers, setAvailableUsers] = useState(initialAvailableUsers);
+    const [groups, setGroups] = useState(initialGroups);
+    const [qualifiers, setQualifiers] = useState(initialQualifiers);
     const [knockoutChampion, setKnockoutChampion] = useState(initialChampion);
     const [selectedUserId, setSelectedUserId] = useState<string>('');
     const [isAddingParticipant, setIsAddingParticipant] = useState(false);
-    const [selectedMatch, setSelectedMatch] = useState<LeagueMatch | null>(null);
+    const [selectedMatch, setSelectedMatch] = useState<LeagueMatch | null>(
+        null,
+    );
     const [isSubmittingResult, setIsSubmittingResult] = useState(false);
     const [resultErrors, setResultErrors] = useState<string[]>([]);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isFinishingRound, setIsFinishingRound] = useState(false);
+    const [isStartingKnockout, setIsStartingKnockout] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const isKnockout = league.format === 'knockout';
+    const isGroupKnockout = league.format === 'group_knockout';
+    const isTournament = isKnockout || isGroupKnockout;
+    const isKnockoutStage = isKnockout || league.current_stage === 'knockout';
+    const isGroupStage = isGroupKnockout && league.current_stage !== 'knockout';
+    const groupMatches = matches.filter(
+        (match) => match.league_group_id != null,
+    );
+    const knockoutMatches = matches.filter(
+        (match) => match.bracket_round != null,
+    );
     const isDoubles = league.participant_mode === 'doubles';
-    const bestOf = (league.sets_best_of === 1 || league.sets_best_of === 5 ? league.sets_best_of : 3) as
-        | 1
-        | 3
-        | 5;
+    const bestOf = (
+        league.sets_best_of === 1 || league.sets_best_of === 5
+            ? league.sets_best_of
+            : 3
+    ) as 1 | 3 | 5;
     const isParticipant =
         standings.some((entry) => entry.user_id === currentUserId) ||
         participants.some(
@@ -111,6 +133,8 @@ export default function LeagueShowPage({
                 'matches',
                 'participants',
                 'available_users',
+                'groups',
+                'qualifiers',
                 'knockout_champion',
                 'can_manage',
             ],
@@ -121,6 +145,8 @@ export default function LeagueShowPage({
                 setMatches(props.matches);
                 setParticipants(props.participants);
                 setAvailableUsers(props.available_users);
+                setGroups(props.groups ?? []);
+                setQualifiers(props.qualifiers ?? []);
                 setKnockoutChampion(props.knockout_champion ?? null);
             },
         });
@@ -199,7 +225,9 @@ export default function LeagueShowPage({
 
             if (!response.ok) {
                 setResultErrors(
-                    body.errors?.result ?? [body.message ?? t('league_unable_save_result')],
+                    body.errors?.result ?? [
+                        body.message ?? t('league_unable_save_result'),
+                    ],
                 );
                 return;
             }
@@ -220,20 +248,25 @@ export default function LeagueShowPage({
         setErrorMessage(null);
 
         try {
-            const response = await fetch(`/leagues/${league.id}/rounds/finish`, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    ...csrfHeaders(),
+            const response = await fetch(
+                `/leagues/${league.id}/rounds/finish`,
+                {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...csrfHeaders(),
+                    },
                 },
-            });
+            );
 
             const body = (await response.json()) as ApiErrorResponse;
 
             if (!response.ok) {
                 setErrorMessage(
-                    body.errors?.round?.[0] ?? body.message ?? t('tournament_unable_finish_round'),
+                    body.errors?.round?.[0] ??
+                        body.message ??
+                        t('tournament_unable_finish_round'),
                 );
                 return;
             }
@@ -244,6 +277,44 @@ export default function LeagueShowPage({
             setErrorMessage(t('tournament_unable_finish_round'));
         } finally {
             setIsFinishingRound(false);
+        }
+    }
+
+    async function handleStartKnockout() {
+        setIsStartingKnockout(true);
+        setMessage(null);
+        setErrorMessage(null);
+
+        try {
+            const response = await fetch(
+                `/leagues/${league.id}/knockout/start`,
+                {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...csrfHeaders(),
+                    },
+                },
+            );
+
+            const body = (await response.json()) as ApiErrorResponse;
+
+            if (!response.ok) {
+                setErrorMessage(
+                    body.errors?.stage?.[0] ??
+                        body.message ??
+                        t('tournament_unable_start_knockout'),
+                );
+                return;
+            }
+
+            setMessage(t('tournament_knockout_started'));
+            await reloadLeagueData();
+        } catch {
+            setErrorMessage(t('tournament_unable_start_knockout'));
+        } finally {
+            setIsStartingKnockout(false);
         }
     }
 
@@ -287,61 +358,152 @@ export default function LeagueShowPage({
 
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">{league.name}</h1>
+                        <h1 className="text-2xl font-semibold tracking-tight">
+                            {league.name}
+                        </h1>
                         <div className="mt-2 flex flex-wrap gap-2">
                             <Badge variant="outline">
-                                {isKnockout
-                                    ? t('tournament_format_knockout')
-                                    : `${league.participants_count} ${t('league_participants').toLowerCase()}`}
+                                {isGroupKnockout
+                                    ? t('tournament_format_group_knockout')
+                                    : isKnockout
+                                      ? t('tournament_format_knockout')
+                                      : `${league.participants_count} ${t('league_participants').toLowerCase()}`}
                             </Badge>
-                            {isKnockout && (
+                            {isTournament && (
                                 <Badge variant="outline">
-                                    {t('tournament_best_of').replace('{count}', `${bestOf}`)}
+                                    {t('tournament_best_of').replace(
+                                        '{count}',
+                                        `${bestOf}`,
+                                    )}
                                 </Badge>
                             )}
+                            {isGroupKnockout &&
+                                league.current_stage === 'group' && (
+                                    <Badge variant="outline">
+                                        {t('tournament_stage_group')}
+                                    </Badge>
+                                )}
+                            {isGroupKnockout &&
+                                league.current_stage === 'knockout' && (
+                                    <Badge variant="outline">
+                                        {t('tournament_stage_knockout')}
+                                    </Badge>
+                                )}
                             {isDoubles && (
                                 <Badge variant="outline">
                                     {t('tournament_participant_mode_doubles')}
                                 </Badge>
                             )}
-                            {canManage && isKnockout && league.knockout_draw_mode === 'random' && (
-                                <Badge variant="outline">{t('tournament_draw_random')}</Badge>
-                            )}
-                            {canManage && isKnockout && league.knockout_draw_mode === 'seeded' && (
-                                <Badge variant="outline">{t('tournament_draw_seeded')}</Badge>
-                            )}
+                            {canManage &&
+                                isKnockoutStage &&
+                                league.knockout_draw_mode === 'random' && (
+                                    <Badge variant="outline">
+                                        {t('tournament_draw_random')}
+                                    </Badge>
+                                )}
+                            {canManage &&
+                                isKnockoutStage &&
+                                league.knockout_draw_mode === 'seeded' && (
+                                    <Badge variant="outline">
+                                        {t('tournament_draw_seeded')}
+                                    </Badge>
+                                )}
                             {knockoutChampion && (
                                 <Badge variant="default">
-                                    {t('tournament_champion')}: {knockoutChampion.name}
+                                    {t('tournament_champion')}:{' '}
+                                    {knockoutChampion.name}
                                 </Badge>
                             )}
                             <Badge variant="secondary">
-                                {league.played_matches_count}/{league.matches_count}{' '}
+                                {league.played_matches_count}/
+                                {league.matches_count}{' '}
                                 {t('league_matches_played').toLowerCase()}
                             </Badge>
                         </div>
                     </div>
                     {canManage && (
-                        <Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
+                        <Button
+                            variant="destructive"
+                            onClick={() => setIsDeleteDialogOpen(true)}
+                        >
                             {t('league_delete')}
                         </Button>
                     )}
                 </div>
 
-                {isKnockout ? (
+                {isGroupKnockout && (
+                    <GroupStageSection
+                        groups={groups}
+                        qualifiers={qualifiers}
+                        highlightUserId={canManage ? null : currentUserId}
+                        qualifyPerGroup={league.qualify_per_group}
+                        bestRunnersUp={league.best_runners_up}
+                        matches={groupMatches}
+                        currentUserId={currentUserId}
+                        showMatches={!isKnockoutStage}
+                        onEnterResult={
+                            canManage
+                                ? (match) => {
+                                      setResultErrors([]);
+                                      setSelectedMatch(match);
+                                  }
+                                : undefined
+                        }
+                    />
+                )}
+
+                {canManage &&
+                    isGroupStage &&
+                    Boolean(league.can_start_knockout) && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>
+                                    {t('tournament_start_knockout')}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                                <p className="text-sm text-muted-foreground">
+                                    {t('tournament_start_knockout_hint')}
+                                </p>
+                                <Button
+                                    onClick={() => {
+                                        void handleStartKnockout();
+                                    }}
+                                    disabled={isStartingKnockout}
+                                >
+                                    {isStartingKnockout
+                                        ? t('saving')
+                                        : t('tournament_start_knockout')}
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                {isKnockoutStage ? (
                     <Card>
                         <CardHeader>
                             <CardTitle>{t('tournament_bracket')}</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <TournamentBracket
-                                matches={matches}
+                                matches={
+                                    knockoutMatches.length > 0
+                                        ? knockoutMatches
+                                        : matches
+                                }
                                 canEnterResults={canManage}
-                                canFinishRound={canManage && Boolean(league.can_finish_round)}
+                                canFinishRound={
+                                    canManage &&
+                                    Boolean(league.can_finish_round)
+                                }
                                 isFinishingRound={isFinishingRound}
                                 currentUserId={currentUserId}
-                                currentBracketRound={league.current_bracket_round ?? null}
-                                nextRoundPending={Boolean(league.next_round_pending)}
+                                currentBracketRound={
+                                    league.current_bracket_round ?? null
+                                }
+                                nextRoundPending={Boolean(
+                                    league.next_round_pending,
+                                )}
                                 championName={knockoutChampion?.name ?? null}
                                 onFinishRound={
                                     canManage
@@ -361,7 +523,7 @@ export default function LeagueShowPage({
                             />
                         </CardContent>
                     </Card>
-                ) : (
+                ) : !isGroupKnockout ? (
                     <Card>
                         <CardHeader>
                             <CardTitle>{t('league_standings')}</CardTitle>
@@ -369,13 +531,15 @@ export default function LeagueShowPage({
                         <CardContent>
                             <LeagueStandingsTable
                                 standings={standings}
-                                highlightUserId={canManage ? null : currentUserId}
+                                highlightUserId={
+                                    canManage ? null : currentUserId
+                                }
                             />
                         </CardContent>
                     </Card>
-                )}
+                ) : null}
 
-                {canManage && (
+                {canManage && !isGroupKnockout && (
                     <Card>
                         <CardHeader>
                             <CardTitle>{t('league_participants')}</CardTitle>
@@ -383,14 +547,19 @@ export default function LeagueShowPage({
                         <CardContent className="space-y-4">
                             <div className="flex flex-wrap gap-2">
                                 {participants.map((participant) => (
-                                    <Badge key={participant.id} variant="outline">
-                                        {participant.seed ? `${participant.seed}. ` : ''}
+                                    <Badge
+                                        key={participant.id}
+                                        variant="outline"
+                                    >
+                                        {participant.seed
+                                            ? `${participant.seed}. `
+                                            : ''}
                                         {participant.name}
                                     </Badge>
                                 ))}
                             </div>
 
-                            {!isKnockout && availableUsers.length > 0 && (
+                            {!isTournament && availableUsers.length > 0 && (
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                                     <div className="flex-1 space-y-2">
                                         <Select
@@ -399,13 +568,19 @@ export default function LeagueShowPage({
                                         >
                                             <SelectTrigger>
                                                 <SelectValue
-                                                    placeholder={t('league_add_participant')}
+                                                    placeholder={t(
+                                                        'league_add_participant',
+                                                    )}
                                                 />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {availableUsers.map((user) => (
-                                                    <SelectItem key={user.id} value={`${user.id}`}>
-                                                        {user.name} ({user.email})
+                                                    <SelectItem
+                                                        key={user.id}
+                                                        value={`${user.id}`}
+                                                    >
+                                                        {user.name} (
+                                                        {user.email})
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -413,7 +588,10 @@ export default function LeagueShowPage({
                                     </div>
                                     <Button
                                         onClick={handleAddParticipant}
-                                        disabled={isAddingParticipant || selectedUserId === ''}
+                                        disabled={
+                                            isAddingParticipant ||
+                                            selectedUserId === ''
+                                        }
                                     >
                                         {isAddingParticipant
                                             ? t('saving')
@@ -425,7 +603,7 @@ export default function LeagueShowPage({
                     </Card>
                 )}
 
-                {!isKnockout && (
+                {!isKnockoutStage && !isGroupKnockout && (
                     <LeagueMatchesSection
                         matches={matches}
                         standings={standings}
@@ -446,7 +624,9 @@ export default function LeagueShowPage({
                     <>
                         <Dialog
                             open={selectedMatch !== null}
-                            onOpenChange={(open) => !open && setSelectedMatch(null)}
+                            onOpenChange={(open) =>
+                                !open && setSelectedMatch(null)
+                            }
                         >
                             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                                 <DialogHeader>
@@ -469,10 +649,15 @@ export default function LeagueShowPage({
                             </DialogContent>
                         </Dialog>
 
-                        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                        <Dialog
+                            open={isDeleteDialogOpen}
+                            onOpenChange={setIsDeleteDialogOpen}
+                        >
                             <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>{t('league_delete')}</DialogTitle>
+                                    <DialogTitle>
+                                        {t('league_delete')}
+                                    </DialogTitle>
                                     <DialogDescription>
                                         {t('league_confirm_delete')}
                                     </DialogDescription>
@@ -481,7 +666,9 @@ export default function LeagueShowPage({
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        onClick={() => setIsDeleteDialogOpen(false)}
+                                        onClick={() =>
+                                            setIsDeleteDialogOpen(false)
+                                        }
                                         disabled={isDeleting}
                                     >
                                         {t('cancel')}
@@ -494,7 +681,9 @@ export default function LeagueShowPage({
                                             void handleDeleteLeague();
                                         }}
                                     >
-                                        {isDeleting ? t('saving') : t('league_delete')}
+                                        {isDeleting
+                                            ? t('saving')
+                                            : t('league_delete')}
                                     </Button>
                                 </DialogFooter>
                             </DialogContent>

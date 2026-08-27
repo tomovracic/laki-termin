@@ -8,4 +8,5 @@ enum LeagueFormat: string
 {
     case RoundRobin = 'round_robin';
     case Knockout = 'knockout';
+    case GroupKnockout = 'group_knockout';
 }

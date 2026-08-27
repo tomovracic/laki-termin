@@ -18,6 +18,7 @@ class LeagueMatchResource extends JsonResource
         return [
             'id' => $this->id,
             'league_id' => $this->league_id,
+            'league_group_id' => $this->league_group_id,
             'round' => $this->round,
             'bracket_round' => $this->bracket_round,
             'bracket_position' => $this->bracket_position,

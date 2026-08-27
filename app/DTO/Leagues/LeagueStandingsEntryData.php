@@ -7,7 +7,8 @@ namespace App\DTO\Leagues;
 readonly class LeagueStandingsEntryData
 {
     public function __construct(
-        public int $userId,
+        public int $participantId,
+        public ?int $userId,
         public string $firstName,
         public string $lastName,
         public string $name,
@@ -17,5 +18,11 @@ readonly class LeagueStandingsEntryData
         public int $setsWon,
         public int $setsLost,
         public int $setDifference,
+        public int $gamesWon = 0,
+        public int $gamesLost = 0,
+        public int $gameDifference = 0,
+        public ?int $groupId = null,
+        public ?string $groupName = null,
+        public ?int $rankInGroup = null,
     ) {}
 }

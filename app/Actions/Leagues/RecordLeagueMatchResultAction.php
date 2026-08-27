@@ -57,7 +57,13 @@ class RecordLeagueMatchResultAction
                 ]);
             }
 
-            if ($match->league?->isKnockout()) {
+            if ($match->league?->isGroupKnockout() && $match->league->isInKnockoutStage() && $match->league_group_id !== null) {
+                throw ValidationException::withMessages([
+                    'result' => ['Rezultat grupnog meca se ne moze mijenjati nakon pokretanja knockouta.'],
+                ]);
+            }
+
+            if ($match->league?->isInKnockoutStage() && $match->bracket_round !== null) {
                 $this->assertKnockoutResultEditable($match);
             }
 

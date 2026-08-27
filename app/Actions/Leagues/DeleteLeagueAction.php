@@ -19,6 +19,7 @@ class DeleteLeagueAction
             $league->matches()->update(['next_match_id' => null]);
             $league->matches()->delete();
             $league->participants()->delete();
+            $league->groups()->delete();
             $league->delete();
         });
     }

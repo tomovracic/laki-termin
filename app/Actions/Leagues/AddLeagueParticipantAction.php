@@ -23,9 +23,9 @@ class AddLeagueParticipantAction
     {
         $league = League::query()->findOrFail($data->leagueId);
 
-        if ($league->isKnockout()) {
+        if ($league->isKnockout() || $league->isGroupKnockout()) {
             throw ValidationException::withMessages([
-                'user_id' => ['Sudionici se ne mogu dodavati u knockout turnir nakon kreiranja.'],
+                'user_id' => ['Sudionici se ne mogu dodavati u turnir nakon kreiranja.'],
             ]);
         }
 

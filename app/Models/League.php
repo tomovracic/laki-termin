@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\KnockoutDrawMode;
 use App\Enums\LeagueFormat;
 use App\Enums\LeagueParticipantMode;
+use App\Enums\LeagueStage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,6 +28,9 @@ class League extends Model
         'rounds',
         'sets_best_of',
         'knockout_draw_mode',
+        'qualify_per_group',
+        'best_runners_up',
+        'current_stage',
         'created_by',
     ];
 
@@ -41,12 +45,36 @@ class League extends Model
             'sets_best_of' => 'integer',
             'rounds' => 'integer',
             'knockout_draw_mode' => KnockoutDrawMode::class,
+            'qualify_per_group' => 'integer',
+            'best_runners_up' => 'integer',
+            'current_stage' => LeagueStage::class,
         ];
     }
 
     public function isKnockout(): bool
     {
         return $this->format === LeagueFormat::Knockout;
+    }
+
+    public function isGroupKnockout(): bool
+    {
+        return $this->format === LeagueFormat::GroupKnockout;
+    }
+
+    public function isGroupStage(): bool
+    {
+        return $this->format === LeagueFormat::GroupKnockout
+            && $this->current_stage === LeagueStage::Group;
+    }
+
+    public function isInKnockoutStage(): bool
+    {
+        if ($this->format === LeagueFormat::Knockout) {
+            return true;
+        }
+
+        return $this->format === LeagueFormat::GroupKnockout
+            && $this->current_stage === LeagueStage::Knockout;
     }
 
     public function isDoubles(): bool
@@ -57,6 +85,11 @@ class League extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function groups(): HasMany
+    {
+        return $this->hasMany(LeagueGroup::class);
     }
 
     public function participants(): HasMany

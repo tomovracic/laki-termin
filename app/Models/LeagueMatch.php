@@ -20,14 +20,17 @@ class LeagueMatch extends Model
      */
     protected $fillable = [
         'league_id',
+        'league_group_id',
         'player_one_id',
         'player_one_first_name',
         'player_one_last_name',
         'player_one_partner_id',
+        'player_one_participant_id',
         'player_two_id',
         'player_two_first_name',
         'player_two_last_name',
         'player_two_partner_id',
+        'player_two_participant_id',
         'round',
         'bracket_round',
         'bracket_position',
@@ -67,6 +70,21 @@ class LeagueMatch extends Model
     public function league(): BelongsTo
     {
         return $this->belongsTo(League::class);
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(LeagueGroup::class, 'league_group_id');
+    }
+
+    public function playerOneParticipant(): BelongsTo
+    {
+        return $this->belongsTo(LeagueParticipant::class, 'player_one_participant_id');
+    }
+
+    public function playerTwoParticipant(): BelongsTo
+    {
+        return $this->belongsTo(LeagueParticipant::class, 'player_two_participant_id');
     }
 
     public function playerOne(): BelongsTo
@@ -182,6 +200,73 @@ class LeagueMatch extends Model
                 ->orWhere('player_one_partner_id', $userId)
                 ->orWhere('player_two_partner_id', $userId);
         });
+    }
+
+    /**
+     * @return array{player_one: int, player_two: int}
+     */
+    public function setCounts(): array
+    {
+        return $this->scoreCounts(true);
+    }
+
+    /**
+     * @return array{player_one: int, player_two: int}
+     */
+    public function gameCounts(): array
+    {
+        return $this->scoreCounts(false);
+    }
+
+    public function winnerParticipantId(): ?int
+    {
+        $setCounts = $this->setCounts();
+
+        if ($setCounts['player_one'] === $setCounts['player_two']) {
+            return null;
+        }
+
+        return $setCounts['player_one'] > $setCounts['player_two']
+            ? $this->player_one_participant_id
+            : $this->player_two_participant_id;
+    }
+
+    /**
+     * @return array{player_one: int, player_two: int}
+     */
+    private function scoreCounts(bool $sets): array
+    {
+        $playerOne = 0;
+        $playerTwo = 0;
+
+        $scoreSets = [
+            [$this->set1_player_one_games, $this->set1_player_two_games],
+            [$this->set2_player_one_games, $this->set2_player_two_games],
+            [$this->set3_player_one_games, $this->set3_player_two_games],
+            [$this->set4_player_one_games, $this->set4_player_two_games],
+            [$this->set5_player_one_games, $this->set5_player_two_games],
+        ];
+
+        foreach ($scoreSets as [$one, $two]) {
+            if ($one === null || $two === null) {
+                continue;
+            }
+
+            if ($sets) {
+                if ($one > $two) {
+                    $playerOne++;
+                } elseif ($two > $one) {
+                    $playerTwo++;
+                }
+
+                continue;
+            }
+
+            $playerOne += $one;
+            $playerTwo += $two;
+        }
+
+        return ['player_one' => $playerOne, 'player_two' => $playerTwo];
     }
 
     private function appendPartnerName(string $name, ?string $partnerName): string
