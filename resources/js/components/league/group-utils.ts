@@ -124,6 +124,22 @@ export function distributeSnake(
     return groups;
 }
 
+export function randomizeGroupAssignments(
+    playerCount: number,
+    groupCount: number,
+): number[][] {
+    const order = Array.from({ length: playerCount }, (_, index) => index);
+
+    for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+    }
+
+    return distributeSnake(playerCount, groupCount).map((slots) =>
+        slots.map((slot) => order[slot] ?? slot),
+    );
+}
+
 export function summarizeQualification(
     groupSizes: number[],
     qualifyPerGroup: 1 | 2,

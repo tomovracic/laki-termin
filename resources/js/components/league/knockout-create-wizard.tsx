@@ -1,3 +1,4 @@
+import { Shuffle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import { buildBracketPreview } from '@/components/league/bracket-utils';
@@ -8,6 +9,7 @@ import {
     groupLetters,
     groupPairings,
     minPlayersPerGroup,
+    randomizeGroupAssignments,
     summarizeQualification,
 } from '@/components/league/group-utils';
 import {
@@ -271,6 +273,12 @@ export function TournamentCreateWizard({
 
             return next;
         });
+    }
+
+    function randomizeGroups(): void {
+        setGroupAssignments(
+            randomizeGroupAssignments(participantCount, groupCount),
+        );
     }
 
     function canGoNext(): boolean {
@@ -559,6 +567,19 @@ export function TournamentCreateWizard({
                         </p>
                     )}
                     <InputError message={errors.groups?.[0]} />
+
+                    <div className="flex justify-end">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={participantCount < 2 || groupCount < 2}
+                            onClick={randomizeGroups}
+                        >
+                            <Shuffle className="mr-1 size-4" />
+                            {t('tournament_randomize_groups')}
+                        </Button>
+                    </div>
 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         {groupAssignments.map((indexes, groupIndex) => (
