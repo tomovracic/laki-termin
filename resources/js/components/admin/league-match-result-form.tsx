@@ -1,12 +1,15 @@
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import type {
+    LeagueMatch,
+    LeagueMatchResultPayload,
+} from '@/components/league/types';
 import {
     buildScorePayload,
     emptyMatchScoreValues,
     MatchScoreInputs,
-    type MatchScoreValues,
 } from '@/components/match-history/match-score-inputs';
-import type { LeagueMatch, LeagueMatchResultPayload } from '@/components/league/types';
+import type { MatchScoreValues } from '@/components/match-history/match-score-inputs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +22,7 @@ type LeagueMatchResultFormProps = {
     isSubmitting: boolean;
     errors?: string[];
     bestOf?: 1 | 3 | 5;
+    roundLabel?: string;
 };
 
 const playerOneNameClassName =
@@ -53,9 +57,12 @@ export function LeagueMatchResultForm({
     isSubmitting,
     errors = [],
     bestOf = 3,
+    roundLabel,
 }: LeagueMatchResultFormProps) {
     const { t } = useI18n();
-    const [scoreValues, setScoreValues] = useState<MatchScoreValues>(() => buildInitialScoreValues(match));
+    const [scoreValues, setScoreValues] = useState<MatchScoreValues>(() =>
+        buildInitialScoreValues(match),
+    );
 
     useEffect(() => {
         setScoreValues(buildInitialScoreValues(match));
@@ -75,10 +82,12 @@ export function LeagueMatchResultForm({
                         readOnly
                         tabIndex={-1}
                         className={playerOneNameClassName}
-                        aria-label={match.player_one?.name ?? t('tournament_tba')}
+                        aria-label={
+                            match.player_one?.name ?? t('tournament_tba')
+                        }
                     />
 
-                    <span className="shrink-0 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    <span className="shrink-0 text-sm font-semibold tracking-wide text-muted-foreground uppercase">
                         {t('league_vs')}
                     </span>
 
@@ -87,12 +96,18 @@ export function LeagueMatchResultForm({
                         readOnly
                         tabIndex={-1}
                         className={playerTwoNameClassName}
-                        aria-label={match.player_two?.name ?? t('tournament_tba')}
+                        aria-label={
+                            match.player_two?.name ?? t('tournament_tba')
+                        }
                     />
                 </div>
 
-                <Badge variant="outline" className="w-fit font-normal text-muted-foreground">
-                    {t('league_round')} {match.bracket_round ?? match.round}
+                <Badge
+                    variant="outline"
+                    className="w-fit font-normal text-muted-foreground"
+                >
+                    {roundLabel ??
+                        `${t('league_round')} ${match.bracket_round ?? match.round}`}
                 </Badge>
             </div>
 
@@ -104,7 +119,12 @@ export function LeagueMatchResultForm({
             />
 
             <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onCancel}
+                    disabled={isSubmitting}
+                >
                     {t('cancel')}
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>

@@ -1,17 +1,23 @@
-import type { BracketPreviewMatch, LeagueMatch, LeagueMatchPlayer } from '@/components/league/types';
+import { CalendarDays, ChevronLeft, ChevronRight, Trophy } from 'lucide-react';
+import { useState } from 'react';
+import { knockoutRoundNameKey } from '@/components/league/bracket-utils';
+import type { KnockoutRoundNameKey } from '@/components/league/bracket-utils';
+import type {
+    BracketPreviewMatch,
+    LeagueMatch,
+    LeagueMatchPlayer,
+} from '@/components/league/types';
 import {
     formatPlayedAtDate,
     getSetScores,
     MatchScoreboard,
-    type MatchDisplayPlayer,
 } from '@/components/match/match-scoreboard';
+import type { MatchDisplayPlayer } from '@/components/match/match-scoreboard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { CalendarDays, ChevronLeft, ChevronRight, Trophy } from 'lucide-react';
-import { useState } from 'react';
 
 type TournamentBracketProps = {
     matches?: LeagueMatch[];
@@ -27,7 +33,25 @@ type TournamentBracketProps = {
     championName?: string | null;
 };
 
-function playerLabel(name: string | null | undefined, byeLabel: string, tbaLabel: string): string {
+function roundLabelForMatches(
+    matches: Array<LeagueMatch | BracketPreviewMatch>,
+    t: (key: KnockoutRoundNameKey | 'league_round') => string,
+    fallbackRound: number,
+): string {
+    const nameKey = knockoutRoundNameKey(matches);
+
+    if (nameKey !== null) {
+        return t(nameKey);
+    }
+
+    return `${t('league_round')} ${fallbackRound}`;
+}
+
+function playerLabel(
+    name: string | null | undefined,
+    byeLabel: string,
+    tbaLabel: string,
+): string {
     if (name === null || name === undefined || name.trim() === '') {
         return tbaLabel;
     }
@@ -62,30 +86,41 @@ export function TournamentBracket({
     const { t } = useI18n();
 
     if (previewMatches && previewMatches.length > 0) {
+        const previewRoundLabel = roundLabelForMatches(previewMatches, t, 1);
+
         return (
             <div className="space-y-3">
-                <h3 className="text-sm font-medium">{t('tournament_bracket_preview')}</h3>
+                <h3 className="text-sm font-medium">
+                    {t('tournament_bracket_preview')}
+                </h3>
                 <div className="grid gap-2 sm:grid-cols-2">
                     {previewMatches.map((match) => (
                         <div
                             key={`preview-${match.position}`}
                             className={cn(
                                 'rounded-md border p-3 text-sm',
-                                (match.is_bye || match.is_empty) && 'border-dashed bg-muted/30',
+                                (match.is_bye || match.is_empty) &&
+                                    'border-dashed bg-muted/30',
                             )}
                         >
                             <div className="mb-2 flex items-center justify-between gap-2">
                                 <span className="text-xs text-muted-foreground">
-                                    {t('league_round')} 1 · #{match.position + 1}
+                                    {previewRoundLabel} · #{match.position + 1}
                                 </span>
                                 {match.is_empty ? (
-                                    <Badge variant="outline">{t('tournament_empty_slot')}</Badge>
+                                    <Badge variant="outline">
+                                        {t('tournament_empty_slot')}
+                                    </Badge>
                                 ) : match.is_bye ? (
-                                    <Badge variant="outline">{t('tournament_bye')}</Badge>
+                                    <Badge variant="outline">
+                                        {t('tournament_bye')}
+                                    </Badge>
                                 ) : null}
                             </div>
                             {match.is_empty ? (
-                                <p className="text-muted-foreground">{t('tournament_empty_slot')}</p>
+                                <p className="text-muted-foreground">
+                                    {t('tournament_empty_slot')}
+                                </p>
                             ) : (
                                 <div className="space-y-1">
                                     <p className="font-medium">
@@ -95,7 +130,9 @@ export function TournamentBracket({
                                             t('tournament_tba'),
                                         )}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">{t('league_vs')}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {t('league_vs')}
+                                    </p>
                                     <p className="font-medium">
                                         {match.is_bye
                                             ? t('tournament_bye')
@@ -115,18 +152,25 @@ export function TournamentBracket({
     }
 
     if (!matches || matches.length === 0) {
-        return <p className="text-sm text-muted-foreground">{t('tournament_no_bracket')}</p>;
+        return (
+            <p className="text-sm text-muted-foreground">
+                {t('tournament_no_bracket')}
+            </p>
+        );
     }
 
-    const rounds = [...new Set(matches.map((match) => match.bracket_round ?? match.round))].sort(
-        (a, b) => a - b,
-    );
+    const rounds = [
+        ...new Set(matches.map((match) => match.bracket_round ?? match.round)),
+    ].sort((a, b) => a - b);
 
     return (
         <div className="space-y-3">
             {championName !== null && championName !== '' && (
                 <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5">
-                    <Trophy className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+                    <Trophy
+                        className="size-4 shrink-0 text-amber-600 dark:text-amber-400"
+                        aria-hidden
+                    />
                     <p className="text-sm font-semibold">
                         {t('tournament_champion')}: {championName}
                     </p>
@@ -134,7 +178,9 @@ export function TournamentBracket({
             )}
             {canFinishRound && onFinishRound && (
                 <div className="flex flex-col gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-muted-foreground">{t('tournament_finish_round_hint')}</p>
+                    <p className="text-sm text-muted-foreground">
+                        {t('tournament_finish_round_hint')}
+                    </p>
                     <Button
                         type="button"
                         size="sm"
@@ -142,15 +188,21 @@ export function TournamentBracket({
                         onClick={onFinishRound}
                         className="shrink-0 self-start sm:self-auto"
                     >
-                        {isFinishingRound ? t('saving') : t('tournament_finish_round')}
+                        {isFinishingRound
+                            ? t('saving')
+                            : t('tournament_finish_round')}
                     </Button>
                 </div>
             )}
             {canFinishRound && !onFinishRound && (
-                <p className="text-sm text-muted-foreground">{t('tournament_awaiting_finish_round')}</p>
+                <p className="text-sm text-muted-foreground">
+                    {t('tournament_awaiting_finish_round')}
+                </p>
             )}
             {!canFinishRound && nextRoundPending && (
-                <p className="text-sm text-muted-foreground">{t('tournament_next_round_pending')}</p>
+                <p className="text-sm text-muted-foreground">
+                    {t('tournament_next_round_pending')}
+                </p>
             )}
             <BracketCarousel
                 rounds={rounds}
@@ -166,6 +218,7 @@ export function TournamentBracket({
 
 type MatchCardProps = {
     match: LeagueMatch;
+    roundLabel: string;
     canEnterResults: boolean;
     currentUserId: number | null;
     currentBracketRound: number | null;
@@ -184,12 +237,13 @@ function matchInvolvesUser(match: LeagueMatch, userId: number): boolean {
 function BracketMatchMetadata({
     match,
     locale,
-    t,
+    roundLabel,
 }: {
     match: LeagueMatch;
     locale: string;
-    t: (key: string) => string;
+    roundLabel: string;
 }) {
+    const { t } = useI18n();
     const playedAtDate = formatPlayedAtDate(match.played_at ?? null, locale);
 
     return (
@@ -199,13 +253,17 @@ function BracketMatchMetadata({
             ) : match.is_bye ? (
                 <Badge variant="outline">{t('tournament_bye')}</Badge>
             ) : (
-                <Badge variant={match.status === 'played' ? 'default' : 'secondary'}>
-                    {match.status === 'played' ? t('league_played') : t('league_pending')}
+                <Badge
+                    variant={
+                        match.status === 'played' ? 'default' : 'secondary'
+                    }
+                >
+                    {match.status === 'played'
+                        ? t('league_played')
+                        : t('league_pending')}
                 </Badge>
             )}
-            <Badge variant="outline">
-                {t('league_round')} {match.bracket_round ?? match.round}
-            </Badge>
+            <Badge variant="outline">{roundLabel}</Badge>
             {playedAtDate !== null ? (
                 <Badge
                     variant="outline"
@@ -215,7 +273,10 @@ function BracketMatchMetadata({
                     <span>{playedAtDate}</span>
                 </Badge>
             ) : (
-                <Badge variant="outline" className="font-normal text-muted-foreground">
+                <Badge
+                    variant="outline"
+                    className="font-normal text-muted-foreground"
+                >
                     —
                 </Badge>
             )}
@@ -225,6 +286,7 @@ function BracketMatchMetadata({
 
 function MatchCard({
     match,
+    roundLabel,
     canEnterResults,
     currentUserId,
     currentBracketRound,
@@ -263,7 +325,9 @@ function MatchCard({
             <CardContent className="space-y-2 p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     {match.is_empty ? (
-                        <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+                        <p className="text-sm text-muted-foreground">
+                            {emptyLabel}
+                        </p>
                     ) : (
                         <MatchScoreboard
                             playerOne={toDisplayPlayer(
@@ -293,7 +357,11 @@ function MatchCard({
                         </div>
                     )}
                 </div>
-                <BracketMatchMetadata match={match} locale={locale} t={t} />
+                <BracketMatchMetadata
+                    match={match}
+                    locale={locale}
+                    roundLabel={roundLabel}
+                />
             </CardContent>
         </Card>
     );
@@ -317,40 +385,22 @@ function BracketCarousel({
     onEnterResult,
 }: BracketCarouselProps) {
     const { t } = useI18n();
-    const [activeIndex, setActiveIndex] = useState(() => Math.max(0, rounds.length - 1));
+    const [activeIndex, setActiveIndex] = useState(() =>
+        Math.max(0, rounds.length - 1),
+    );
 
     const currentRound = rounds[activeIndex];
     const roundMatches = matches
-        .filter((match) => (match.bracket_round ?? match.round) === currentRound)
-        .sort((a, b) => (a.bracket_position ?? 0) - (b.bracket_position ?? 0) || a.id - b.id);
-
-    const roundLabel = (() => {
-        const roundMatches = matches.filter(
+        .filter(
             (match) => (match.bracket_round ?? match.round) === currentRound,
+        )
+        .sort(
+            (a, b) =>
+                (a.bracket_position ?? 0) - (b.bracket_position ?? 0) ||
+                a.id - b.id,
         );
-        const competitive = roundMatches.filter((match) => !match.is_bye && !match.is_empty);
-        const playerIds = new Set<number>();
 
-        for (const match of competitive) {
-            if (match.player_one?.id != null) {
-                playerIds.add(match.player_one.id);
-            }
-
-            if (match.player_two?.id != null) {
-                playerIds.add(match.player_two.id);
-            }
-        }
-
-        if (competitive.length === 3 && playerIds.size === 3) {
-            return t('tournament_final_three');
-        }
-
-        if (competitive.length === 1 && playerIds.size === 2 && activeIndex === rounds.length - 1) {
-            return t('tournament_final');
-        }
-
-        return `${t('league_round')} ${currentRound}`;
-    })();
+    const roundLabel = roundLabelForMatches(roundMatches, t, currentRound ?? 1);
 
     return (
         <div className="space-y-4">
@@ -369,18 +419,32 @@ function BracketCarousel({
                 <div className="flex flex-col items-center gap-1">
                     <span className="text-sm font-semibold">{roundLabel}</span>
                     <div className="flex gap-1">
-                        {rounds.map((_, i) => (
-                            <button
-                                key={i}
-                                type="button"
-                                aria-label={`${t('league_round')} ${i + 1}`}
-                                onClick={() => setActiveIndex(i)}
-                                className={cn(
-                                    'size-2 rounded-full transition-colors',
-                                    i === activeIndex ? 'bg-primary' : 'bg-muted-foreground/30',
-                                )}
-                            />
-                        ))}
+                        {rounds.map((round, i) => {
+                            const matchesInRound = matches.filter(
+                                (match) =>
+                                    (match.bracket_round ?? match.round) ===
+                                    round,
+                            );
+
+                            return (
+                                <button
+                                    key={round}
+                                    type="button"
+                                    aria-label={roundLabelForMatches(
+                                        matchesInRound,
+                                        t,
+                                        round,
+                                    )}
+                                    onClick={() => setActiveIndex(i)}
+                                    className={cn(
+                                        'size-2 rounded-full transition-colors',
+                                        i === activeIndex
+                                            ? 'bg-primary'
+                                            : 'bg-muted-foreground/30',
+                                    )}
+                                />
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -388,7 +452,11 @@ function BracketCarousel({
                     type="button"
                     variant="outline"
                     size="icon"
-                    onClick={() => setActiveIndex((i) => Math.min(rounds.length - 1, i + 1))}
+                    onClick={() =>
+                        setActiveIndex((i) =>
+                            Math.min(rounds.length - 1, i + 1),
+                        )
+                    }
                     disabled={activeIndex === rounds.length - 1}
                     aria-label={t('tournament_next_round')}
                 >
@@ -401,6 +469,7 @@ function BracketCarousel({
                     <MatchCard
                         key={match.id}
                         match={match}
+                        roundLabel={roundLabel}
                         canEnterResults={canEnterResults}
                         currentUserId={currentUserId}
                         currentBracketRound={currentBracketRound}

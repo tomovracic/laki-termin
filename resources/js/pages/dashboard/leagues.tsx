@@ -275,7 +275,7 @@ export default function LeaguesPage({
                             <DialogTrigger asChild>
                                 <Button>{t('league_create')}</Button>
                             </DialogTrigger>
-                            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+                            <DialogContent className="max-h-[90vh] overflow-y-auto p-4 sm:max-w-3xl sm:p-6">
                                 <DialogHeader>
                                     <DialogTitle>
                                         {t('league_create')}

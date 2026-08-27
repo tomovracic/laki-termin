@@ -12,6 +12,7 @@ use App\Models\LeagueMatch;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Leagues\GroupQualificationService;
+use Inertia\Testing\AssertableInertia as Assert;
 
 function assignGroupKnockoutAdmin(User $user): void
 {
@@ -452,4 +453,51 @@ test('admin can create group knockout doubles with mixed guest pairs', function 
 
     $match = $league->matches()->first();
     expect($match->playerOneDisplayName())->toContain(' / ');
+});
+
+test('league page still includes group standings and results after knockout starts', function () {
+    $admin = User::factory()->create();
+    assignGroupKnockoutAdmin($admin);
+    $users = User::factory()->count(6)->create();
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Rezultati skupina',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: [],
+        format: LeagueFormat::GroupKnockout,
+        setsBestOf: 3,
+        participants: groupKnockoutParticipants($users->all()),
+        qualifyPerGroup: 1,
+        bestRunnersUp: 1,
+        groups: threeGroupPayload(),
+    ));
+
+    $participants = $league->participants()->orderBy('id')->get();
+    $ids = $participants->pluck('id')->all();
+
+    playStandardGroup($admin, $league, $ids[0], $ids[1], $ids[2]);
+    playStandardGroup($admin, $league, $ids[3], $ids[4], $ids[5]);
+    playStandardGroup($admin, $league, $ids[6], $ids[7], $ids[8], 6, 0);
+
+    $this->actingAs($admin)
+        ->postJson(route('leagues.knockout.start', $league))
+        ->assertSuccessful();
+
+    $this->actingAs($admin)
+        ->get(route('dashboard.leagues.show', $league))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('dashboard/leagues/show')
+            ->where('league.current_stage', 'knockout')
+            ->has('groups', 3)
+            ->has('groups.0.standings')
+            ->has('qualifiers', 4)
+            ->where(
+                'matches',
+                fn ($matches): bool => $matches->contains(
+                    fn (array $match): bool => ($match['league_group_id'] ?? null) !== null,
+                ),
+            )
+        );
 });

@@ -431,7 +431,9 @@ const translations = {
         league_wins: 'Pobjede',
         league_losses: 'Porazi',
         league_set_difference: 'Razlika setova',
+        league_set_difference_short: 'Setovi',
         league_game_difference: 'Razlika gemova',
+        league_game_difference_short: 'Gemovi',
         league_my_matches: 'Moji mecevi',
         league_all_matches: 'Svi mecevi',
         league_filter_by_player: 'Filtriraj po igracu',
@@ -467,6 +469,11 @@ const translations = {
         tournament_tba: 'TBD',
         tournament_final: 'Finale',
         tournament_final_three: 'Finalna trojka (svako sa svakim)',
+        tournament_semifinal: 'Polufinale',
+        tournament_quarterfinal: 'Četvrtfinale',
+        tournament_round_of_16: 'Osmina finala',
+        tournament_round_of_32: 'Šesnaestina finala',
+        tournament_round_of_64: 'Tridesetdvojina finala',
         tournament_prev_round: 'Prethodno kolo',
         tournament_next_round: 'Sljedeće kolo',
         tournament_next_round_pending:
@@ -530,6 +537,7 @@ const translations = {
         tournament_knockout_min_players:
             'U knockout moraju ici najmanje dva igraca.',
         tournament_group: 'Skupina',
+        tournament_group_results: 'Rezultati skupina',
         tournament_qualifiers: 'Prolaznici',
         tournament_start_knockout: 'Pokreni knockout',
         tournament_start_knockout_hint:
@@ -1030,7 +1038,9 @@ const translations = {
         league_wins: 'Wins',
         league_losses: 'Losses',
         league_set_difference: 'Set difference',
+        league_set_difference_short: 'Sets',
         league_game_difference: 'Game difference',
+        league_game_difference_short: 'Games',
         league_my_matches: 'My matches',
         league_all_matches: 'All matches',
         league_filter_by_player: 'Filter by player',
@@ -1066,6 +1076,11 @@ const translations = {
         tournament_tba: 'TBD',
         tournament_final: 'Final',
         tournament_final_three: 'Final three (round-robin)',
+        tournament_semifinal: 'Semifinal',
+        tournament_quarterfinal: 'Quarterfinal',
+        tournament_round_of_16: 'Round of 16',
+        tournament_round_of_32: 'Round of 32',
+        tournament_round_of_64: 'Round of 64',
         tournament_prev_round: 'Previous round',
         tournament_next_round: 'Next round',
         tournament_next_round_pending:
@@ -1130,6 +1145,7 @@ const translations = {
         tournament_knockout_min_players:
             'At least two players must advance to knockout.',
         tournament_group: 'Group',
+        tournament_group_results: 'Group results',
         tournament_qualifiers: 'Qualifiers',
         tournament_start_knockout: 'Start knockout',
         tournament_start_knockout_hint:

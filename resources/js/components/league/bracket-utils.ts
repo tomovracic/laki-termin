@@ -1,4 +1,112 @@
-import type { BracketPreviewMatch, KnockoutDrawMode, KnockoutParticipantDraft } from '@/components/league/types';
+import type {
+    BracketPreviewMatch,
+    KnockoutDrawMode,
+    KnockoutParticipantDraft,
+} from '@/components/league/types';
+
+export type KnockoutRoundNameKey =
+    | 'tournament_final'
+    | 'tournament_final_three'
+    | 'tournament_semifinal'
+    | 'tournament_quarterfinal'
+    | 'tournament_round_of_16'
+    | 'tournament_round_of_32'
+    | 'tournament_round_of_64';
+
+type KnockoutRoundMatchLike = {
+    is_bye?: boolean;
+    is_empty?: boolean;
+    player_one?:
+        | { id?: number | null; participant_id?: number | null }
+        | string
+        | null;
+    player_two?:
+        | { id?: number | null; participant_id?: number | null }
+        | string
+        | null;
+};
+
+function uniquePlayerCount(matches: KnockoutRoundMatchLike[]): number {
+    const ids = new Set<string>();
+
+    for (const match of matches) {
+        const players = [match.player_one, match.player_two];
+
+        for (const [index, player] of players.entries()) {
+            if (index === 1 && match.is_bye) {
+                continue;
+            }
+
+            if (typeof player === 'string') {
+                const name = player.trim();
+
+                if (name !== '' && name !== '?') {
+                    ids.add(`name:${name}`);
+                }
+
+                continue;
+            }
+
+            if (player?.participant_id != null) {
+                ids.add(`p:${player.participant_id}`);
+                continue;
+            }
+
+            if (player?.id != null) {
+                ids.add(`u:${player.id}`);
+            }
+        }
+    }
+
+    return ids.size;
+}
+
+export function knockoutRoundNameKey(
+    matches: KnockoutRoundMatchLike[],
+): KnockoutRoundNameKey | null {
+    if (matches.length === 0) {
+        return null;
+    }
+
+    const competitive = matches.filter(
+        (match) => !match.is_bye && !match.is_empty,
+    );
+
+    if (competitive.length === 3 && uniquePlayerCount(matches) === 3) {
+        return 'tournament_final_three';
+    }
+
+    const slots = matches.reduce(
+        (sum, match) => sum + (match.is_bye ? 1 : 2),
+        0,
+    );
+
+    if (slots <= 2) {
+        return 'tournament_final';
+    }
+
+    if (slots <= 4) {
+        return 'tournament_semifinal';
+    }
+
+    if (slots <= 8) {
+        return 'tournament_quarterfinal';
+    }
+
+    if (slots <= 16) {
+        return 'tournament_round_of_16';
+    }
+
+    if (slots <= 32) {
+        return 'tournament_round_of_32';
+    }
+
+    if (slots <= 64) {
+        return 'tournament_round_of_64';
+    }
+
+    return null;
+}
 
 /**
  * Preview of the first knockout round only: at most one bye when count is odd

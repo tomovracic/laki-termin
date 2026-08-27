@@ -2,6 +2,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { LeagueMatchResultForm } from '@/components/admin/league-match-result-form';
 import { StatusBanner } from '@/components/admin/status-banner';
+import { knockoutRoundNameKey } from '@/components/league/bracket-utils';
 import { GroupStageSection } from '@/components/league/group-stage-section';
 import { LeagueMatchesSection } from '@/components/league/league-matches-section';
 import { PlayerSlotInput } from '@/components/league/league-participant-picker';
@@ -113,6 +114,7 @@ export default function LeagueShowPage({
     const [addSlot, setAddSlot] = useState<AddPlayerSlot>(emptyAddSlot);
     const [partnerSlot, setPartnerSlot] = useState<AddPlayerSlot>(emptyAddSlot);
     const [isAddingParticipant, setIsAddingParticipant] = useState(false);
+    const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false);
     const [selectedMatch, setSelectedMatch] = useState<LeagueMatch | null>(
         null,
     );
@@ -149,6 +151,21 @@ export default function LeagueShowPage({
                 participant.user_id === currentUserId ||
                 participant.partner_user_id === currentUserId,
         );
+
+    const selectedMatchRoundLabel = (() => {
+        if (selectedMatch === null || selectedMatch.bracket_round == null) {
+            return undefined;
+        }
+
+        const roundMatches = knockoutMatches.filter(
+            (match) =>
+                (match.bracket_round ?? match.round) ===
+                (selectedMatch.bracket_round ?? selectedMatch.round),
+        );
+        const nameKey = knockoutRoundNameKey(roundMatches);
+
+        return nameKey !== null ? t(nameKey) : undefined;
+    })();
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: t('dashboard'), href: dashboard() },
@@ -229,6 +246,7 @@ export default function LeagueShowPage({
             setMessage(t('league_participant_added'));
             setAddSlot(emptyAddSlot());
             setPartnerSlot(emptyAddSlot());
+            setIsAddParticipantOpen(false);
             await reloadLeagueData();
         } catch {
             setErrorMessage(t('league_unable_add_participant'));
@@ -398,70 +416,9 @@ export default function LeagueShowPage({
                 <StatusBanner message={message} error={errorMessage} />
 
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            {league.name}
-                        </h1>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                            <Badge variant="outline">
-                                {isGroupKnockout
-                                    ? t('tournament_format_group_knockout')
-                                    : isKnockout
-                                      ? t('tournament_format_knockout')
-                                      : `${league.participants_count} ${t('league_participants').toLowerCase()}`}
-                            </Badge>
-                            {isTournament && (
-                                <Badge variant="outline">
-                                    {t('tournament_best_of').replace(
-                                        '{count}',
-                                        `${bestOf}`,
-                                    )}
-                                </Badge>
-                            )}
-                            {isGroupKnockout &&
-                                league.current_stage === 'group' && (
-                                    <Badge variant="outline">
-                                        {t('tournament_stage_group')}
-                                    </Badge>
-                                )}
-                            {isGroupKnockout &&
-                                league.current_stage === 'knockout' && (
-                                    <Badge variant="outline">
-                                        {t('tournament_stage_knockout')}
-                                    </Badge>
-                                )}
-                            {isDoubles && (
-                                <Badge variant="outline">
-                                    {t('tournament_participant_mode_doubles')}
-                                </Badge>
-                            )}
-                            {canManage &&
-                                isKnockoutStage &&
-                                league.knockout_draw_mode === 'random' && (
-                                    <Badge variant="outline">
-                                        {t('tournament_draw_random')}
-                                    </Badge>
-                                )}
-                            {canManage &&
-                                isKnockoutStage &&
-                                league.knockout_draw_mode === 'seeded' && (
-                                    <Badge variant="outline">
-                                        {t('tournament_draw_seeded')}
-                                    </Badge>
-                                )}
-                            {knockoutChampion && (
-                                <Badge variant="default">
-                                    {t('tournament_champion')}:{' '}
-                                    {knockoutChampion.name}
-                                </Badge>
-                            )}
-                            <Badge variant="secondary">
-                                {league.played_matches_count}/
-                                {league.matches_count}{' '}
-                                {t('league_matches_played').toLowerCase()}
-                            </Badge>
-                        </div>
-                    </div>
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                        {league.name}
+                    </h1>
                     {canManage && (
                         <Button
                             variant="destructive"
@@ -471,54 +428,6 @@ export default function LeagueShowPage({
                         </Button>
                     )}
                 </div>
-
-                {isGroupKnockout && (
-                    <GroupStageSection
-                        groups={groups}
-                        qualifiers={qualifiers}
-                        highlightUserId={canManage ? null : currentUserId}
-                        qualifyPerGroup={league.qualify_per_group}
-                        bestRunnersUp={league.best_runners_up}
-                        matches={groupMatches}
-                        currentUserId={currentUserId}
-                        showMatches={!isKnockoutStage}
-                        onEnterResult={
-                            canManage
-                                ? (match) => {
-                                      setResultErrors([]);
-                                      setSelectedMatch(match);
-                                  }
-                                : undefined
-                        }
-                    />
-                )}
-
-                {canManage &&
-                    isGroupStage &&
-                    Boolean(league.can_start_knockout) && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>
-                                    {t('tournament_start_knockout')}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="flex flex-wrap items-center justify-between gap-3">
-                                <p className="text-sm text-muted-foreground">
-                                    {t('tournament_start_knockout_hint')}
-                                </p>
-                                <Button
-                                    onClick={() => {
-                                        void handleStartKnockout();
-                                    }}
-                                    disabled={isStartingKnockout}
-                                >
-                                    {isStartingKnockout
-                                        ? t('saving')
-                                        : t('tournament_start_knockout')}
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    )}
 
                 {isKnockoutStage ? (
                     <Card>
@@ -580,7 +489,58 @@ export default function LeagueShowPage({
                     </Card>
                 ) : null}
 
-                {canManage && !isGroupKnockout && (
+                {isGroupKnockout && (
+                    <GroupStageSection
+                        groups={groups}
+                        qualifiers={qualifiers}
+                        highlightUserId={canManage ? null : currentUserId}
+                        matches={groupMatches}
+                        currentUserId={currentUserId}
+                        showMatches
+                        heading={
+                            isKnockoutStage
+                                ? t('tournament_group_results')
+                                : undefined
+                        }
+                        onEnterResult={
+                            canManage
+                                ? (match) => {
+                                      setResultErrors([]);
+                                      setSelectedMatch(match);
+                                  }
+                                : undefined
+                        }
+                    />
+                )}
+
+                {canManage &&
+                    isGroupStage &&
+                    Boolean(league.can_start_knockout) && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>
+                                    {t('tournament_start_knockout')}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                                <p className="text-sm text-muted-foreground">
+                                    {t('tournament_start_knockout_hint')}
+                                </p>
+                                <Button
+                                    onClick={() => {
+                                        void handleStartKnockout();
+                                    }}
+                                    disabled={isStartingKnockout}
+                                >
+                                    {isStartingKnockout
+                                        ? t('saving')
+                                        : t('tournament_start_knockout')}
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                {canManage && isKnockout && (
                     <Card>
                         <CardHeader>
                             <CardTitle>{t('league_participants')}</CardTitle>
@@ -599,8 +559,89 @@ export default function LeagueShowPage({
                                     </Badge>
                                 ))}
                             </div>
+                        </CardContent>
+                    </Card>
+                )}
 
-                            {!isTournament && (
+                {!isKnockoutStage && !isGroupKnockout && (
+                    <LeagueMatchesSection
+                        matches={matches}
+                        standings={standings}
+                        currentUserId={currentUserId}
+                        isParticipant={isParticipant}
+                        onEnterResult={
+                            canManage
+                                ? (match) => {
+                                      setResultErrors([]);
+                                      setSelectedMatch(match);
+                                  }
+                                : undefined
+                        }
+                    />
+                )}
+
+                {canManage && !isTournament && (
+                    <div className="flex justify-end">
+                        <Button
+                            className="w-full sm:w-auto"
+                            onClick={() => setIsAddParticipantOpen(true)}
+                        >
+                            {isDoubles
+                                ? t('tournament_add_pair')
+                                : t('league_add_participant')}
+                        </Button>
+                    </div>
+                )}
+
+                {canManage && (
+                    <>
+                        <Dialog
+                            open={selectedMatch !== null}
+                            onOpenChange={(open) =>
+                                !open && setSelectedMatch(null)
+                            }
+                        >
+                            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle>
+                                        {selectedMatch?.status === 'played'
+                                            ? t('league_edit_result')
+                                            : t('league_enter_result')}
+                                    </DialogTitle>
+                                </DialogHeader>
+                                {selectedMatch !== null && (
+                                    <LeagueMatchResultForm
+                                        match={selectedMatch}
+                                        bestOf={bestOf}
+                                        roundLabel={selectedMatchRoundLabel}
+                                        onSubmit={handleSubmitResult}
+                                        onCancel={() => setSelectedMatch(null)}
+                                        isSubmitting={isSubmittingResult}
+                                        errors={resultErrors}
+                                    />
+                                )}
+                            </DialogContent>
+                        </Dialog>
+
+                        <Dialog
+                            open={isAddParticipantOpen}
+                            onOpenChange={(open) => {
+                                setIsAddParticipantOpen(open);
+
+                                if (!open) {
+                                    setAddSlot(emptyAddSlot());
+                                    setPartnerSlot(emptyAddSlot());
+                                }
+                            }}
+                        >
+                            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+                                <DialogHeader>
+                                    <DialogTitle>
+                                        {isDoubles
+                                            ? t('tournament_add_pair')
+                                            : t('league_add_participant')}
+                                    </DialogTitle>
+                                </DialogHeader>
                                 <div className="space-y-3">
                                     {isDoubles ? (
                                         <div className="grid gap-3 sm:grid-cols-2">
@@ -660,8 +701,23 @@ export default function LeagueShowPage({
                                             excludedUserIds={new Set()}
                                         />
                                     )}
+                                </div>
+                                <DialogFooter>
                                     <Button
-                                        onClick={handleAddParticipant}
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() =>
+                                            setIsAddParticipantOpen(false)
+                                        }
+                                        disabled={isAddingParticipant}
+                                    >
+                                        {t('cancel')}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        onClick={() => {
+                                            void handleAddParticipant();
+                                        }}
                                         disabled={
                                             isAddingParticipant ||
                                             slotToPayload(addSlot) === null ||
@@ -676,55 +732,7 @@ export default function LeagueShowPage({
                                               ? t('tournament_add_pair')
                                               : t('league_add_participant')}
                                     </Button>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-
-                {!isKnockoutStage && !isGroupKnockout && (
-                    <LeagueMatchesSection
-                        matches={matches}
-                        standings={standings}
-                        currentUserId={currentUserId}
-                        isParticipant={isParticipant}
-                        onEnterResult={
-                            canManage
-                                ? (match) => {
-                                      setResultErrors([]);
-                                      setSelectedMatch(match);
-                                  }
-                                : undefined
-                        }
-                    />
-                )}
-
-                {canManage && (
-                    <>
-                        <Dialog
-                            open={selectedMatch !== null}
-                            onOpenChange={(open) =>
-                                !open && setSelectedMatch(null)
-                            }
-                        >
-                            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-                                <DialogHeader>
-                                    <DialogTitle>
-                                        {selectedMatch?.status === 'played'
-                                            ? t('league_edit_result')
-                                            : t('league_enter_result')}
-                                    </DialogTitle>
-                                </DialogHeader>
-                                {selectedMatch !== null && (
-                                    <LeagueMatchResultForm
-                                        match={selectedMatch}
-                                        bestOf={bestOf}
-                                        onSubmit={handleSubmitResult}
-                                        onCancel={() => setSelectedMatch(null)}
-                                        isSubmitting={isSubmittingResult}
-                                        errors={resultErrors}
-                                    />
-                                )}
+                                </DialogFooter>
                             </DialogContent>
                         </Dialog>
 

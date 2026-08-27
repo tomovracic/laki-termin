@@ -6,7 +6,6 @@ import type {
     LeagueMatch,
     LeagueStandingsEntry,
 } from '@/components/league/types';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -16,11 +15,10 @@ type GroupStageSectionProps = {
     groups: LeagueGroupSummary[];
     qualifiers: LeagueStandingsEntry[];
     highlightUserId?: number | null;
-    qualifyPerGroup?: number | null;
-    bestRunnersUp?: number | null;
     matches?: LeagueMatch[];
     currentUserId?: number | null;
     showMatches?: boolean;
+    heading?: string;
     onEnterResult?: (match: LeagueMatch) => void;
 };
 
@@ -39,11 +37,10 @@ export function GroupStageSection({
     groups,
     qualifiers,
     highlightUserId = null,
-    qualifyPerGroup = 1,
-    bestRunnersUp = 0,
     matches = [],
     currentUserId = null,
     showMatches = false,
+    heading,
     onEnterResult,
 }: GroupStageSectionProps) {
     const { t } = useI18n();
@@ -53,10 +50,6 @@ export function GroupStageSection({
     const qualifierIds = new Set(
         qualifiers.map((entry) => entry.participant_id),
     );
-    const restLabel =
-        qualifyPerGroup === 2
-            ? t('tournament_best_thirds_label')
-            : t('tournament_best_seconds_label');
     const selectedGroup =
         groups.find((group) => group.id === selectedGroupId) ??
         groups.find((group) =>
@@ -76,45 +69,12 @@ export function GroupStageSection({
 
     return (
         <div className="space-y-4">
-            {qualifiers.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{t('tournament_qualifiers')}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <p className="text-sm text-muted-foreground">
-                            {t('tournament_qualification_summary')
-                                .replace('{slots}', `${qualifiers.length}`)
-                                .replace(
-                                    '{winners}',
-                                    `${groups.length * (qualifyPerGroup ?? 1)}`,
-                                )
-                                .replace('{rest}', `${bestRunnersUp ?? 0}`)
-                                .replace('{rest_label}', restLabel)}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {qualifiers.map((entry) => (
-                                <Badge
-                                    key={entry.participant_id}
-                                    variant="secondary"
-                                >
-                                    {entry.rank_in_group === 1
-                                        ? `${entry.group_name ?? ''} 1.`
-                                        : entry.rank_in_group ===
-                                            qualifyPerGroup
-                                          ? `${entry.group_name ?? ''} ${entry.rank_in_group}.`
-                                          : restLabel}
-                                    : {entry.name}
-                                </Badge>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
             {selectedGroup !== null && (
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="space-y-3">
+                        {heading !== undefined && heading !== '' && (
+                            <CardTitle>{heading}</CardTitle>
+                        )}
                         <div
                             className="flex gap-2 overflow-x-auto pb-1"
                             role="tablist"

@@ -304,22 +304,31 @@ export function TournamentCreateWizard({
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-                {stepLabels.map((label, index) => (
-                    <Button
-                        key={label}
-                        type="button"
-                        size="sm"
-                        variant={step === index ? 'default' : 'outline'}
-                        onClick={() => {
-                            if (index <= step || canGoNext()) {
-                                setStep(index);
-                            }
-                        }}
-                    >
-                        {index + 1}. {label}
-                    </Button>
-                ))}
+            <div className="space-y-2">
+                <div className="flex gap-1 sm:flex-wrap sm:gap-2">
+                    {stepLabels.map((label, index) => (
+                        <Button
+                            key={label}
+                            type="button"
+                            size="sm"
+                            variant={step === index ? 'default' : 'outline'}
+                            className="min-w-0 flex-1 px-2 sm:flex-none sm:px-3"
+                            onClick={() => {
+                                if (index <= step || canGoNext()) {
+                                    setStep(index);
+                                }
+                            }}
+                        >
+                            <span className="sm:hidden">{index + 1}</span>
+                            <span className="hidden sm:inline">
+                                {index + 1}. {label}
+                            </span>
+                        </Button>
+                    ))}
+                </div>
+                <p className="text-sm text-muted-foreground sm:hidden">
+                    {stepLabels[step]}
+                </p>
             </div>
 
             {step === 0 && (
@@ -463,9 +472,7 @@ export function TournamentCreateWizard({
                             <Select
                                 value={`${qualifyPerGroup}`}
                                 onValueChange={(value) =>
-                                    updateQualifyPerGroup(
-                                        value === '2' ? 2 : 1,
-                                    )
+                                    updateQualifyPerGroup(value === '2' ? 2 : 1)
                                 }
                             >
                                 <SelectTrigger>
@@ -553,12 +560,7 @@ export function TournamentCreateWizard({
                     )}
                     <InputError message={errors.groups?.[0]} />
 
-                    <div
-                        className="grid gap-3"
-                        style={{
-                            gridTemplateColumns: `repeat(${Math.min(Math.max(groupCount, 1), 4)}, minmax(0, 1fr))`,
-                        }}
-                    >
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         {groupAssignments.map((indexes, groupIndex) => (
                             <div
                                 key={groupNames[groupIndex]}
@@ -578,9 +580,9 @@ export function TournamentCreateWizard({
                                     return (
                                         <div
                                             key={player.key}
-                                            className="flex items-center gap-2 text-sm"
+                                            className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center"
                                         >
-                                            <span className="min-w-0 flex-1 truncate">
+                                            <span className="min-w-0 flex-1 break-words">
                                                 {player.display_name}
                                             </span>
                                             <Select
@@ -595,7 +597,7 @@ export function TournamentCreateWizard({
                                                     )
                                                 }
                                             >
-                                                <SelectTrigger className="h-8 w-20">
+                                                <SelectTrigger className="h-8 w-full sm:w-24">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -643,41 +645,44 @@ export function TournamentCreateWizard({
                                             : t('tournament_best_thirds_label'),
                                     )}
                             </p>
-                            {groupAssignments.map((indexes, groupIndex) => {
-                                const names = indexes
-                                    .map(
-                                        (playerIndex) =>
-                                            participants[playerIndex]
-                                                ?.display_name,
-                                    )
-                                    .filter(
-                                        (value): value is string =>
-                                            value !== undefined,
-                                    );
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                {groupAssignments.map((indexes, groupIndex) => {
+                                    const names = indexes
+                                        .map(
+                                            (playerIndex) =>
+                                                participants[playerIndex]
+                                                    ?.display_name,
+                                        )
+                                        .filter(
+                                            (value): value is string =>
+                                                value !== undefined,
+                                        );
 
-                                return (
-                                    <div
-                                        key={groupNames[groupIndex]}
-                                        className="rounded-md border p-3"
-                                    >
-                                        <p className="mb-2 font-medium">
-                                            {t('tournament_group')}{' '}
-                                            {groupNames[groupIndex]}
-                                        </p>
-                                        <ul className="space-y-1 text-sm">
-                                            {groupPairings(names).map(
-                                                ([first, second]) => (
-                                                    <li
-                                                        key={`${first}-${second}`}
-                                                    >
-                                                        {first} vs {second}
-                                                    </li>
-                                                ),
-                                            )}
-                                        </ul>
-                                    </div>
-                                );
-                            })}
+                                    return (
+                                        <div
+                                            key={groupNames[groupIndex]}
+                                            className="rounded-md border p-3"
+                                        >
+                                            <p className="mb-2 font-medium">
+                                                {t('tournament_group')}{' '}
+                                                {groupNames[groupIndex]}
+                                            </p>
+                                            <ul className="space-y-1 text-sm">
+                                                {groupPairings(names).map(
+                                                    ([first, second]) => (
+                                                        <li
+                                                            key={`${first}-${second}`}
+                                                            className="break-words"
+                                                        >
+                                                            {first} vs {second}
+                                                        </li>
+                                                    ),
+                                                )}
+                                            </ul>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     ) : (
                         previewMatches.length > 0 && (
