@@ -19,21 +19,28 @@ function assignLeagueAdminRole(User $user): void
     $user->roles()->syncWithoutDetaching([$role->id]);
 }
 
-function recordLeagueWin(User $admin, League $league, LeagueMatch $match, User $winner, User $loser): void
-{
+function recordLeagueWin(
+    User $admin,
+    League $league,
+    LeagueMatch $match,
+    User $winner,
+    User $loser,
+    int $loserSet1Games = 4,
+    int $loserSet2Games = 3,
+): void {
     $winnerIsPlayerOne = $match->player_one_id === $winner->id;
 
     $payload = $winnerIsPlayerOne
         ? [
             'set1_player_one_games' => 6,
-            'set1_player_two_games' => 4,
+            'set1_player_two_games' => $loserSet1Games,
             'set2_player_one_games' => 6,
-            'set2_player_two_games' => 3,
+            'set2_player_two_games' => $loserSet2Games,
         ]
         : [
-            'set1_player_one_games' => 4,
+            'set1_player_one_games' => $loserSet1Games,
             'set1_player_two_games' => 6,
-            'set2_player_one_games' => 3,
+            'set2_player_one_games' => $loserSet2Games,
             'set2_player_two_games' => 6,
         ];
 
@@ -190,6 +197,54 @@ test('standings are sorted by wins then set difference', function () {
     expect($standings[0]->wins)->toBe(2);
     expect($standings[1]->userId)->toBe($playerB->id);
     expect($standings[1]->wins)->toBe(1);
+});
+
+test('standings with equal wins and set difference are sorted by game difference', function () {
+    $admin = User::factory()->create();
+    assignLeagueAdminRole($admin);
+    $playerA = User::factory()->create(['first_name' => 'Ana', 'last_name' => 'A']);
+    $playerB = User::factory()->create(['first_name' => 'Bruno', 'last_name' => 'B']);
+    $playerC = User::factory()->create(['first_name' => 'Ceco', 'last_name' => 'C']);
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Poredak gemovi',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: [$playerA->id, $playerB->id, $playerC->id],
+    ));
+
+    $matches = $league->matches()->get();
+
+    $matchAB = $matches->first(
+        fn (LeagueMatch $match) => $match->player_one_id === min($playerA->id, $playerB->id)
+            && $match->player_two_id === max($playerA->id, $playerB->id),
+    );
+    $matchAC = $matches->first(
+        fn (LeagueMatch $match) => $match->player_one_id === min($playerA->id, $playerC->id)
+            && $match->player_two_id === max($playerA->id, $playerC->id),
+    );
+    $matchBC = $matches->first(
+        fn (LeagueMatch $match) => $match->player_one_id === min($playerB->id, $playerC->id)
+            && $match->player_two_id === max($playerB->id, $playerC->id),
+    );
+
+    recordLeagueWin($admin, $league, $matchAB, $playerA, $playerB, 0, 0);
+    recordLeagueWin($admin, $league, $matchAC, $playerC, $playerA, 0, 0);
+    recordLeagueWin($admin, $league, $matchBC, $playerB, $playerC, 4, 4);
+
+    $standings = app(LeagueStandingsService::class)->build($league->fresh());
+
+    expect($standings)->toHaveCount(3);
+    expect($standings[0]->wins)->toBe(1);
+    expect($standings[1]->wins)->toBe(1);
+    expect($standings[2]->wins)->toBe(1);
+    expect($standings[0]->setDifference)->toBe(0);
+    expect($standings[0]->userId)->toBe($playerC->id);
+    expect($standings[0]->gameDifference)->toBe(8);
+    expect($standings[1]->userId)->toBe($playerA->id);
+    expect($standings[1]->gameDifference)->toBe(0);
+    expect($standings[2]->userId)->toBe($playerB->id);
+    expect($standings[2]->gameDifference)->toBe(-8);
 });
 
 test('non admin cannot create league or record result', function () {

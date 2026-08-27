@@ -113,6 +113,10 @@ class LeagueStandingsService
             return $b->gameDifference <=> $a->gameDifference;
         }
 
+        if ($a->gamesWon !== $b->gamesWon) {
+            return $b->gamesWon <=> $a->gamesWon;
+        }
+
         if ($a->setsWon !== $b->setsWon) {
             return $b->setsWon <=> $a->setsWon;
         }

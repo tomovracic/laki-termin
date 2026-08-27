@@ -484,6 +484,7 @@ export default function LeagueShowPage({
                                 highlightUserId={
                                     canManage ? null : currentUserId
                                 }
+                                showGameDifference
                             />
                         </CardContent>
                     </Card>
