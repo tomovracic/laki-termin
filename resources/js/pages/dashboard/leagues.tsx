@@ -2,17 +2,11 @@ import { Head, router } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { useCallback, useRef, useState } from 'react';
 import { StatusBanner } from '@/components/admin/status-banner';
-import InputError from '@/components/input-error';
 import type { TournamentWizardPayload } from '@/components/league/knockout-create-wizard';
 import { KnockoutCreateWizard } from '@/components/league/knockout-create-wizard';
-import {
-    LeagueParticipantPicker,
-    pairToPayload,
-    singlesToParticipants,
-} from '@/components/league/league-participant-picker';
+import { pairToPayload } from '@/components/league/league-participant-picker';
 import type {
     KnockoutDrawMode,
-    KnockoutParticipantDraft,
     LeagueFormat,
     LeagueParticipantMode,
     LeagueSummary,
@@ -31,7 +25,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -87,8 +80,6 @@ export default function LeaguesPage({
         useState<KnockoutDrawMode>('seeded');
     const [participantMode, setParticipantMode] =
         useState<LeagueParticipantMode>('singles');
-    const [rrPlayers, setRrPlayers] = useState<KnockoutParticipantDraft[]>([]);
-    const [rrPairs, setRrPairs] = useState<PairDraft[]>([]);
     const [tournamentPairs, setTournamentPairs] = useState<PairDraft[]>([]);
     const [wizardReady, setWizardReady] = useState({
         canSubmit: false,
@@ -117,8 +108,6 @@ export default function LeaguesPage({
         setSetsBestOf('3');
         setKnockoutDrawMode('seeded');
         setParticipantMode('singles');
-        setRrPlayers([]);
-        setRrPairs([]);
         setTournamentPairs([]);
         setWizardReady({ canSubmit: false, isLastStep: false });
         wizardPayloadRef.current = null;
@@ -151,27 +140,15 @@ export default function LeaguesPage({
         setErrorMessage(null);
         setMessage(null);
 
-        const isTournament =
-            format === 'knockout' || format === 'group_knockout';
-        const body = isTournament
-            ? (wizardPayloadRef.current ?? {
-                  name,
-                  format,
-                  participant_mode: participantMode,
-                  sets_best_of: Number.parseInt(setsBestOf, 10),
-                  knockout_draw_mode: knockoutDrawMode,
-                  pairs: tournamentPairs.map(pairToPayload),
-              })
-            : {
-                  name,
-                  format: 'round_robin',
-                  participant_mode: participantMode,
-                  rounds: Number.parseInt(rounds, 10),
-                  sets_best_of: Number.parseInt(setsBestOf, 10),
-                  ...(participantMode === 'doubles'
-                      ? { pairs: rrPairs.map(pairToPayload) }
-                      : { participants: singlesToParticipants(rrPlayers) }),
-              };
+        const body = wizardPayloadRef.current ?? {
+            name,
+            format,
+            participant_mode: participantMode,
+            sets_best_of: Number.parseInt(setsBestOf, 10),
+            knockout_draw_mode: knockoutDrawMode,
+            rounds: Number.parseInt(rounds, 10),
+            pairs: tournamentPairs.map(pairToPayload),
+        };
 
         try {
             const response = await fetch('/leagues', {
@@ -293,9 +270,15 @@ export default function LeaguesPage({
                                         <Label>{t('tournament_format')}</Label>
                                         <Select
                                             value={format}
-                                            onValueChange={(value) =>
-                                                setFormat(value as LeagueFormat)
-                                            }
+                                            onValueChange={(value) => {
+                                                setFormat(
+                                                    value as LeagueFormat,
+                                                );
+                                                setWizardReady({
+                                                    canSubmit: false,
+                                                    isLastStep: false,
+                                                });
+                                            }}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue />
@@ -320,172 +303,30 @@ export default function LeaguesPage({
                                         </Select>
                                     </div>
 
-                                    {format === 'knockout' ||
-                                    format === 'group_knockout' ? (
-                                        <KnockoutCreateWizard
-                                            key={format}
-                                            format={format}
-                                            name={name}
-                                            onNameChange={setName}
-                                            setsBestOf={setsBestOf}
-                                            onSetsBestOfChange={setSetsBestOf}
-                                            drawMode={knockoutDrawMode}
-                                            onDrawModeChange={
-                                                setKnockoutDrawMode
-                                            }
-                                            participantMode={participantMode}
-                                            onParticipantModeChange={
-                                                setParticipantMode
-                                            }
-                                            users={users}
-                                            pairs={tournamentPairs}
-                                            onPairsChange={setTournamentPairs}
-                                            errors={errors}
-                                            onReadyChange={
-                                                handleWizardReadyChange
-                                            }
-                                            onPayloadChange={
-                                                handleWizardPayloadChange
-                                            }
-                                        />
-                                    ) : (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="league-name">
-                                                    {t('name')}
-                                                </Label>
-                                                <Input
-                                                    id="league-name"
-                                                    value={name}
-                                                    onChange={(event) =>
-                                                        setName(
-                                                            event.target.value,
-                                                        )
-                                                    }
-                                                    required
-                                                />
-                                                <InputError
-                                                    message={errors.name?.[0]}
-                                                />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label>
-                                                    {t('league_rounds')}
-                                                </Label>
-                                                <Select
-                                                    value={rounds}
-                                                    onValueChange={setRounds}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {[1, 2, 3, 4, 5].map(
-                                                            (value) => (
-                                                                <SelectItem
-                                                                    key={value}
-                                                                    value={`${value}`}
-                                                                >
-                                                                    {roundsLabel(
-                                                                        value,
-                                                                        t,
-                                                                    )}
-                                                                </SelectItem>
-                                                            ),
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                                <InputError
-                                                    message={errors.rounds?.[0]}
-                                                />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label>
-                                                    {t(
-                                                        'tournament_sets_best_of',
-                                                    )}
-                                                </Label>
-                                                <Select
-                                                    value={setsBestOf}
-                                                    onValueChange={
-                                                        setSetsBestOf
-                                                    }
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {[1, 3, 5].map(
-                                                            (value) => (
-                                                                <SelectItem
-                                                                    key={value}
-                                                                    value={`${value}`}
-                                                                >
-                                                                    {t(
-                                                                        'tournament_best_of',
-                                                                    ).replace(
-                                                                        '{count}',
-                                                                        `${value}`,
-                                                                    )}
-                                                                </SelectItem>
-                                                            ),
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                                <InputError
-                                                    message={
-                                                        errors.sets_best_of?.[0]
-                                                    }
-                                                />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label>
-                                                    {t(
-                                                        'tournament_participant_mode',
-                                                    )}
-                                                </Label>
-                                                <Select
-                                                    value={participantMode}
-                                                    onValueChange={(value) => {
-                                                        setParticipantMode(
-                                                            value as LeagueParticipantMode,
-                                                        );
-                                                        setRrPlayers([]);
-                                                        setRrPairs([]);
-                                                    }}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="singles">
-                                                            {t(
-                                                                'tournament_participant_mode_singles',
-                                                            )}
-                                                        </SelectItem>
-                                                        <SelectItem value="doubles">
-                                                            {t(
-                                                                'tournament_participant_mode_doubles',
-                                                            )}
-                                                        </SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            <LeagueParticipantPicker
-                                                mode={participantMode}
-                                                users={users}
-                                                players={rrPlayers}
-                                                onPlayersChange={setRrPlayers}
-                                                pairs={rrPairs}
-                                                onPairsChange={setRrPairs}
-                                                errors={errors}
-                                            />
-                                        </>
-                                    )}
+                                    <KnockoutCreateWizard
+                                        key={format}
+                                        format={format}
+                                        name={name}
+                                        onNameChange={setName}
+                                        setsBestOf={setsBestOf}
+                                        onSetsBestOfChange={setSetsBestOf}
+                                        rounds={rounds}
+                                        onRoundsChange={setRounds}
+                                        drawMode={knockoutDrawMode}
+                                        onDrawModeChange={setKnockoutDrawMode}
+                                        participantMode={participantMode}
+                                        onParticipantModeChange={
+                                            setParticipantMode
+                                        }
+                                        users={users}
+                                        pairs={tournamentPairs}
+                                        onPairsChange={setTournamentPairs}
+                                        errors={errors}
+                                        onReadyChange={handleWizardReadyChange}
+                                        onPayloadChange={
+                                            handleWizardPayloadChange
+                                        }
+                                    />
 
                                     <div className="flex justify-end gap-2">
                                         <Button
@@ -502,17 +343,8 @@ export default function LeaguesPage({
                                             type="submit"
                                             disabled={
                                                 isCreating ||
-                                                (format === 'round_robin' &&
-                                                    (participantMode ===
-                                                    'doubles'
-                                                        ? rrPairs.length < 2
-                                                        : rrPlayers.length <
-                                                          2)) ||
-                                                ((format === 'knockout' ||
-                                                    format ===
-                                                        'group_knockout') &&
-                                                    (!wizardReady.isLastStep ||
-                                                        !wizardReady.canSubmit))
+                                                !wizardReady.isLastStep ||
+                                                !wizardReady.canSubmit
                                             }
                                         >
                                             {isCreating

@@ -41,11 +41,37 @@ import {
 } from '@/components/ui/select';
 import { useI18n } from '@/lib/i18n';
 
+function roundsLabel(
+    rounds: number,
+    t: (
+        key:
+            | 'league_rounds_once'
+            | 'league_rounds_twice'
+            | 'league_rounds_thrice'
+            | 'league_rounds_count',
+    ) => string,
+): string {
+    if (rounds === 1) {
+        return t('league_rounds_once');
+    }
+
+    if (rounds === 2) {
+        return t('league_rounds_twice');
+    }
+
+    if (rounds === 3) {
+        return t('league_rounds_thrice');
+    }
+
+    return t('league_rounds_count').replace('{count}', `${rounds}`);
+}
+
 export type TournamentWizardPayload = {
     name: string;
     format: TournamentKind;
     participant_mode: LeagueParticipantMode;
     sets_best_of: number;
+    rounds?: number;
     knockout_draw_mode?: KnockoutDrawMode;
     pairs?: TournamentCreatePair[];
     participants?: TournamentCreateParticipant[];
@@ -60,6 +86,8 @@ type TournamentCreateWizardProps = {
     onNameChange: (value: string) => void;
     setsBestOf: string;
     onSetsBestOfChange: (value: string) => void;
+    rounds: string;
+    onRoundsChange: (value: string) => void;
     drawMode: KnockoutDrawMode;
     onDrawModeChange: (value: KnockoutDrawMode) => void;
     participantMode: LeagueParticipantMode;
@@ -82,6 +110,8 @@ export function TournamentCreateWizard({
     onNameChange,
     setsBestOf,
     onSetsBestOfChange,
+    rounds,
+    onRoundsChange,
     drawMode,
     onDrawModeChange,
     participantMode,
@@ -95,8 +125,10 @@ export function TournamentCreateWizard({
 }: TournamentCreateWizardProps) {
     const { t } = useI18n();
     const isGroupFormat = format === 'group_knockout';
+    const isRoundRobin = format === 'round_robin';
     const isDoubles = participantMode === 'doubles';
     const lastStep = isGroupFormat ? 3 : 2;
+    const roundCount = Number.parseInt(rounds, 10) || 1;
     const [step, setStep] = useState(0);
     const [players, setPlayers] = useState<KnockoutParticipantDraft[]>([]);
     const [groupCount, setGroupCount] = useState(3);
@@ -182,8 +214,21 @@ export function TournamentCreateWizard({
 
     const previewMatches = useMemo(
         () =>
-            isGroupFormat ? [] : buildBracketPreview(participants, drawMode),
-        [drawMode, isGroupFormat, participants],
+            format === 'knockout'
+                ? buildBracketPreview(participants, drawMode)
+                : [],
+        [drawMode, format, participants],
+    );
+    const roundRobinPairings = useMemo(
+        () =>
+            isRoundRobin
+                ? groupPairings(
+                      participants.map(
+                          (participant) => participant.display_name,
+                      ),
+                  )
+                : [],
+        [isRoundRobin, participants],
     );
 
     const groupNames = useMemo(() => groupLetters(groupCount), [groupCount]);
@@ -217,8 +262,13 @@ export function TournamentCreateWizard({
             format,
             participant_mode: participantMode,
             sets_best_of: Number.parseInt(setsBestOf, 10),
-            knockout_draw_mode: drawMode,
         };
+
+        if (isRoundRobin) {
+            payload.rounds = roundCount;
+        } else {
+            payload.knockout_draw_mode = drawMode;
+        }
 
         if (isDoubles) {
             payload.pairs = pairs.map(pairToPayload);
@@ -244,12 +294,14 @@ export function TournamentCreateWizard({
         groupNames,
         isDoubles,
         isGroupFormat,
+        isRoundRobin,
         name,
         onPayloadChange,
         pairs,
         participantMode,
         players,
         qualifyPerGroup,
+        roundCount,
         setsBestOf,
     ]);
 
@@ -377,6 +429,31 @@ export function TournamentCreateWizard({
                         <InputError message={errors.sets_best_of?.[0]} />
                     </div>
 
+                    {isRoundRobin && (
+                        <div className="space-y-2">
+                            <Label>{t('league_rounds')}</Label>
+                            <Select
+                                value={rounds}
+                                onValueChange={onRoundsChange}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[1, 2, 3, 4, 5].map((value) => (
+                                        <SelectItem
+                                            key={value}
+                                            value={`${value}`}
+                                        >
+                                            {roundsLabel(value, t)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.rounds?.[0]} />
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <Label>{t('tournament_participant_mode')}</Label>
                         <Select
@@ -401,7 +478,7 @@ export function TournamentCreateWizard({
                         </Select>
                     </div>
 
-                    {!isGroupFormat && (
+                    {format === 'knockout' && (
                         <div className="space-y-2">
                             <Label>{t('tournament_draw_mode')}</Label>
                             <Select
@@ -646,7 +723,32 @@ export function TournamentCreateWizard({
             {((step === 2 && !isGroupFormat) ||
                 (step === 3 && isGroupFormat)) && (
                 <div className="space-y-4">
-                    {isGroupFormat ? (
+                    {isRoundRobin ? (
+                        <div className="space-y-3">
+                            <p className="text-sm text-muted-foreground">
+                                {t('league_preview_match_count').replace(
+                                    '{count}',
+                                    `${roundRobinPairings.length * roundCount}`,
+                                )}
+                                {' · '}
+                                {roundsLabel(roundCount, t)}
+                            </p>
+                            <div className="rounded-md border p-3">
+                                <ul className="space-y-1 text-sm">
+                                    {roundRobinPairings.map(
+                                        ([first, second]) => (
+                                            <li
+                                                key={`${first}-${second}`}
+                                                className="break-words"
+                                            >
+                                                {first} vs {second}
+                                            </li>
+                                        ),
+                                    )}
+                                </ul>
+                            </div>
+                        </div>
+                    ) : isGroupFormat ? (
                         <div className="space-y-3">
                             <p className="text-sm text-muted-foreground">
                                 {t('tournament_qualification_summary')

@@ -405,7 +405,7 @@ const translations = {
         leagues_user_description: 'Pregledajte tablicu i rezultate svih liga.',
         league_create: 'Kreiraj ligu',
         league_create_description:
-            'Odaberite naziv, broj kola i pocetne sudionike.',
+            'Odaberite format, zatim kroz korake definirajte ligu i sudionike.',
         league_rounds: 'Broj kola',
         league_rounds_once: 'Jednokruzno',
         league_rounds_twice: 'Dvokruzno',
@@ -447,6 +447,7 @@ const translations = {
         league_unable_save_result: 'Spremanje rezultata nije uspjelo.',
         league_vs: 'vs',
         league_round: 'Kolo',
+        league_preview_match_count: '{count} meceva',
         league_set: 'Set',
         league_optional: 'opcionalno',
         league_no_standings: 'Tablica jos nema podataka.',
@@ -1019,7 +1020,7 @@ const translations = {
         leagues_user_description: 'View standings and results for all leagues.',
         league_create: 'Create league',
         league_create_description:
-            'Choose a name, number of rounds, and initial participants.',
+            'Choose a format, then set up the league and participants step by step.',
         league_rounds: 'Number of rounds',
         league_rounds_once: 'Single round-robin',
         league_rounds_twice: 'Double round-robin',
@@ -1061,6 +1062,7 @@ const translations = {
         league_unable_save_result: 'Unable to save result.',
         league_vs: 'vs',
         league_round: 'Round',
+        league_preview_match_count: '{count} matches',
         league_set: 'Set',
         league_optional: 'optional',
         league_no_standings: 'No standings data yet.',

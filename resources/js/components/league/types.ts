@@ -6,7 +6,7 @@ export type LeagueParticipantMode = 'singles' | 'doubles';
 
 export type LeagueStage = 'group' | 'knockout';
 
-export type TournamentKind = 'knockout' | 'group_knockout';
+export type TournamentKind = LeagueFormat;
 
 export type LeagueSummary = {
     id: number;
