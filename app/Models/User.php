@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\UserInvitationStatus;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -116,6 +117,14 @@ class User extends Authenticatable
         return $this->roles()
             ->whereHas('permissions', fn ($query) => $query->where('name', $permissionName))
             ->exists();
+    }
+
+    public function scopeRegistered(Builder $query): Builder
+    {
+        return $query->where(function (Builder $inner): void {
+            $inner->whereNull('invitation_status')
+                ->orWhere('invitation_status', '!=', UserInvitationStatus::Pending->value);
+        });
     }
 
     public function invitationStatus(): UserInvitationStatus

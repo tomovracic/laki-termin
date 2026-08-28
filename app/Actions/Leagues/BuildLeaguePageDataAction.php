@@ -30,7 +30,8 @@ class BuildLeaguePageDataAction
      *     groups: list<array<string, mixed>>,
      *     qualifiers: list<array<string, mixed>>,
      *     available_users: list<array<string, mixed>>,
-     *     knockout_champion: array{id: int|null, user_id: int|null, participant_id: int|null, name: string}|null
+     *     knockout_champion: array{id: int|null, user_id: int|null, participant_id: int|null, name: string}|null,
+     *     champion: array{id: int|null, user_id: int|null, participant_id: int|null, name: string}|null
      * }
      */
     public function execute(League $league, bool $includeAvailableUsers = false): array
@@ -160,20 +161,21 @@ class BuildLeaguePageDataAction
             'qualifiers' => $qualifiers,
             'available_users' => [],
             'knockout_champion' => $knockoutChampion,
+            'champion' => $this->roundRobinChampion($league, $standings, $matches),
         ];
 
         if ($includeAvailableUsers && ! $league->isKnockout() && ! $league->isGroupKnockout()) {
             $payload['available_users'] = User::query()
+                ->registered()
                 ->whereNotIn('id', $participantIds)
                 ->orderBy('first_name')
                 ->orderBy('last_name')
-                ->get(['id', 'first_name', 'last_name', 'email'])
+                ->get(['id', 'first_name', 'last_name'])
                 ->map(fn ($user) => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'first_name' => $user->first_name,
                     'last_name' => $user->last_name,
-                    'email' => $user->email,
                 ])
                 ->all();
         }
@@ -278,6 +280,35 @@ class BuildLeaguePageDataAction
             'name' => $displayName !== '' ? $displayName : trim(($firstName ?? '').' '.($lastName ?? '')),
             'first_name' => $user?->first_name ?? $firstName ?? '',
             'last_name' => $user?->last_name ?? $lastName ?? '',
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $standings
+     * @param  list<array<string, mixed>>  $matches
+     * @return array{id: int|null, user_id: int|null, participant_id: int|null, name: string}|null
+     */
+    private function roundRobinChampion(League $league, array $standings, array $matches): ?array
+    {
+        if (! $league->isRoundRobin() || $standings === [] || $matches === []) {
+            return null;
+        }
+
+        $allPlayed = $league->matches->every(
+            fn (LeagueMatch $match): bool => $match->status === LeagueMatchStatus::Played,
+        );
+
+        if (! $allPlayed) {
+            return null;
+        }
+
+        $winner = $standings[0];
+
+        return [
+            'id' => $winner['participant_id'] ?? $winner['user_id'],
+            'user_id' => $winner['user_id'],
+            'participant_id' => $winner['participant_id'],
+            'name' => $winner['name'],
         ];
     }
 }

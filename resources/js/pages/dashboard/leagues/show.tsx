@@ -1,4 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
+import { Trophy } from 'lucide-react';
 import { useState } from 'react';
 import { LeagueMatchResultForm } from '@/components/admin/league-match-result-form';
 import { StatusBanner } from '@/components/admin/status-banner';
@@ -81,6 +82,7 @@ type LeagueShowPageProps = {
     groups?: LeagueGroupSummary[];
     qualifiers?: LeagueStandingsEntry[];
     knockout_champion?: KnockoutChampion | null;
+    champion?: KnockoutChampion | null;
     can_manage?: boolean;
 };
 
@@ -98,6 +100,7 @@ export default function LeagueShowPage({
     groups: initialGroups = [],
     qualifiers: initialQualifiers = [],
     knockout_champion: initialChampion = null,
+    champion: initialRoundRobinChampion = null,
     can_manage: canManage = false,
 }: LeagueShowPageProps) {
     const { t } = useI18n();
@@ -111,6 +114,7 @@ export default function LeagueShowPage({
     const [groups, setGroups] = useState(initialGroups);
     const [qualifiers, setQualifiers] = useState(initialQualifiers);
     const [knockoutChampion, setKnockoutChampion] = useState(initialChampion);
+    const [champion, setChampion] = useState(initialRoundRobinChampion);
     const [addSlot, setAddSlot] = useState<AddPlayerSlot>(emptyAddSlot);
     const [partnerSlot, setPartnerSlot] = useState<AddPlayerSlot>(emptyAddSlot);
     const [isAddingParticipant, setIsAddingParticipant] = useState(false);
@@ -184,6 +188,7 @@ export default function LeagueShowPage({
                 'groups',
                 'qualifiers',
                 'knockout_champion',
+                'champion',
                 'can_manage',
             ],
             onSuccess: (visit) => {
@@ -196,6 +201,7 @@ export default function LeagueShowPage({
                 setGroups(props.groups ?? []);
                 setQualifiers(props.qualifiers ?? []);
                 setKnockoutChampion(props.knockout_champion ?? null);
+                setChampion(props.champion ?? null);
             },
         });
     }
@@ -428,6 +434,18 @@ export default function LeagueShowPage({
                         </Button>
                     )}
                 </div>
+
+                {champion !== null && champion.name !== '' && (
+                    <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5">
+                        <Trophy
+                            className="size-4 shrink-0 text-amber-600 dark:text-amber-400"
+                            aria-hidden
+                        />
+                        <p className="text-sm font-semibold">
+                            {t('tournament_winner')}: {champion.name}
+                        </p>
+                    </div>
+                )}
 
                 {isKnockoutStage ? (
                     <Card>

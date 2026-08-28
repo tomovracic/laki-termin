@@ -51,6 +51,11 @@ class League extends Model
         ];
     }
 
+    public function isRoundRobin(): bool
+    {
+        return $this->format === LeagueFormat::RoundRobin;
+    }
+
     public function isKnockout(): bool
     {
         return $this->format === LeagueFormat::Knockout;

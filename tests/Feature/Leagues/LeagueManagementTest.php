@@ -528,3 +528,114 @@ test('legacy admin league routes redirect to the shared leagues pages', function
         ->get(route('admin.leagues.show', $league))
         ->assertRedirect("/dashboard/leagues/{$league->id}");
 });
+
+test('round robin league page has no champion until all matches are played', function () {
+    $admin = User::factory()->create();
+    assignLeagueAdminRole($admin);
+    $playerA = User::factory()->create(['first_name' => 'Ana', 'last_name' => 'A']);
+    $playerB = User::factory()->create(['first_name' => 'Bruno', 'last_name' => 'B']);
+    $playerC = User::factory()->create(['first_name' => 'Ceco', 'last_name' => 'C']);
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Nedovrsena liga',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: [$playerA->id, $playerB->id, $playerC->id],
+    ));
+
+    $match = $league->matches()->first();
+    recordLeagueWin($admin, $league, $match, $playerA, $playerB);
+
+    $this->actingAs($admin)
+        ->get(route('dashboard.leagues.show', $league))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('dashboard/leagues/show')
+            ->where('champion', null),
+        );
+});
+
+test('round robin league page shows champion when all matches are played', function () {
+    $admin = User::factory()->create();
+    assignLeagueAdminRole($admin);
+    $playerA = User::factory()->create(['first_name' => 'Ana', 'last_name' => 'A']);
+    $playerB = User::factory()->create(['first_name' => 'Bruno', 'last_name' => 'B']);
+    $playerC = User::factory()->create(['first_name' => 'Ceco', 'last_name' => 'C']);
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Zavrsena liga',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: [$playerA->id, $playerB->id, $playerC->id],
+    ));
+
+    $matches = $league->matches()->get();
+
+    $matchAB = $matches->first(
+        fn (LeagueMatch $match) => $match->player_one_id === min($playerA->id, $playerB->id)
+            && $match->player_two_id === max($playerA->id, $playerB->id),
+    );
+    $matchAC = $matches->first(
+        fn (LeagueMatch $match) => $match->player_one_id === min($playerA->id, $playerC->id)
+            && $match->player_two_id === max($playerA->id, $playerC->id),
+    );
+    $matchBC = $matches->first(
+        fn (LeagueMatch $match) => $match->player_one_id === min($playerB->id, $playerC->id)
+            && $match->player_two_id === max($playerB->id, $playerC->id),
+    );
+
+    recordLeagueWin($admin, $league, $matchAB, $playerA, $playerB);
+    recordLeagueWin($admin, $league, $matchAC, $playerA, $playerC);
+    recordLeagueWin($admin, $league, $matchBC, $playerB, $playerC);
+
+    $this->actingAs($admin)
+        ->get(route('dashboard.leagues.show', $league))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('dashboard/leagues/show')
+            ->where('champion.user_id', $playerA->id)
+            ->where('champion.name', $playerA->name),
+        );
+});
+
+test('league player picker excludes pending invitations and does not expose emails', function () {
+    $admin = User::factory()->create(['first_name' => 'Admin', 'last_name' => 'Liga']);
+    assignLeagueAdminRole($admin);
+    $registered = User::factory()->create(['first_name' => 'Iva', 'last_name' => 'Ivic']);
+    $outsider = User::factory()->create(['first_name' => 'Marko', 'last_name' => 'Maric']);
+    User::factory()->pendingInvitation()->create([
+        'first_name' => 'Petar',
+        'last_name' => 'Pozvani',
+    ]);
+
+    $league = app(CreateLeagueAction::class)->execute(new CreateLeagueData(
+        name: 'Picker liga',
+        rounds: 1,
+        createdBy: $admin->id,
+        participantIds: [$admin->id, $registered->id],
+    ));
+
+    $this->actingAs($admin)
+        ->get(route('dashboard.leagues'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('dashboard/leagues')
+            ->has('users', 3)
+            ->where('users.0.id', $admin->id)
+            ->where('users.1.id', $registered->id)
+            ->where('users.2.id', $outsider->id)
+            ->missing('users.0.email')
+            ->missing('users.1.email')
+            ->missing('users.2.email'),
+        );
+
+    $this->actingAs($admin)
+        ->get(route('dashboard.leagues.show', $league))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('dashboard/leagues/show')
+            ->has('available_users', 1)
+            ->where('available_users.0.id', $outsider->id)
+            ->missing('available_users.0.email'),
+        );
+});

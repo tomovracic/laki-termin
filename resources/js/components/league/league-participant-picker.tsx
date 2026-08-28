@@ -295,7 +295,6 @@ export function LeagueParticipantPicker({
         return users.filter(
             (user) =>
                 user.name.toLowerCase().includes(term) ||
-                user.email.toLowerCase().includes(term) ||
                 `${user.first_name} ${user.last_name}`
                     .toLowerCase()
                     .includes(term),
@@ -455,7 +454,7 @@ export function LeagueParticipantPicker({
                         <Label>{t('league_participants')}</Label>
                         <SearchInput
                             value={userSearch}
-                            placeholder={t('search_users_placeholder')}
+                            placeholder={t('league_search_players_placeholder')}
                             onChange={setUserSearch}
                         />
                         <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
@@ -478,9 +477,7 @@ export function LeagueParticipantPicker({
                                                 toggleRegisteredPlayer(user)
                                             }
                                         />
-                                        <span>
-                                            {user.name} ({user.email})
-                                        </span>
+                                        <span>{user.name}</span>
                                     </label>
                                 ))
                             )}

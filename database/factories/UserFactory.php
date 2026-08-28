@@ -49,4 +49,11 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    public function pendingInvitation(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'invitation_status' => UserInvitationStatus::Pending->value,
+        ]);
+    }
 }

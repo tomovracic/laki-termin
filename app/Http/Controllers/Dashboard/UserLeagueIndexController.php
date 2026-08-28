@@ -46,15 +46,15 @@ class UserLeagueIndexController extends Controller
 
         if ($canManage) {
             $users = User::query()
+                ->registered()
                 ->orderBy('first_name')
                 ->orderBy('last_name')
-                ->get(['id', 'first_name', 'last_name', 'email'])
+                ->get(['id', 'first_name', 'last_name'])
                 ->map(fn (User $user): array => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'first_name' => $user->first_name,
                     'last_name' => $user->last_name,
-                    'email' => $user->email,
                 ])
                 ->all();
         }
