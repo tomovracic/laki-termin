@@ -41,6 +41,7 @@ class LeagueMatch extends Model
         'next_match_id',
         'next_match_slot',
         'is_bye',
+        'schedule_order',
         'status',
         'set1_player_one_games',
         'set1_player_two_games',
@@ -65,6 +66,7 @@ class LeagueMatch extends Model
             'status' => LeagueMatchStatus::class,
             'played_at' => 'immutable_datetime',
             'is_bye' => 'boolean',
+            'schedule_order' => 'integer',
             'bracket_round' => 'integer',
             'bracket_position' => 'integer',
             'next_match_slot' => 'integer',
@@ -157,6 +159,17 @@ class LeagueMatch extends Model
     {
         return $this->player_two_id !== null
             || ($this->player_two_first_name !== null && $this->player_two_last_name !== null);
+    }
+
+    /**
+     * Real match that belongs on the published play schedule (not a bye or empty slot).
+     */
+    public function isOnSchedule(): bool
+    {
+        return ! $this->is_bye
+            && ! $this->isEmptyBracketSlot()
+            && $this->player_one_participant_id !== null
+            && $this->player_two_participant_id !== null;
     }
 
     /**

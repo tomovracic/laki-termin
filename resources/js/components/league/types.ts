@@ -84,6 +84,7 @@ export type LeagueMatch = {
     next_match_slot?: number | null;
     is_bye?: boolean;
     is_empty?: boolean;
+    schedule_order?: number | null;
     status: 'pending' | 'played';
     player_one: LeagueMatchPlayer | null;
     player_two: LeagueMatchPlayer | null;

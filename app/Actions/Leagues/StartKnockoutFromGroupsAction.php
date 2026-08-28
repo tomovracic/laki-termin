@@ -9,6 +9,7 @@ use App\Enums\LeagueStage;
 use App\Models\League;
 use App\Services\Leagues\GroupQualificationService;
 use App\Services\Leagues\KnockoutBracketGeneratorService;
+use App\Services\Leagues\LeagueScheduleService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Validation\ValidationException;
 
@@ -17,6 +18,7 @@ class StartKnockoutFromGroupsAction
     public function __construct(
         protected GroupQualificationService $qualificationService,
         protected KnockoutBracketGeneratorService $bracketGenerator,
+        protected LeagueScheduleService $scheduleService,
         protected DatabaseManager $database,
     ) {}
 
@@ -64,6 +66,7 @@ class StartKnockoutFromGroupsAction
             ])->save();
 
             $this->bracketGenerator->generate($league->fresh(), $qualifiers);
+            $this->scheduleService->synchronize($league);
 
             $updated = $league->fresh([
                 'matches.playerOne',

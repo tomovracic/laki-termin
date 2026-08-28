@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Trophy } from 'lucide-react';
+import { CalendarClock, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import { LeagueMatchResultForm } from '@/components/admin/league-match-result-form';
 import { StatusBanner } from '@/components/admin/status-banner';
@@ -7,6 +7,7 @@ import { knockoutRoundNameKey } from '@/components/league/bracket-utils';
 import { GroupStageSection } from '@/components/league/group-stage-section';
 import { LeagueMatchesSection } from '@/components/league/league-matches-section';
 import { PlayerSlotInput } from '@/components/league/league-participant-picker';
+import { LeagueScheduleDialog } from '@/components/league/league-schedule-dialog';
 import { LeagueStandingsTable } from '@/components/league/league-standings-table';
 import { TournamentBracket } from '@/components/league/tournament-bracket';
 import type {
@@ -124,6 +125,7 @@ export default function LeagueShowPage({
     );
     const [isSubmittingResult, setIsSubmittingResult] = useState(false);
     const [resultErrors, setResultErrors] = useState<string[]>([]);
+    const [isScheduleOpen, setIsScheduleOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isFinishingRound, setIsFinishingRound] = useState(false);
@@ -425,14 +427,23 @@ export default function LeagueShowPage({
                     <h1 className="text-2xl font-semibold tracking-tight">
                         {league.name}
                     </h1>
-                    {canManage && (
+                    <div className="flex flex-wrap items-center gap-2">
                         <Button
-                            variant="destructive"
-                            onClick={() => setIsDeleteDialogOpen(true)}
+                            variant="outline"
+                            onClick={() => setIsScheduleOpen(true)}
                         >
-                            {t('league_delete')}
+                            <CalendarClock className="size-4" aria-hidden />
+                            {t('league_schedule')}
                         </Button>
-                    )}
+                        {canManage && (
+                            <Button
+                                variant="destructive"
+                                onClick={() => setIsDeleteDialogOpen(true)}
+                            >
+                                {t('league_delete')}
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 {champion !== null && champion.name !== '' && (
@@ -611,6 +622,23 @@ export default function LeagueShowPage({
                         </Button>
                     </div>
                 )}
+
+                <LeagueScheduleDialog
+                    open={isScheduleOpen}
+                    onOpenChange={setIsScheduleOpen}
+                    matches={matches}
+                    groups={groups}
+                    currentUserId={currentUserId}
+                    onEnterResult={
+                        canManage
+                            ? (match) => {
+                                  setResultErrors([]);
+                                  setIsScheduleOpen(false);
+                                  setSelectedMatch(match);
+                              }
+                            : undefined
+                    }
+                />
 
                 {canManage && (
                     <>

@@ -10,6 +10,7 @@ use App\Models\League;
 use App\Models\LeagueParticipant;
 use App\Models\User;
 use App\Services\Leagues\LeagueMatchGeneratorService;
+use App\Services\Leagues\LeagueScheduleService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Validation\ValidationException;
 
@@ -18,6 +19,7 @@ class AddLeagueParticipantAction
     public function __construct(
         protected DatabaseManager $database,
         protected LeagueMatchGeneratorService $matchGenerator,
+        protected LeagueScheduleService $scheduleService,
     ) {}
 
     public function execute(AddLeagueParticipantData $data): LeagueParticipant
@@ -79,6 +81,7 @@ class AddLeagueParticipantAction
             ]);
 
             $this->matchGenerator->generateForNewParticipant($league, $participant, $existingParticipants);
+            $this->scheduleService->synchronize($league);
 
             return $participant->load(['user', 'partner']);
         });

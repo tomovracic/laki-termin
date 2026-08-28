@@ -6,6 +6,7 @@ namespace App\Actions\Leagues;
 
 use App\Models\League;
 use App\Services\Leagues\KnockoutBracketGeneratorService;
+use App\Services\Leagues\LeagueScheduleService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Validation\ValidationException;
 
@@ -13,6 +14,7 @@ class FinishKnockoutRoundAction
 {
     public function __construct(
         protected KnockoutBracketGeneratorService $bracketGenerator,
+        protected LeagueScheduleService $scheduleService,
         protected DatabaseManager $database,
     ) {}
 
@@ -50,6 +52,7 @@ class FinishKnockoutRoundAction
             }
 
             $this->bracketGenerator->tryGenerateNextRound($league->fresh(['matches', 'participants.user']));
+            $this->scheduleService->synchronize($league);
 
             $updated = $league->fresh([
                 'matches.playerOne',

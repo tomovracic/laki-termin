@@ -26,6 +26,7 @@ class LeagueMatchResource extends JsonResource
             'next_match_slot' => $this->next_match_slot,
             'is_bye' => (bool) $this->is_bye,
             'is_empty' => $this->isEmptyBracketSlot(),
+            'schedule_order' => $this->schedule_order,
             'status' => $this->status->value,
             'player_one' => $this->formatPlayer(
                 $this->player_one_id,

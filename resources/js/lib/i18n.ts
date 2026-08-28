@@ -451,6 +451,11 @@ const translations = {
         league_optional: 'opcionalno',
         league_no_standings: 'Tablica jos nema podataka.',
         league_no_matches: 'Nema meceva za prikaz.',
+        league_schedule: 'Raspored',
+        league_schedule_description:
+            'Mecevi poredani tako da igraci cekaju sto manje izmedu svojih susreta.',
+        league_schedule_empty: 'Nema meceva u rasporedu.',
+        league_schedule_next: 'Sljedeci',
         league_admin_show_description:
             'Upravljajte sudionicima i unosite rezultate meceva.',
         tournament_format: 'Format',
@@ -1060,6 +1065,11 @@ const translations = {
         league_optional: 'optional',
         league_no_standings: 'No standings data yet.',
         league_no_matches: 'No matches to display.',
+        league_schedule: 'Schedule',
+        league_schedule_description:
+            'Matches ordered so that players wait as little as possible between their games.',
+        league_schedule_empty: 'No matches in the schedule.',
+        league_schedule_next: 'Next',
         league_admin_show_description:
             'Manage participants and enter match results.',
         tournament_format: 'Format',

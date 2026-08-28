@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\Leagues\GroupStageValidator;
 use App\Services\Leagues\KnockoutBracketGeneratorService;
 use App\Services\Leagues\LeagueMatchGeneratorService;
+use App\Services\Leagues\LeagueScheduleService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Validation\ValidationException;
 
@@ -28,6 +29,7 @@ class CreateLeagueAction
         protected LeagueMatchGeneratorService $matchGenerator,
         protected KnockoutBracketGeneratorService $bracketGenerator,
         protected GroupStageValidator $groupStageValidator,
+        protected LeagueScheduleService $scheduleService,
     ) {}
 
     public function execute(CreateLeagueData $data): League
@@ -71,6 +73,7 @@ class CreateLeagueAction
 
             $createdParticipants = $this->createParticipants($league, $inputs);
             $this->matchGenerator->generateForAllParticipants($league, $createdParticipants);
+            $this->scheduleService->synchronize($league);
 
             return $league->load(['participants.user', 'matches']);
         });
@@ -92,6 +95,7 @@ class CreateLeagueAction
 
             $createdParticipants = $this->createDoublesParticipants($league, $pairs);
             $this->matchGenerator->generateForAllParticipants($league, $createdParticipants);
+            $this->scheduleService->synchronize($league);
 
             return $league->load([
                 'participants.user',
@@ -135,6 +139,7 @@ class CreateLeagueAction
             $createdParticipants = $this->createParticipants($league, $inputs);
 
             $this->bracketGenerator->generate($league, $createdParticipants);
+            $this->scheduleService->synchronize($league);
 
             return $league->load(['participants.user', 'matches.playerOne', 'matches.playerTwo']);
         });
@@ -163,6 +168,7 @@ class CreateLeagueAction
             $league = $this->createGroupKnockoutLeague($data, LeagueParticipantMode::Singles);
             $createdParticipants = $this->createParticipants($league, $inputs);
             $this->assignGroupsAndGenerateMatches($league, $createdParticipants, $groupPayload);
+            $this->scheduleService->synchronize($league);
 
             return $league->load([
                 'groups.participants.user',
@@ -188,6 +194,7 @@ class CreateLeagueAction
             $league = $this->createGroupKnockoutLeague($data, LeagueParticipantMode::Doubles);
             $createdParticipants = $this->createDoublesParticipants($league, $pairs);
             $this->assignGroupsAndGenerateMatches($league, $createdParticipants, $groupPayload);
+            $this->scheduleService->synchronize($league);
 
             return $league->load([
                 'groups.participants.user',
@@ -220,6 +227,7 @@ class CreateLeagueAction
 
             $createdParticipants = $this->createDoublesParticipants($league, $pairs);
             $this->bracketGenerator->generate($league, $createdParticipants);
+            $this->scheduleService->synchronize($league);
 
             return $league->load([
                 'participants.user',

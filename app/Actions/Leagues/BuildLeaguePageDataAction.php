@@ -11,6 +11,7 @@ use App\Models\LeagueMatch;
 use App\Models\User;
 use App\Services\Leagues\GroupQualificationService;
 use App\Services\Leagues\KnockoutBracketGeneratorService;
+use App\Services\Leagues\LeagueScheduleService;
 use App\Services\Leagues\LeagueStandingsService;
 
 class BuildLeaguePageDataAction
@@ -19,6 +20,7 @@ class BuildLeaguePageDataAction
         protected LeagueStandingsService $standingsService,
         protected KnockoutBracketGeneratorService $bracketGenerator,
         protected GroupQualificationService $qualificationService,
+        protected LeagueScheduleService $scheduleService,
     ) {}
 
     /**
@@ -47,6 +49,18 @@ class BuildLeaguePageDataAction
             'matches.playerOnePartner',
             'matches.playerTwoPartner',
         ]);
+
+        if ($league->matches->contains(
+            fn (LeagueMatch $match): bool => $match->isOnSchedule() && $match->schedule_order === null,
+        )) {
+            $this->scheduleService->synchronize($league);
+            $league->load([
+                'matches.playerOne',
+                'matches.playerTwo',
+                'matches.playerOnePartner',
+                'matches.playerTwoPartner',
+            ]);
+        }
 
         $standings = [];
         $groups = [];
@@ -224,6 +238,7 @@ class BuildLeaguePageDataAction
             'next_match_slot' => $match->next_match_slot,
             'is_bye' => (bool) $match->is_bye,
             'is_empty' => $match->isEmptyBracketSlot(),
+            'schedule_order' => $match->schedule_order,
             'status' => $match->status->value,
             'player_one' => $this->formatMatchPlayer(
                 $match->player_one_id,
