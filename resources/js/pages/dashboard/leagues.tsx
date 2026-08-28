@@ -167,6 +167,7 @@ export default function LeaguesPage({
                   format: 'round_robin',
                   participant_mode: participantMode,
                   rounds: Number.parseInt(rounds, 10),
+                  sets_best_of: Number.parseInt(setsBestOf, 10),
                   ...(participantMode === 'doubles'
                       ? { pairs: rrPairs.map(pairToPayload) }
                       : { participants: singlesToParticipants(rrPlayers) }),
@@ -403,6 +404,46 @@ export default function LeaguesPage({
                                             <div className="space-y-2">
                                                 <Label>
                                                     {t(
+                                                        'tournament_sets_best_of',
+                                                    )}
+                                                </Label>
+                                                <Select
+                                                    value={setsBestOf}
+                                                    onValueChange={
+                                                        setSetsBestOf
+                                                    }
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {[1, 3, 5].map(
+                                                            (value) => (
+                                                                <SelectItem
+                                                                    key={value}
+                                                                    value={`${value}`}
+                                                                >
+                                                                    {t(
+                                                                        'tournament_best_of',
+                                                                    ).replace(
+                                                                        '{count}',
+                                                                        `${value}`,
+                                                                    )}
+                                                                </SelectItem>
+                                                            ),
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                                <InputError
+                                                    message={
+                                                        errors.sets_best_of?.[0]
+                                                    }
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>
+                                                    {t(
                                                         'tournament_participant_mode',
                                                     )}
                                                 </Label>
@@ -504,9 +545,7 @@ export default function LeaguesPage({
                                                 )
                                               : roundsLabel(league.rounds, t)}
                                     </Badge>
-                                    {(league.format === 'knockout' ||
-                                        league.format === 'group_knockout') &&
-                                    league.sets_best_of ? (
+                                    {league.sets_best_of ? (
                                         <Badge variant="outline">
                                             {t('tournament_best_of').replace(
                                                 '{count}',

@@ -67,8 +67,45 @@ test('admin can create league with participants and round robin matches', functi
     $league = League::query()->first();
     expect($league)->not->toBeNull();
     expect($league->rounds)->toBe(2);
+    expect($league->sets_best_of)->toBe(3);
     expect($league->participants()->count())->toBe(3);
     expect($league->matches()->count())->toBe(6);
+});
+
+test('admin can create round robin league with custom sets best of', function () {
+    $admin = User::factory()->create();
+    assignLeagueAdminRole($admin);
+
+    $players = User::factory()->count(2)->create();
+
+    $response = $this->actingAs($admin)->postJson(route('leagues.store'), [
+        'name' => 'Liga na jedan set',
+        'format' => 'round_robin',
+        'rounds' => 1,
+        'sets_best_of' => 1,
+        'participant_ids' => $players->pluck('id')->all(),
+    ]);
+
+    $response->assertCreated();
+
+    $league = League::query()->where('name', 'Liga na jedan set')->first();
+    expect($league)->not->toBeNull();
+    expect($league->sets_best_of)->toBe(1);
+
+    $match = $league->matches()->first();
+    expect($match)->not->toBeNull();
+
+    $this->actingAs($admin)->patchJson(
+        route('leagues.matches.result.update', ['league' => $league, 'match' => $match]),
+        [
+            'set1_player_one_games' => 6,
+            'set1_player_two_games' => 4,
+        ],
+    )->assertOk();
+
+    $match->refresh();
+    expect($match->status)->toBe(LeagueMatchStatus::Played);
+    expect($match->set2_player_one_games)->toBeNull();
 });
 
 test('adding participant later generates only new matches', function () {

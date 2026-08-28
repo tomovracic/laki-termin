@@ -459,7 +459,7 @@ const translations = {
         league_admin_show_description:
             'Upravljajte sudionicima i unosite rezultate meceva.',
         tournament_format: 'Format',
-        tournament_format_round_robin: 'Liga (round-robin)',
+        tournament_format_round_robin: 'Liga',
         tournament_format_knockout: 'Knockout turnir',
         tournament_sets_best_of: 'Broj setova',
         tournament_best_of: 'Best of {count}',
@@ -1073,7 +1073,7 @@ const translations = {
         league_admin_show_description:
             'Manage participants and enter match results.',
         tournament_format: 'Format',
-        tournament_format_round_robin: 'League (round-robin)',
+        tournament_format_round_robin: 'League',
         tournament_format_knockout: 'Knockout tournament',
         tournament_sets_best_of: 'Number of sets',
         tournament_best_of: 'Best of {count}',
